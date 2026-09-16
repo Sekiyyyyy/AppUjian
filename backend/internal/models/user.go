@@ -26,13 +26,22 @@ type User struct {
 }
 
 type Student struct {
-	ID        uint           `gorm:"primaryKey" json:"id"`
-	UserID    uint           `gorm:"uniqueIndex" json:"user_id"`
-	User      User           `gorm:"foreignKey:UserID" json:"user"`
-	NISN      string         `gorm:"uniqueIndex;not null" json:"nisn"`
-	ClassID   uint           `gorm:"index" json:"class_id"` // Will map to Class model later
-	CreatedAt time.Time      `json:"created_at"`
-	UpdatedAt time.Time      `json:"updated_at"`
+	ID            uint           `gorm:"primaryKey" json:"id"`
+	UserID        uint           `gorm:"uniqueIndex" json:"user_id"`
+	User          User           `gorm:"foreignKey:UserID" json:"user"`
+	NISN          string         `gorm:"uniqueIndex;not null" json:"nisn"`
+	NIS           string         `json:"nis"`
+	JenisKelamin  string         `json:"jenis_kelamin"` // Laki-laki / Perempuan
+	Agama         string         `json:"agama"`
+	TempatLahir   string         `json:"tempat_lahir"`
+	TanggalLahir  string         `json:"tanggal_lahir"` // YYYY-MM-DD
+	Alamat        string         `json:"alamat"`
+	NoTelp        string         `json:"no_telp"`
+	NamaOrangTua  string         `json:"nama_orang_tua"`
+	ClassID       uint           `gorm:"index" json:"class_id"` // Will map to Class model later
+	TokenPassword string         `json:"token_password"`
+	CreatedAt     time.Time      `json:"created_at"`
+	UpdatedAt     time.Time      `json:"updated_at"`
 }
 
 type Teacher struct {

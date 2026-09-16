@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Plus, Edit2, Trash2, BookOpen, AlertCircle } from 'lucide-react';
+import { Plus, List, AlertCircle, Edit2, Trash2, BookOpen } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { confirmAction, showSuccessToast, showErrorToast } from '../utils/alert';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 
@@ -19,6 +20,27 @@ interface Question {
   points: number;
   CreatedAt: string;
 }
+const modules = {
+  toolbar: [
+    ['bold', 'italic', 'underline', 'strike'],
+    ['blockquote', 'code-block'],
+    [{ 'script': 'sub'}, { 'script': 'super' }],
+    [{ 'direction': 'rtl' }], // Supports Arabic Right-to-Left
+    [{ 'size': ['small', false, 'large', 'huge'] }],
+    [{ 'color': [] }, { 'background': [] }],
+    ['link', 'image', 'video', 'formula'], // Added formula for KaTeX
+    ['clean']
+  ]
+};
+
+const miniModules = {
+  toolbar: [
+    ['bold', 'italic', 'underline'],
+    [{ 'script': 'sub'}, { 'script': 'super' }],
+    ['image', 'formula'], // Allow image and math formulas for options
+    ['clean']
+  ]
+};
 
 const Questions = () => {
   const { token } = useAuth();
@@ -57,18 +79,6 @@ const Questions = () => {
     else if (opt === 'E') setOptionE(val);
   };
 
-  const modules = {
-    toolbar: [
-      ['bold', 'italic', 'underline', 'strike'],
-      ['blockquote', 'code-block'],
-      [{ 'script': 'sub'}, { 'script': 'super' }],
-      [{ 'direction': 'rtl' }], // Supports Arabic Right-to-Left
-      [{ 'size': ['small', false, 'large', 'huge'] }],
-      [{ 'color': [] }, { 'background': [] }],
-      ['link', 'image', 'video', 'formula'], // Added formula for KaTeX
-      ['clean']
-    ],
-  };
 
   const fetchSubjects = async () => {
     try {
@@ -134,15 +144,16 @@ const Questions = () => {
   };
 
   const handleDeleteQuestion = async (id: number) => {
-    if (!window.confirm(`Yakin ingin menghapus soal ini?`)) return;
+    if (!(await confirmAction(`Hapus Soal`, `Yakin ingin menghapus soal ini?`))) return;
 
     try {
       await axios.delete(`http://localhost:8080/api/v1/admin/questions/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setQuestions(questions.filter(q => q.ID !== id));
+      showSuccessToast('Soal dihapus');
     } catch (err) {
-      alert('Gagal menghapus soal');
+      showErrorToast('Gagal menghapus soal');
     }
   };
 
@@ -295,8 +306,8 @@ const Questions = () => {
                   <h3 className="text-sm font-semibold text-slate-800 mb-3 border-b pb-2">Pilihan Jawaban Singkat</h3>
                   
                   {['A', 'B', 'C', 'D', 'E'].map((opt) => (
-                    <div key={opt} className="flex items-center space-x-3">
-                      <div className="flex items-center space-x-2">
+                    <div key={opt} className="flex flex-col space-y-2 border border-slate-200 rounded-xl p-3 bg-slate-50/50">
+                      <div className="flex items-center space-x-2 border-b border-slate-200 pb-2">
                         <input
                           type="radio"
                           name="correctAnswer"
@@ -305,20 +316,20 @@ const Questions = () => {
                           onChange={(e) => setCorrectAnswer(e.target.value)}
                           className="w-4 h-4 text-primary-600 border-slate-300 focus:ring-primary-500 cursor-pointer"
                         />
-                        <span className={`text-sm font-bold w-6 ${correctAnswer === opt ? 'text-primary-600' : 'text-slate-500'}`}>{opt}.</span>
+                        <span className={`text-sm font-bold ${correctAnswer === opt ? 'text-primary-600' : 'text-slate-500'}`}>
+                          Opsi {opt} {correctAnswer === opt && '(Kunci Jawaban)'}
+                        </span>
                       </div>
-                      <input
-                        type="text"
-                        value={getOptionValue(opt)}
-                        onChange={(e) => setOptionValue(opt, e.target.value)}
-                        className={`flex-1 px-3 py-2 border rounded-xl outline-none text-sm transition-all ${
-                          correctAnswer === opt 
-                            ? 'border-primary-300 bg-primary-50/30 focus:border-primary-500 focus:ring-2 focus:ring-primary-500' 
-                            : 'border-slate-300 focus:border-slate-400 focus:ring-2 focus:ring-slate-200'
-                        }`}
-                        placeholder={`Teks pilihan ${opt}`}
-                        required
-                      />
+                      <div className="bg-white">
+                        <ReactQuill 
+                          theme="snow" 
+                          value={getOptionValue(opt)} 
+                          onChange={(val) => setOptionValue(opt, val)}
+                          modules={miniModules}
+                          className="h-24 pb-12"
+                          placeholder={`Ketik atau sisipkan gambar untuk opsi ${opt}...`}
+                        />
+                      </div>
                     </div>
                   ))}
                   <div className="mt-4 p-3 bg-blue-50 text-blue-800 rounded-lg text-xs flex items-start">

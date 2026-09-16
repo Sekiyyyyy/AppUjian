@@ -3,6 +3,7 @@ import axios from 'axios';
 import { 
   Plus, 
   School, 
+  Edit2,
   Trash2, 
   AlertCircle, 
   Layers, 
@@ -12,6 +13,7 @@ import {
   GraduationCap
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { confirmAction, showSuccessToast, showErrorToast } from '../utils/alert';
 
 interface ClassItem {
   ID: number;
@@ -95,15 +97,16 @@ const Classes = () => {
   };
 
   const handleDeleteClass = async (id: number, name: string) => {
-    if (!window.confirm(`Yakin ingin menghapus kelas ${name}?`)) return;
+    if (!(await confirmAction(`Hapus Kelas`, `Yakin ingin menghapus kelas ${name}?`))) return;
 
     try {
       await axios.delete(`http://localhost:8080/api/v1/admin/classes/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setClasses(classes.filter(c => c.ID !== id));
+      showSuccessToast('Kelas dihapus');
     } catch (err) {
-      alert('Gagal menghapus kelas');
+      showErrorToast('Gagal menghapus kelas');
     }
   };
 

@@ -1,17 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { 
-  Plus, 
-  Calendar, 
-  Clock, 
-  BookOpen, 
-  School, 
-  Trash2, 
-  AlertCircle, 
-  CheckCircle2, 
-  Search
+import {
+  Plus,
+  Calendar,
+  Clock,
+  BookOpen,
+  School,
+  Trash2,
+  AlertCircle,
+  CheckCircle2,
+  Search,
+  Edit2,
+  Users
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { confirmAction, showSuccessToast, showErrorToast } from '../utils/alert';
+import ExamParticipantsModal from '../components/ExamParticipantsModal';
 
 interface CategoryItem {
   ID: number;
@@ -54,6 +58,10 @@ interface ExamItem {
   duration: number;
   total_points: number;
   status: string;
+  tahun?: string;
+  semester?: string;
+  proktor?: string;
+  pengawas?: string;
   classes?: ClassItem[];
   questions?: QuestionItem[];
   CreatedAt: string;
@@ -66,8 +74,14 @@ const Exams = () => {
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [questions, setQuestions] = useState<QuestionItem[]>([]);
   const [categories, setCategories] = useState<CategoryItem[]>([]);
-  
+
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
+
+  // Participants Modal State
+  const [isParticipantsModalOpen, setIsParticipantsModalOpen] = useState(false);
+  const [selectedExamForParticipants, setSelectedExamForParticipants] = useState<{ id: number, title: string } | null>(null);
+
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
@@ -83,6 +97,10 @@ const Exams = () => {
   const [classFilterLevel, setClassFilterLevel] = useState('ALL');
   const [autoIncludeAllQuestions, setAutoIncludeAllQuestions] = useState(true);
   const [selectedQuestionIds] = useState<number[]>([]);
+  const [tahun, setTahun] = useState('');
+  const [semester, setSemester] = useState('Ganjil');
+  const [proktor, setProktor] = useState('');
+  const [pengawas, setPengawas] = useState('');
 
   // Fetch initial data
   const fetchData = async () => {
@@ -119,7 +137,7 @@ const Exams = () => {
     const now = new Date();
     const start = new Date(now.getTime() + 60 * 60 * 1000);
     const end = new Date(start.getTime() + 2 * 60 * 60 * 1000);
-    
+
     // Format YYYY-MM-DDTHH:mm
     const formatLocalISO = (d: Date) => {
       const pad = (n: number) => (n < 10 ? '0' + n : n);
@@ -142,11 +160,10 @@ const Exams = () => {
     }
   };
 
-  // Select all classes matching current filter
   const handleSelectAllFilteredClasses = () => {
     const matchingClasses = classes.filter(c => classFilterLevel === 'ALL' || c.level === classFilterLevel);
     const matchingIds = matchingClasses.map(c => c.ID);
-    
+
     // If all are already selected, deselect them
     const allSelected = matchingIds.every(id => selectedClassIds.includes(id));
     if (allSelected) {
@@ -155,6 +172,38 @@ const Exams = () => {
       const merged = Array.from(new Set([...selectedClassIds, ...matchingIds]));
       setSelectedClassIds(merged);
     }
+  };
+
+  const handleEditClick = (exam: ExamItem) => {
+    setEditingId(exam.ID);
+    setTitle(exam.title);
+    setSubjectId(exam.subject_id);
+    setCategoryId(exam.category_id);
+    setStartTime(exam.start_time.substring(0, 16)); // Format to datetime-local yyyy-MM-ddThh:mm
+    setEndTime(exam.end_time.substring(0, 16));
+    setDuration(exam.duration);
+    setTahun(exam.tahun || '');
+    setSemester(exam.semester || 'Ganjil');
+    setProktor(exam.proktor || '');
+    setPengawas(exam.pengawas || '');
+    setSelectedClassIds(exam.classes?.map(c => c.ID) || []);
+    setIsModalOpen(true);
+  };
+
+  const resetForm = () => {
+    setEditingId(null);
+    setTitle('');
+    setSubjectId('');
+    setCategoryId('');
+    setStartTime('');
+    setEndTime('');
+    setDuration(90);
+    setTahun('');
+    setSemester('Ganjil');
+    setProktor('');
+    setPengawas('');
+    setSelectedClassIds([]);
+    setError('');
   };
 
   const handleCreateExam = async (e: React.FormEvent) => {
@@ -175,11 +224,11 @@ const Exams = () => {
     }
 
     try {
-      const questionIdsToSend = autoIncludeAllQuestions 
+      const questionIdsToSend = autoIncludeAllQuestions
         ? availableQuestions.map(q => q.ID)
         : selectedQuestionIds;
 
-      await axios.post('http://localhost:8080/api/v1/admin/exams', {
+      const payload = {
         title,
         subject_id: Number(subjectId),
         category_id: Number(categoryId),
@@ -188,15 +237,28 @@ const Exams = () => {
         duration: Number(duration),
         status: 'SCHEDULED',
         class_ids: selectedClassIds,
-        question_ids: questionIdsToSend
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+        question_ids: questionIdsToSend,
+        tahun,
+        semester,
+        proktor,
+        pengawas
+      };
+
+      if (editingId) {
+        await axios.put(`http://localhost:8080/api/v1/admin/exams/${editingId}`, payload, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        showSuccessToast('Jadwal ujian berhasil diperbarui');
+      } else {
+        await axios.post('http://localhost:8080/api/v1/admin/exams', payload, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        showSuccessToast('Jadwal ujian berhasil dibuat');
+      }
 
       setIsModalOpen(false);
       fetchData();
-      setTitle('');
-      setSelectedClassIds([]);
+      resetForm();
     } catch (err: any) {
       setError(err.response?.data?.error || 'Gagal membuat jadwal ujian');
     } finally {
@@ -205,28 +267,30 @@ const Exams = () => {
   };
 
   const handleDeleteExam = async (id: number, examTitle: string) => {
-    if (!window.confirm(`Yakin ingin menghapus jadwal ujian "${examTitle}"?`)) return;
+    if (!(await confirmAction('Hapus Jadwal Ujian', `Yakin ingin menghapus jadwal ujian "${examTitle}"?`))) return;
 
     try {
       await axios.delete(`http://localhost:8080/api/v1/admin/exams/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setExams(exams.filter(e => e.ID !== id));
+      showSuccessToast('Jadwal ujian dihapus');
     } catch (err) {
-      alert('Gagal menghapus jadwal ujian');
+      showErrorToast('Gagal menghapus jadwal ujian');
     }
   };
 
   const handleToggleMakeup = async (id: number, currentStatus: boolean) => {
     const actionName = currentStatus ? "menutup" : "membuka";
-    if (!window.confirm(`Yakin ingin ${actionName} akses ujian susulan?`)) return;
+    if (!(await confirmAction('Akses Ujian Susulan', `Yakin ingin ${actionName} akses ujian susulan?`))) return;
     try {
       await axios.post(`http://localhost:8080/api/v1/admin/exams/${id}/toggle-makeup`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
       fetchData();
+      showSuccessToast(`Akses ujian susulan berhasil di${actionName}`);
     } catch (err: any) {
-      alert(err.response?.data?.error || `Gagal ${actionName} ujian susulan`);
+      showErrorToast(err.response?.data?.error || `Gagal ${actionName} ujian susulan`);
     }
   };
 
@@ -234,7 +298,7 @@ const Exams = () => {
     if (exam.is_makeup_open) {
       return { text: "SUSULAN DIBUKA", color: "bg-amber-100 text-amber-700 border-amber-200" };
     }
-    
+
     const now = new Date();
     const start = new Date(exam.start_time);
     const end = new Date(exam.end_time);
@@ -248,7 +312,7 @@ const Exams = () => {
     }
   };
 
-  const filteredExams = exams.filter(e => 
+  const filteredExams = exams.filter(e =>
     e.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     e.subject?.name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -268,7 +332,7 @@ const Exams = () => {
             Atur pelaksanaan ujian, alokasi waktu, serta distribusi soal ke kelas, jurusan, dan rombel SMK.
           </p>
         </div>
-        <button 
+        <button
           onClick={() => setIsModalOpen(true)}
           className="btn-primary flex items-center space-x-2"
         >
@@ -322,19 +386,18 @@ const Exams = () => {
             const isJurusan = exam.subject?.type === 'JURUSAN';
 
             return (
-              <div 
-                key={exam.ID} 
+              <div
+                key={exam.ID}
                 className="glass-panel p-6 group hover:shadow-lg transition-all duration-300 relative border border-slate-200/80 flex flex-col justify-between"
               >
                 <div>
                   {/* Top Bar: Subject Badge & Status */}
                   <div className="flex justify-between items-start mb-3">
                     <div className="flex items-center space-x-2">
-                      <span className={`px-2.5 py-1 rounded-lg text-xs font-bold ${
-                        isJurusan 
-                          ? 'bg-amber-100 text-amber-800 border border-amber-200' 
+                      <span className={`px-2.5 py-1 rounded-lg text-xs font-bold ${isJurusan
+                          ? 'bg-amber-100 text-amber-800 border border-amber-200'
                           : 'bg-blue-100 text-blue-800 border border-blue-200'
-                      }`}>
+                        }`}>
                         {exam.subject?.name || 'Mata Pelajaran'} ({isJurusan ? 'Kejuruan' : 'Akademik'})
                       </span>
                       <span className={`px-2 py-0.5 rounded-md text-xs font-semibold border ${statusInfo.color}`}>
@@ -342,13 +405,32 @@ const Exams = () => {
                       </span>
                     </div>
 
-                    <button
-                      onClick={() => handleDeleteExam(exam.ID, exam.title)}
-                      className="text-slate-300 hover:text-red-600 hover:bg-red-50 p-1.5 rounded-lg transition-colors"
-                      title="Hapus Jadwal"
-                    >
-                      <Trash2 size={16} />
-                    </button>
+                    <div className="flex space-x-1">
+                      <button
+                        onClick={() => {
+                          setSelectedExamForParticipants({ id: exam.ID, title: exam.title });
+                          setIsParticipantsModalOpen(true);
+                        }}
+                        className="text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 p-1.5 rounded-lg transition-colors"
+                        title="Daftar Peserta"
+                      >
+                        <Users size={16} />
+                      </button>
+                      <button
+                        onClick={() => handleEditClick(exam)}
+                        className="text-slate-300 hover:text-amber-600 hover:bg-amber-50 p-1.5 rounded-lg transition-colors"
+                        title="Edit Jadwal"
+                      >
+                        <Edit2 size={16} />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteExam(exam.ID, exam.title)}
+                        className="text-slate-300 hover:text-red-600 hover:bg-red-50 p-1.5 rounded-lg transition-colors"
+                        title="Hapus Jadwal"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
                   </div>
 
                   {/* Title */}
@@ -388,8 +470,8 @@ const Exams = () => {
                     <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto">
                       {exam.classes && exam.classes.length > 0 ? (
                         exam.classes.map(c => (
-                          <span 
-                            key={c.ID} 
+                          <span
+                            key={c.ID}
                             className="bg-primary-50 text-primary-700 border border-primary-200 text-xs font-semibold px-2 py-0.5 rounded-lg"
                           >
                             {c.name || `${c.level} ${c.department} ${c.number}`}
@@ -408,13 +490,12 @@ const Exams = () => {
                     <BookOpen size={14} className="mr-1 text-slate-400" />
                     <strong>{exam.questions?.length || 0}</strong> Soal Ujian
                   </span>
-                  
+
                   {isExpired && currentUser?.role === 'ADMIN' ? (
-                    <button 
+                    <button
                       onClick={() => handleToggleMakeup(exam.ID, exam.is_makeup_open)}
-                      className={`px-3 py-1 text-white rounded font-bold shadow-sm transition-colors ${
-                        exam.is_makeup_open ? 'bg-red-500 hover:bg-red-600' : 'bg-amber-500 hover:bg-amber-600'
-                      }`}
+                      className={`px-3 py-1 text-white rounded font-bold shadow-sm transition-colors ${exam.is_makeup_open ? 'bg-red-500 hover:bg-red-600' : 'bg-amber-500 hover:bg-amber-600'
+                        }`}
                     >
                       {exam.is_makeup_open ? 'Tutup Susulan' : 'Buka Susulan'}
                     </button>
@@ -443,7 +524,7 @@ const Exams = () => {
                 </div>
                 <h2 className="text-lg font-bold text-slate-800">Buat Jadwal Ujian SMK</h2>
               </div>
-              <button 
+              <button
                 onClick={() => setIsModalOpen(false)}
                 className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-200 transition-colors"
               >
@@ -521,6 +602,57 @@ const Exams = () => {
                 </div>
               </div>
 
+              {/* Kelengkapan Administrasi */}
+              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                <h3 className="text-sm font-bold text-slate-800 flex items-center mb-4">
+                  <AlertCircle size={16} className="mr-1.5 text-primary-600" />
+                  Kelengkapan Administrasi (Opsional)
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">Tahun Ajaran</label>
+                    <input
+                      type="text"
+                      value={tahun}
+                      onChange={(e) => setTahun(e.target.value)}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-primary-500"
+                      placeholder="Contoh: 2026/2027"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">Semester</label>
+                    <select
+                      value={semester}
+                      onChange={(e) => setSemester(e.target.value)}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 bg-white"
+                    >
+                      <option value="Ganjil">Ganjil</option>
+                      <option value="Genap">Genap</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">Proktor</label>
+                    <input
+                      type="text"
+                      value={proktor}
+                      onChange={(e) => setProktor(e.target.value)}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-primary-500"
+                      placeholder="Nama Proktor"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">Pengawas</label>
+                    <input
+                      type="text"
+                      value={pengawas}
+                      onChange={(e) => setPengawas(e.target.value)}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-primary-500"
+                      placeholder="Nama Pengawas"
+                    />
+                  </div>
+                </div>
+              </div>
+
               {/* Waktu & Durasi */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
@@ -595,11 +727,10 @@ const Exams = () => {
                       key={lvl}
                       type="button"
                       onClick={() => setClassFilterLevel(lvl)}
-                      className={`px-3 py-1 text-xs font-bold rounded-lg transition-colors ${
-                        classFilterLevel === lvl
+                      className={`px-3 py-1 text-xs font-bold rounded-lg transition-colors ${classFilterLevel === lvl
                           ? 'bg-primary-600 text-white shadow-sm'
                           : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
-                      }`}
+                        }`}
                     >
                       {lvl === 'ALL' ? 'Semua' : `Tingkat ${lvl}`}
                     </button>
@@ -621,11 +752,10 @@ const Exams = () => {
                           <div
                             key={c.ID}
                             onClick={() => handleToggleClass(c.ID)}
-                            className={`cursor-pointer p-2.5 rounded-xl border text-xs font-bold flex items-center justify-between transition-all select-none ${
-                              isSelected
+                            className={`cursor-pointer p-2.5 rounded-xl border text-xs font-bold flex items-center justify-between transition-all select-none ${isSelected
                                 ? 'bg-primary-50 border-primary-500 text-primary-700 shadow-sm'
                                 : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300'
-                            }`}
+                              }`}
                           >
                             <span>{c.name || `${c.level} ${c.department} ${c.number}`}</span>
                             {isSelected && <CheckCircle2 size={16} className="text-primary-600 flex-shrink-0" />}
@@ -638,8 +768,8 @@ const Exams = () => {
                 <div className="text-xs font-semibold text-slate-600 pt-1 flex justify-between">
                   <span>Terpilih: <strong className="text-primary-600">{selectedClassIds.length}</strong> Kelas / Rombel</span>
                   {selectedClassIds.length > 0 && (
-                    <button 
-                      type="button" 
+                    <button
+                      type="button"
                       onClick={() => setSelectedClassIds([])}
                       className="text-red-500 hover:underline"
                     >
@@ -671,16 +801,16 @@ const Exams = () => {
 
               {/* Submit Buttons */}
               <div className="pt-3 flex justify-end space-x-3 border-t border-slate-100">
-                <button 
-                  type="button" 
-                  onClick={() => setIsModalOpen(false)} 
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
                   className="px-5 py-2.5 border border-slate-300 text-slate-700 rounded-xl font-medium text-sm hover:bg-slate-50"
                 >
                   Batal
                 </button>
-                <button 
-                  type="submit" 
-                  disabled={isLoading} 
+                <button
+                  type="submit"
+                  disabled={isLoading}
                   className="btn-primary flex items-center space-x-2"
                 >
                   <Plus size={18} />
@@ -690,6 +820,19 @@ const Exams = () => {
             </form>
           </div>
         </div>
+      )}
+
+      {/* Participants Modal */}
+      {selectedExamForParticipants && (
+        <ExamParticipantsModal
+          isOpen={isParticipantsModalOpen}
+          onClose={() => {
+            setIsParticipantsModalOpen(false);
+            setTimeout(() => setSelectedExamForParticipants(null), 200); // Wait for transition
+          }}
+          examId={selectedExamForParticipants.id}
+          examTitle={selectedExamForParticipants.title}
+        />
       )}
     </div>
   );

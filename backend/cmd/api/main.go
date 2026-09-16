@@ -96,7 +96,10 @@ func main() {
 			// Exam Management
 			adminRoutes.GET("/exams", controllers.GetExams)
 			adminRoutes.POST("/exams", controllers.CreateExam)
+			adminRoutes.PUT("/exams/:id", controllers.UpdateExam)
 			adminRoutes.POST("/exams/:id/toggle-makeup", controllers.ToggleMakeup)
+			adminRoutes.GET("/exams/:id/participants", controllers.GetExamParticipants)
+			adminRoutes.DELETE("/exams/:id/reset/:student_id", controllers.ResetStudentExam)
 			adminRoutes.DELETE("/exams/:id", controllers.DeleteExam)
 
 			// User Management
@@ -108,8 +111,21 @@ func main() {
 			// Student Management
 			adminRoutes.GET("/students", controllers.GetStudents)
 			adminRoutes.POST("/students", controllers.CreateStudent)
+			adminRoutes.POST("/students/generate-tokens", controllers.GenerateTokens)
+			adminRoutes.GET("/students/export-tokens", controllers.ExportTokens)
 			adminRoutes.PUT("/students/:id", controllers.UpdateStudent)
 			adminRoutes.DELETE("/students/:id", controllers.DeleteStudent)
+		}
+
+		// Student API Routes
+		studentRoutes := api.Group("/student")
+		studentRoutes.Use(auth.AuthMiddleware(cfg), auth.RoleMiddleware(string(models.RoleStudent)))
+		{
+			studentRoutes.GET("/exams", controllers.GetStudentExams)
+			studentRoutes.POST("/exams/:id/start", controllers.StartExam)
+			studentRoutes.GET("/exams/:id/questions", controllers.GetExamQuestions)
+			studentRoutes.POST("/exams/:id/answer", controllers.SubmitAnswer)
+			studentRoutes.POST("/exams/:id/finish", controllers.FinishExam)
 		}
 	}
 

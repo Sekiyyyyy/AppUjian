@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Plus, FolderTree, AlertCircle, Edit2, Trash2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { confirmAction, showSuccessToast, showErrorToast } from '../utils/alert';
 
 interface Category {
   ID: number;
@@ -80,15 +81,16 @@ const Categories = () => {
   };
 
   const handleDelete = async (id: number, name: string) => {
-    if (!window.confirm(`Yakin ingin menghapus kategori ${name}?`)) return;
+    if (!(await confirmAction(`Hapus Kategori`, `Yakin ingin menghapus kategori ${name}?`))) return;
 
     try {
       await axios.delete(`http://localhost:8080/api/v1/admin/categories/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setCategories(categories.filter(c => c.ID !== id));
+      showSuccessToast('Kategori dihapus');
     } catch (err) {
-      alert('Gagal menghapus kategori');
+      showErrorToast('Gagal menghapus kategori');
     }
   };
 

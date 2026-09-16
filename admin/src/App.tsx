@@ -10,10 +10,12 @@ import Exams from './pages/Exams';
 import Users from './pages/Users';
 import Settings from './pages/Settings';
 import Categories from './pages/Categories';
+import { GlobalAlert } from './components/GlobalAlert';
 
 function App() {
   return (
     <AuthProvider>
+      <GlobalAlert />
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<Login />} />

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Plus, BookOpen, AlertCircle, Edit2, Trash2, Users } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { confirmAction, showSuccessToast, showErrorToast } from '../utils/alert';
 
 interface Subject {
   ID: number;
@@ -96,15 +97,16 @@ const Subjects = () => {
   };
 
   const handleDeleteSubject = async (id: number, name: string) => {
-    if (!window.confirm(`Yakin ingin menghapus mata pelajaran ${name}?`)) return;
+    if (!(await confirmAction(`Hapus Mata Pelajaran`, `Yakin ingin menghapus mata pelajaran ${name}?`))) return;
 
     try {
       await axios.delete(`http://localhost:8080/api/v1/admin/subjects/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setSubjects(subjects.filter(s => s.ID !== id));
+      showSuccessToast('Mata pelajaran dihapus');
     } catch (err) {
-      alert('Gagal menghapus mata pelajaran');
+      showErrorToast('Gagal menghapus mata pelajaran');
     }
   };
 

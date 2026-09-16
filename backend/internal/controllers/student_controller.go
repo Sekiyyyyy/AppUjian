@@ -161,3 +161,11 @@ func DeleteStudent(c *gin.Context) {
 	tx.Commit()
 	c.JSON(http.StatusOK, gin.H{"message": "Siswa berhasil dihapus"})
 }
+
+func GenerateTokens(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{"message": "Tokens generated"})
+}
+
+func ExportTokens(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{"message": "Tokens exported"})
+}
