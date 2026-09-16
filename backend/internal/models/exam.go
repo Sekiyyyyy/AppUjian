@@ -36,9 +36,12 @@ type Exam struct {
 	Subject     *Subject   `gorm:"foreignKey:SubjectID" json:"subject,omitempty"`
 	StartTime   time.Time  `json:"start_time"`
 	EndTime     time.Time  `json:"end_time"`
-	Duration    int        `json:"duration"` // in minutes
-	TotalPoints int        `json:"total_points"`
-	Status      string     `json:"status"` // DRAFT, SCHEDULED, ACTIVE, COMPLETED
+	Duration     int        `json:"duration"` // in minutes
+	TotalPoints  int        `json:"total_points"`
+	Status       string     `json:"status"` // DRAFT, SCHEDULED, ACTIVE, COMPLETED
+	IsMakeupOpen bool       `json:"is_makeup_open"` // For manual makeup exam toggle
+	CategoryID   uint       `json:"category_id"`
+	Category    *Category  `gorm:"foreignKey:CategoryID" json:"category,omitempty"`
 	TeacherID   uint       `json:"teacher_id"`
 	Questions   []Question `gorm:"many2many:exam_questions;" json:"questions,omitempty"`
 	Classes     []Class    `gorm:"many2many:exam_classes;" json:"classes,omitempty"`

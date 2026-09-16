@@ -12,7 +12,8 @@ import {
   School,
   ChevronLeft,
   ChevronRight,
-  Database
+  Database,
+  FolderTree
 } from 'lucide-react';
 
 const AdminLayout = () => {
@@ -53,6 +54,7 @@ const AdminLayout = () => {
     { path: '/dashboard/classes', icon: <School size={20} />, label: 'Data Kelas (SMK)', adminOnly: true },
     { path: '/dashboard/subjects', icon: <BookOpen size={20} />, label: 'Mata Pelajaran' },
     { path: '/dashboard/questions', icon: <Database size={20} />, label: 'Bank Soal' },
+    { path: '/dashboard/categories', icon: <FolderTree size={20} />, label: 'Kategori Ujian', adminOnly: true },
     { path: '/dashboard/exams', icon: <Calendar size={20} />, label: 'Jadwal Ujian' },
     { path: '/dashboard/users', icon: <Users size={20} />, label: 'Manajemen Pengguna', adminOnly: true },
     { path: '/dashboard/settings', icon: <Settings size={20} />, label: 'Pengaturan', adminOnly: true },

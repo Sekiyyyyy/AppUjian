@@ -87,3 +87,61 @@ func DeleteUser(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "User deleted successfully"})
 }
+
+type UpdateUserRequest struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+	Name     string `json:"name"`
+	NIP      string `json:"nip"`
+}
+
+// UpdateUser updates user details, and if NIP is provided, updates associated Teacher record
+func UpdateUser(c *gin.Context) {
+	id := c.Param("id")
+	var req UpdateUserRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	var user models.User
+	if err := config.DB.First(&user, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
+	}
+
+	tx := config.DB.Begin()
+
+	if req.Username != "" {
+		user.Username = req.Username
+	}
+	if req.Name != "" {
+		user.Name = req.Name
+	}
+	if req.Password != "" {
+		hashedPassword, _ := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+		user.Password = string(hashedPassword)
+	}
+
+	if err := tx.Save(&user).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update user"})
+		return
+	}
+
+	// Update Teacher record if NIP is provided
+	if req.NIP != "" && user.Role == models.RoleTeacher {
+		var teacher models.Teacher
+		if err := tx.Where("user_id = ?", user.ID).First(&teacher).Error; err == nil {
+			teacher.NIP = req.NIP
+			if err := tx.Save(&teacher).Error; err != nil {
+				tx.Rollback()
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update teacher record"})
+				return
+			}
+		}
+	}
+
+	tx.Commit()
+	c.JSON(http.StatusOK, user)
+}

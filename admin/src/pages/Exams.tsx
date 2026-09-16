@@ -13,6 +13,11 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
+interface CategoryItem {
+  ID: number;
+  name: string;
+}
+
 interface ClassItem {
   ID: number;
   level: string;
@@ -39,8 +44,11 @@ interface QuestionItem {
 interface ExamItem {
   ID: number;
   title: string;
+  category_id: number;
+  category?: CategoryItem;
   subject_id: number;
   subject?: SubjectItem;
+  is_makeup_open: boolean;
   start_time: string;
   end_time: string;
   duration: number;
@@ -52,11 +60,12 @@ interface ExamItem {
 }
 
 const Exams = () => {
-  const { token } = useAuth();
+  const { token, user: currentUser } = useAuth();
   const [exams, setExams] = useState<ExamItem[]>([]);
   const [subjects, setSubjects] = useState<SubjectItem[]>([]);
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [questions, setQuestions] = useState<QuestionItem[]>([]);
+  const [categories, setCategories] = useState<CategoryItem[]>([]);
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -66,6 +75,7 @@ const Exams = () => {
   // Form State
   const [title, setTitle] = useState('');
   const [subjectId, setSubjectId] = useState<number | ''>('');
+  const [categoryId, setCategoryId] = useState<number | ''>('');
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
   const [duration, setDuration] = useState(90);
@@ -77,20 +87,25 @@ const Exams = () => {
   // Fetch initial data
   const fetchData = async () => {
     try {
-      const [examsRes, subjectsRes, classesRes, questionsRes] = await Promise.all([
+      const [examsRes, subjectsRes, classesRes, questionsRes, categoriesRes] = await Promise.all([
         axios.get('http://localhost:8080/api/v1/admin/exams', { headers: { Authorization: `Bearer ${token}` } }),
         axios.get('http://localhost:8080/api/v1/admin/subjects', { headers: { Authorization: `Bearer ${token}` } }),
         axios.get('http://localhost:8080/api/v1/admin/classes', { headers: { Authorization: `Bearer ${token}` } }),
-        axios.get('http://localhost:8080/api/v1/admin/questions', { headers: { Authorization: `Bearer ${token}` } })
+        axios.get('http://localhost:8080/api/v1/admin/questions', { headers: { Authorization: `Bearer ${token}` } }),
+        axios.get('http://localhost:8080/api/v1/admin/categories', { headers: { Authorization: `Bearer ${token}` } })
       ]);
 
       setExams(examsRes.data || []);
       setSubjects(subjectsRes.data || []);
       setClasses(classesRes.data || []);
       setQuestions(questionsRes.data || []);
+      setCategories(categoriesRes.data || []);
 
       if (subjectsRes.data?.length > 0 && subjectId === '') {
         setSubjectId(subjectsRes.data[0].ID);
+      }
+      if (categoriesRes.data?.length > 0 && categoryId === '') {
+        setCategoryId(categoriesRes.data[0].ID);
       }
     } catch (err) {
       console.error('Error fetching exam dependencies:', err);
@@ -147,8 +162,8 @@ const Exams = () => {
     setIsLoading(true);
     setError('');
 
-    if (!subjectId) {
-      setError('Silakan pilih mata pelajaran');
+    if (!subjectId || !categoryId) {
+      setError('Silakan lengkapi pilihan kategori dan mata pelajaran');
       setIsLoading(false);
       return;
     }
@@ -167,6 +182,7 @@ const Exams = () => {
       await axios.post('http://localhost:8080/api/v1/admin/exams', {
         title,
         subject_id: Number(subjectId),
+        category_id: Number(categoryId),
         start_time: new Date(startTime).toISOString(),
         end_time: new Date(endTime).toISOString(),
         duration: Number(duration),
@@ -198,6 +214,37 @@ const Exams = () => {
       setExams(exams.filter(e => e.ID !== id));
     } catch (err) {
       alert('Gagal menghapus jadwal ujian');
+    }
+  };
+
+  const handleToggleMakeup = async (id: number, currentStatus: boolean) => {
+    const actionName = currentStatus ? "menutup" : "membuka";
+    if (!window.confirm(`Yakin ingin ${actionName} akses ujian susulan?`)) return;
+    try {
+      await axios.post(`http://localhost:8080/api/v1/admin/exams/${id}/toggle-makeup`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      fetchData();
+    } catch (err: any) {
+      alert(err.response?.data?.error || `Gagal ${actionName} ujian susulan`);
+    }
+  };
+
+  const getExamStatusInfo = (exam: ExamItem) => {
+    if (exam.is_makeup_open) {
+      return { text: "SUSULAN DIBUKA", color: "bg-amber-100 text-amber-700 border-amber-200" };
+    }
+    
+    const now = new Date();
+    const start = new Date(exam.start_time);
+    const end = new Date(exam.end_time);
+
+    if (now < start) {
+      return { text: "BELUM MULAI", color: "bg-slate-100 text-slate-600 border-slate-200" };
+    } else if (now >= start && now <= end) {
+      return { text: "BERLANGSUNG", color: "bg-emerald-100 text-emerald-700 border-emerald-200" };
+    } else {
+      return { text: "WAKTU HABIS", color: "bg-red-100 text-red-700 border-red-200" };
     }
   };
 
@@ -270,6 +317,8 @@ const Exams = () => {
           {filteredExams.map((exam) => {
             const startDate = new Date(exam.start_time);
             const endDate = new Date(exam.end_time);
+            const statusInfo = getExamStatusInfo(exam);
+            const isExpired = new Date() > endDate;
             const isJurusan = exam.subject?.type === 'JURUSAN';
 
             return (
@@ -288,8 +337,8 @@ const Exams = () => {
                       }`}>
                         {exam.subject?.name || 'Mata Pelajaran'} ({isJurusan ? 'Kejuruan' : 'Akademik'})
                       </span>
-                      <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold px-2 py-0.5 rounded-md">
-                        {exam.status}
+                      <span className={`px-2 py-0.5 rounded-md text-xs font-semibold border ${statusInfo.color}`}>
+                        {statusInfo.text}
                       </span>
                     </div>
 
@@ -309,6 +358,9 @@ const Exams = () => {
 
                   {/* Timing Details */}
                   <div className="space-y-1.5 text-xs text-slate-600 mb-4 bg-slate-50 p-3 rounded-xl border border-slate-100">
+                    <div className="flex items-center space-x-2 font-semibold text-primary-700">
+                      <span>🏷️ Kategori: {exam.category?.name || 'Umum'}</span>
+                    </div>
                     <div className="flex items-center space-x-2">
                       <Clock size={14} className="text-slate-400" />
                       <span>Durasi Pengerjaan: <strong className="text-slate-800">{exam.duration} Menit</strong></span>
@@ -350,15 +402,27 @@ const Exams = () => {
                   </div>
                 </div>
 
-                {/* Footer: Question count & Points */}
+                {/* Footer: Question count & Points & Toggle Makeup */}
                 <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
                   <span className="flex items-center">
                     <BookOpen size={14} className="mr-1 text-slate-400" />
                     <strong>{exam.questions?.length || 0}</strong> Soal Ujian
                   </span>
-                  <span className="font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">
-                    Total: {exam.total_points || 100} Poin
-                  </span>
+                  
+                  {isExpired && currentUser?.role === 'ADMIN' ? (
+                    <button 
+                      onClick={() => handleToggleMakeup(exam.ID, exam.is_makeup_open)}
+                      className={`px-3 py-1 text-white rounded font-bold shadow-sm transition-colors ${
+                        exam.is_makeup_open ? 'bg-red-500 hover:bg-red-600' : 'bg-amber-500 hover:bg-amber-600'
+                      }`}
+                    >
+                      {exam.is_makeup_open ? 'Tutup Susulan' : 'Buka Susulan'}
+                    </button>
+                  ) : (
+                    <span className="font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">
+                      Total: {exam.total_points || 100} Poin
+                    </span>
+                  )}
                 </div>
               </div>
             );
@@ -411,29 +475,50 @@ const Exams = () => {
                 />
               </div>
 
-              {/* Pilih Mata Pelajaran */}
-              <div>
-                <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">
-                  Pilih Mata Pelajaran
-                </label>
-                <select
-                  value={subjectId}
-                  onChange={(e) => setSubjectId(Number(e.target.value))}
-                  className="w-full px-3 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none text-sm bg-white font-medium"
-                  required
-                >
-                  <option value="">-- Pilih Mata Pelajaran --</option>
-                  {subjects.map(s => (
-                    <option key={s.ID} value={s.ID}>
-                      {s.name} ({s.type === 'JURUSAN' ? 'Mapel Kejuruan SMK' : 'Mapel Umum/Akademik'})
-                    </option>
-                  ))}
-                </select>
-                {subjectId && (
-                  <p className="text-xs text-primary-600 mt-1 font-medium">
-                    ✓ Ditemukan {availableQuestions.length} soal di bank soal mata pelajaran ini.
-                  </p>
-                )}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Pilih Kategori */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">
+                    Kategori / Semester
+                  </label>
+                  <select
+                    value={categoryId}
+                    onChange={(e) => setCategoryId(Number(e.target.value))}
+                    className="w-full px-3 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none text-sm bg-white font-medium"
+                    required
+                  >
+                    <option value="">-- Pilih Kategori --</option>
+                    {categories.map(c => (
+                      <option key={c.ID} value={c.ID}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {/* Pilih Mata Pelajaran */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">
+                    Mata Pelajaran
+                  </label>
+                  <select
+                    value={subjectId}
+                    onChange={(e) => setSubjectId(Number(e.target.value))}
+                    className="w-full px-3 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none text-sm bg-white font-medium"
+                    required
+                  >
+                    <option value="">-- Pilih Mata Pelajaran --</option>
+                    {subjects.map(s => (
+                      <option key={s.ID} value={s.ID}>
+                        {s.name} ({s.type === 'JURUSAN' ? 'Mapel Kejuruan SMK' : 'Mapel Umum/Akademik'})
+                      </option>
+                    ))}
+                  </select>
+                  {subjectId && (
+                    <p className="text-xs text-primary-600 mt-1 font-medium">
+                      ✓ Ditemukan {availableQuestions.length} soal di bank soal.
+                    </p>
+                  )}
+                </div>
               </div>
 
               {/* Waktu & Durasi */}

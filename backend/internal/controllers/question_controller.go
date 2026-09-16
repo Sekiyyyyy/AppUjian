@@ -18,6 +18,20 @@ func GetQuestions(c *gin.Context) {
 		query = query.Where("subject_id = ?", subjectID)
 	}
 
+	role, exists := c.Get("role")
+	if exists && role == string(models.RoleTeacher) {
+		userID, idExists := c.Get("userID")
+		if idExists {
+			var teacherID uint
+			if idFloat, ok := userID.(float64); ok {
+				teacherID = uint(idFloat)
+			} else if idUint, ok := userID.(uint); ok {
+				teacherID = idUint
+			}
+			query = query.Where("teacher_id = ?", teacherID)
+		}
+	}
+
 	if err := query.Order("id DESC").Find(&questions).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengambil bank soal"})
 		return

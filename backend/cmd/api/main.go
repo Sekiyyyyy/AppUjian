@@ -20,12 +20,13 @@ func main() {
 	// 2. Connect to Database
 	config.ConnectDB(cfg)
 
-	// 3. Auto Migrate Models
+	// Database Auto Migrate
 	err := config.DB.AutoMigrate(
 		&models.User{},
 		&models.Student{},
 		&models.Teacher{},
 		&models.Class{},
+		&models.Category{},
 		&models.Subject{},
 		&models.Question{},
 		&models.Exam{},
@@ -70,14 +71,21 @@ func main() {
 		adminRoutes := api.Group("/admin")
 		adminRoutes.Use(auth.AuthMiddleware(cfg), auth.RoleMiddleware(string(models.RoleAdmin), string(models.RoleTeacher)))
 		{
-			// Classes (SMK Rombel)
+			// Classes Management
 			adminRoutes.GET("/classes", controllers.GetClasses)
 			adminRoutes.POST("/classes", controllers.CreateClass)
 			adminRoutes.DELETE("/classes/:id", controllers.DeleteClass)
 
+			// Categories Management
+			adminRoutes.GET("/categories", controllers.GetCategories)
+			adminRoutes.POST("/categories", controllers.CreateCategory)
+			adminRoutes.PUT("/categories/:id", controllers.UpdateCategory)
+			adminRoutes.DELETE("/categories/:id", controllers.DeleteCategory)
+
 			// Subjects Management
 			adminRoutes.GET("/subjects", controllers.GetSubjects)
 			adminRoutes.POST("/subjects", controllers.CreateSubject)
+			adminRoutes.PUT("/subjects/:id", controllers.UpdateSubject)
 			adminRoutes.DELETE("/subjects/:id", controllers.DeleteSubject)
 
 			// Question Bank
@@ -88,12 +96,20 @@ func main() {
 			// Exam Management
 			adminRoutes.GET("/exams", controllers.GetExams)
 			adminRoutes.POST("/exams", controllers.CreateExam)
+			adminRoutes.POST("/exams/:id/toggle-makeup", controllers.ToggleMakeup)
 			adminRoutes.DELETE("/exams/:id", controllers.DeleteExam)
 
 			// User Management
 			adminRoutes.GET("/users", controllers.GetUsers)
 			adminRoutes.POST("/users", controllers.CreateTeacher)
+			adminRoutes.PUT("/users/:id", controllers.UpdateUser)
 			adminRoutes.DELETE("/users/:id", controllers.DeleteUser)
+
+			// Student Management
+			adminRoutes.GET("/students", controllers.GetStudents)
+			adminRoutes.POST("/students", controllers.CreateStudent)
+			adminRoutes.PUT("/students/:id", controllers.UpdateStudent)
+			adminRoutes.DELETE("/students/:id", controllers.DeleteStudent)
 		}
 	}
 

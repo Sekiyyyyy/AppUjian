@@ -9,6 +9,7 @@ import Classes from './pages/Classes';
 import Exams from './pages/Exams';
 import Users from './pages/Users';
 import Settings from './pages/Settings';
+import Categories from './pages/Categories';
 
 function App() {
   return (
@@ -23,6 +24,7 @@ function App() {
             <Route path="subjects" element={<Subjects />} />
             <Route path="questions" element={<Questions />} />
             <Route path="exams" element={<Exams />} />
+            <Route path="categories" element={<Categories />} />
             <Route path="users" element={<Users />} />
             <Route path="settings" element={<Settings />} />
           </Route>

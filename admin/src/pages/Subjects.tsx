@@ -18,8 +18,11 @@ const Subjects = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const { user: currentUser } = useAuth();
 
   // Form State
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editingSubjectId, setEditingSubjectId] = useState<number | null>(null);
   const [name, setName] = useState('');
   const [className, setClassName] = useState('');
   const [type, setType] = useState('AKADEMIK');
@@ -39,19 +42,46 @@ const Subjects = () => {
     fetchSubjects();
   }, []);
 
-  const handleCreateSubject = async (e: React.FormEvent) => {
+  const openCreateSubject = () => {
+    setIsEditMode(false);
+    setName('');
+    setClassName('');
+    setType('AKADEMIK');
+    setIsModalOpen(true);
+  };
+
+  const openEditSubject = (sub: Subject) => {
+    setIsEditMode(true);
+    setEditingSubjectId(sub.ID);
+    setName(sub.name);
+    setClassName(sub.class);
+    setType(sub.type || 'AKADEMIK');
+    setIsModalOpen(true);
+  };
+
+  const handleSaveSubject = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
 
     try {
-      await axios.post('http://localhost:8080/api/v1/admin/subjects', {
-        name,
-        type,
-        class: className
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      if (isEditMode && editingSubjectId) {
+        await axios.put(`http://localhost:8080/api/v1/admin/subjects/${editingSubjectId}`, {
+          name,
+          type,
+          class: className
+        }, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+      } else {
+        await axios.post('http://localhost:8080/api/v1/admin/subjects', {
+          name,
+          type,
+          class: className
+        }, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+      }
       
       setIsModalOpen(false);
       fetchSubjects();
@@ -88,7 +118,7 @@ const Subjects = () => {
           </p>
         </div>
         <button 
-          onClick={() => setIsModalOpen(true)}
+          onClick={openCreateSubject}
           className="btn-primary flex items-center space-x-2"
         >
           <Plus size={20} />
@@ -106,21 +136,25 @@ const Subjects = () => {
              <p className="text-sm mt-1 text-slate-500">Silakan klik "Tambah Mapel" untuk membuat kategori pertama.</p>
           </div>
         ) : (
-          subjects.map((sub) => (
+          subjects.map((sub) => {
+            const canEdit = currentUser?.role === 'ADMIN' || sub.teacher_id === currentUser?.id;
+            return (
             <div key={sub.ID} className="glass-panel p-6 group hover:shadow-lg transition-all duration-300">
               <div className="flex justify-between items-start mb-4">
                 <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${sub.type === 'JURUSAN' ? 'bg-orange-50 text-orange-600' : 'bg-primary-50 text-primary-600'}`}>
                   <BookOpen size={24} />
                 </div>
-                <div className="flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button className="p-1.5 text-slate-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg"><Edit2 size={16} /></button>
-                  <button 
-                    onClick={() => handleDeleteSubject(sub.ID, sub.name)}
-                    className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                </div>
+                {canEdit && (
+                  <div className="flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button onClick={() => openEditSubject(sub)} className="p-1.5 text-slate-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg"><Edit2 size={16} /></button>
+                    <button 
+                      onClick={() => handleDeleteSubject(sub.ID, sub.name)}
+                      className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                )}
               </div>
               <h3 className="text-xl font-bold text-slate-800 mb-1">{sub.name}</h3>
               <div className="flex items-center text-sm text-slate-500 space-x-4 mt-4">
@@ -132,7 +166,8 @@ const Subjects = () => {
                 <span className="flex items-center"><Users size={16} className="mr-1.5" /> Kelas Umum: {sub.class || 'Umum'}</span>
               </div>
             </div>
-          ))
+            );
+          })
         )}
       </div>
 
@@ -141,10 +176,10 @@ const Subjects = () => {
           <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setIsModalOpen(false)}></div>
           <div className="glass-panel w-full max-w-md bg-white shadow-2xl relative z-10 rounded-2xl">
             <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-white/80 rounded-t-2xl">
-              <h2 className="text-xl font-bold text-slate-800">Mata Pelajaran Baru</h2>
+              <h2 className="text-xl font-bold text-slate-800">{isEditMode ? 'Edit Mata Pelajaran' : 'Mata Pelajaran Baru'}</h2>
               <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600 p-1">✕</button>
             </div>
-            <form onSubmit={handleCreateSubject} className="p-6 space-y-5">
+            <form onSubmit={handleSaveSubject} className="p-6 space-y-5">
               {error && (
                 <div className="bg-red-50 text-red-600 p-3 rounded-xl flex items-center space-x-2 text-sm border border-red-100">
                   <AlertCircle size={18} />

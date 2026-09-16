@@ -17,7 +17,7 @@ type ExamInput struct {
 	EndTime     time.Time `json:"end_time" binding:"required"`
 	Duration    int       `json:"duration" binding:"required"`
 	TotalPoints int       `json:"total_points"`
-	Status      string    `json:"status"`
+	CategoryID  uint      `json:"category_id" binding:"required"`
 	ClassIDs    []uint    `json:"class_ids"`
 	QuestionIDs []uint    `json:"question_ids"`
 }
@@ -25,7 +25,23 @@ type ExamInput struct {
 // GetExams returns a list of scheduled exams with preloaded subjects, classes, and questions
 func GetExams(c *gin.Context) {
 	var exams []models.Exam
-	if err := config.DB.Preload("Subject").Preload("Classes").Preload("Questions").Order("id DESC").Find(&exams).Error; err != nil {
+	query := config.DB.Preload("Subject").Preload("Category").Preload("Classes").Preload("Questions").Order("id DESC")
+
+	role, exists := c.Get("role")
+	if exists && role == string(models.RoleTeacher) {
+		userID, idExists := c.Get("userID")
+		if idExists {
+			var teacherID uint
+			if idFloat, ok := userID.(float64); ok {
+				teacherID = uint(idFloat)
+			} else if idUint, ok := userID.(uint); ok {
+				teacherID = idUint
+			}
+			query = query.Where("teacher_id = ?", teacherID)
+		}
+	}
+
+	if err := query.Find(&exams).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengambil data jadwal ujian"})
 		return
 	}
@@ -49,21 +65,18 @@ func CreateExam(c *gin.Context) {
 			teacherID = idUint
 		}
 	}
-
-	status := req.Status
-	if status == "" {
-		status = "SCHEDULED"
-	}
-
+	
 	exam := models.Exam{
-		Title:       req.Title,
-		SubjectID:   req.SubjectID,
-		StartTime:   req.StartTime,
-		EndTime:     req.EndTime,
-		Duration:    req.Duration,
-		TotalPoints: req.TotalPoints,
-		Status:      status,
-		TeacherID:   teacherID,
+		Title:        req.Title,
+		SubjectID:    req.SubjectID,
+		CategoryID:   req.CategoryID,
+		StartTime:    req.StartTime,
+		EndTime:      req.EndTime,
+		Duration:     req.Duration,
+		TotalPoints:  req.TotalPoints,
+		Status:       "SCHEDULED",
+		TeacherID:    teacherID,
+		IsMakeupOpen: false,
 	}
 
 	// Fetch selected classes
@@ -101,7 +114,7 @@ func CreateExam(c *gin.Context) {
 	}
 
 	// Reload with preloads
-	config.DB.Preload("Subject").Preload("Classes").Preload("Questions").First(&exam, exam.ID)
+	config.DB.Preload("Subject").Preload("Category").Preload("Classes").Preload("Questions").First(&exam, exam.ID)
 
 	c.JSON(http.StatusCreated, exam)
 }
@@ -114,4 +127,31 @@ func DeleteExam(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "Jadwal ujian berhasil dihapus"})
+}
+
+// ToggleMakeup toggles the IsMakeupOpen status of an exam
+func ToggleMakeup(c *gin.Context) {
+	id := c.Param("id")
+
+	var exam models.Exam
+	if err := config.DB.First(&exam, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Jadwal ujian tidak ditemukan"})
+		return
+	}
+
+	exam.IsMakeupOpen = !exam.IsMakeupOpen
+	if err := config.DB.Save(&exam).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengubah status susulan"})
+		return
+	}
+
+	statusMsg := "ditutup"
+	if exam.IsMakeupOpen {
+		statusMsg = "dibuka"
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Akses ujian susulan berhasil " + statusMsg,
+		"is_makeup_open": exam.IsMakeupOpen,
+	})
 }
