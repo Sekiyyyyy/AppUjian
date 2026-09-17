@@ -7,6 +7,8 @@ import '../modules/home/views/history_view.dart';
 import '../modules/home/bindings/home_binding.dart';
 import '../modules/exam/views/exam_view.dart';
 import '../modules/exam/bindings/exam_binding.dart';
+import '../modules/main/views/main_view.dart';
+import '../modules/main/bindings/main_binding.dart';
 
 part 'app_routes.dart';
 
@@ -20,6 +22,11 @@ class AppPages {
       name: _Paths.LOGIN,
       page: () => const LoginView(),
       binding: LoginBinding(),
+    ),
+    GetPage(
+      name: _Paths.MAIN,
+      page: () => const MainView(),
+      binding: MainBinding(),
     ),
     GetPage(
       name: _Paths.HOME,

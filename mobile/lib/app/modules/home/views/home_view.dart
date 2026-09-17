@@ -25,77 +25,6 @@ class HomeView extends GetView<HomeController> {
               pinned: true,
               backgroundColor: AppTheme.primaryColor,
               elevation: 0,
-              actions: [
-                IconButton(
-                  icon: const Icon(Icons.history_rounded, color: Colors.white),
-                  onPressed: () => Get.toNamed('/history'),
-                  tooltip: 'Riwayat Ujian',
-                ),
-                IconButton(
-                  icon: const Icon(Icons.refresh_rounded, color: Colors.white),
-                  onPressed: controller.fetchExams,
-                  tooltip: 'Segarkan',
-                ),
-                IconButton(
-                  icon: const Icon(Icons.logout_rounded, color: Colors.white),
-                  onPressed: () {
-                    Get.dialog(
-                      Dialog(
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                        child: Padding(
-                          padding: const EdgeInsets.all(24),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(16),
-                                decoration: BoxDecoration(color: Colors.red.shade50, shape: BoxShape.circle),
-                                child: Icon(Icons.logout_rounded, color: Colors.red.shade400, size: 32),
-                              ),
-                              const SizedBox(height: 16),
-                              Text("Keluar Aplikasi", style: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.bold)),
-                              const SizedBox(height: 8),
-                              Text("Apakah Anda yakin ingin keluar dari sesi ini? Anda harus login kembali untuk masuk.", textAlign: TextAlign.center, style: GoogleFonts.inter(color: AppTheme.textSecondary)),
-                              const SizedBox(height: 24),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: OutlinedButton(
-                                      style: OutlinedButton.styleFrom(
-                                        padding: const EdgeInsets.symmetric(vertical: 16),
-                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                                      ),
-                                      onPressed: () => Get.back(),
-                                      child: Text("Batal", style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: ElevatedButton(
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.red.shade600,
-                                        foregroundColor: Colors.white,
-                                        padding: const EdgeInsets.symmetric(vertical: 16),
-                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                                      ),
-                                      onPressed: () {
-                                        Get.back();
-                                        controller.logout();
-                                      },
-                                      child: Text("Keluar", style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
-                                    ),
-                                  ),
-                                ],
-                              )
-                            ],
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                  tooltip: 'Keluar',
-                ),
-              ],
               flexibleSpace: FlexibleSpaceBar(
                 background: Stack(
                   children: [
@@ -475,6 +404,7 @@ class HomeView extends GetView<HomeController> {
                       _buildRuleItem("1", "Pastikan koneksi internet Anda stabil sebelum memulai."),
                       _buildRuleItem("2", "Jangan keluar dari aplikasi saat ujian sedang berlangsung."),
                       _buildRuleItem("3", "Hubungi pengawas jika Anda mengalami kendala teknis."),
+                      const SizedBox(height: 100), // padding for bottom nav
                     ],
                   ),
                 ),

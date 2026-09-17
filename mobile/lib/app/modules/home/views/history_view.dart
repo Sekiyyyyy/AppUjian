@@ -12,6 +12,7 @@ class HistoryView extends GetView<HomeController> {
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         title: Text(
           'Riwayat Ujian',
           style: GoogleFonts.inter(
@@ -22,7 +23,6 @@ class HistoryView extends GetView<HomeController> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
-        iconTheme: const IconThemeData(color: AppTheme.textPrimary),
       ),
       body: Obx(() {
         if (controller.isLoading.value) {
@@ -69,7 +69,7 @@ class HistoryView extends GetView<HomeController> {
         }
 
         return ListView.builder(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.fromLTRB(24, 24, 24, 100),
           itemCount: controller.historyExams.length,
           itemBuilder: (context, index) {
             final exam = controller.historyExams[index];

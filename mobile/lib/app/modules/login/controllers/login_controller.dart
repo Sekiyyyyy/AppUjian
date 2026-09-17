@@ -64,7 +64,7 @@ class LoginController extends GetxController {
           await prefs.setString('nis', combinedNis);
         }
 
-        Get.offAllNamed(Routes.HOME);
+        Get.offAllNamed(Routes.MAIN);
       }
     } on DioException catch (e) {
       if (e.response != null) {
