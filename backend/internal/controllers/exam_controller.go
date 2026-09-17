@@ -123,13 +123,56 @@ func CreateExam(c *gin.Context) {
 	c.JSON(http.StatusCreated, exam)
 }
 
-// DeleteExam removes an exam by ID
+// DeleteExam removes an exam by ID and cleans up associations and sessions
 func DeleteExam(c *gin.Context) {
 	id := c.Param("id")
-	if err := config.DB.Delete(&models.Exam{}, id).Error; err != nil {
+
+	var exam models.Exam
+	if err := config.DB.First(&exam, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Jadwal ujian tidak ditemukan"})
+		return
+	}
+
+	tx := config.DB.Begin()
+
+	// Clear many-to-many associations
+	if err := tx.Model(&exam).Association("Classes").Clear(); err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menghapus relasi kelas ujian"})
+		return
+	}
+	if err := tx.Model(&exam).Association("Questions").Clear(); err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menghapus relasi soal ujian"})
+		return
+	}
+
+	// Delete student answers for this exam's sessions
+	var sessionIDs []uint
+	tx.Model(&models.ExamSession{}).Where("exam_id = ?", id).Pluck("id", &sessionIDs)
+	if len(sessionIDs) > 0 {
+		if err := tx.Where("session_id IN ?", sessionIDs).Delete(&models.StudentAnswer{}).Error; err != nil {
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menghapus jawaban peserta ujian"})
+			return
+		}
+	}
+
+	// Delete sessions
+	if err := tx.Where("exam_id = ?", id).Delete(&models.ExamSession{}).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menghapus sesi ujian"})
+		return
+	}
+
+	// Delete exam itself
+	if err := tx.Delete(&exam).Error; err != nil {
+		tx.Rollback()
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menghapus jadwal ujian"})
 		return
 	}
+
+	tx.Commit()
 	c.JSON(http.StatusOK, gin.H{"message": "Jadwal ujian berhasil dihapus"})
 }
 
@@ -257,21 +300,25 @@ func GetExamParticipants(c *gin.Context) {
 
 	type ParticipantResponse struct {
 		models.Student
-		Name          string `json:"name"`
-		SessionStatus string `json:"session_status"`
+		Name          string  `json:"name"`
+		SessionStatus string  `json:"session_status"`
+		Score         float64 `json:"score"`
 	}
 
 	var responses []ParticipantResponse
 	for _, student := range students {
 		status := "BELUM MULAI"
+		var score float64
 		if session, exists := sessionMap[student.ID]; exists {
 			status = session.Status
+			score = session.Score
 		}
 
 		responses = append(responses, ParticipantResponse{
 			Student:       student,
 			Name:          student.User.Name,
 			SessionStatus: status,
+			Score:         score,
 		})
 	}
 

@@ -75,16 +75,43 @@ func CreateTeacher(c *gin.Context) {
 	c.JSON(http.StatusCreated, user)
 }
 
-// DeleteUser deletes a user by ID
+// DeleteUser deletes a user by ID and cascades to Teacher/Student records
 func DeleteUser(c *gin.Context) {
 	id := c.Param("id")
 
-	// Delete user (associated teacher/student records should ideally be cascaded or soft-deleted)
-	if err := config.DB.Delete(&models.User{}, id).Error; err != nil {
+	var user models.User
+	if err := config.DB.First(&user, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
+	}
+
+	tx := config.DB.Begin()
+
+	// Cascade: delete associated Teacher record
+	if user.Role == models.RoleTeacher {
+		if err := tx.Where("user_id = ?", user.ID).Delete(&models.Teacher{}).Error; err != nil {
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete teacher record"})
+			return
+		}
+	}
+
+	// Cascade: delete associated Student record
+	if user.Role == models.RoleStudent {
+		if err := tx.Where("user_id = ?", user.ID).Delete(&models.Student{}).Error; err != nil {
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete student record"})
+			return
+		}
+	}
+
+	if err := tx.Delete(&user).Error; err != nil {
+		tx.Rollback()
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete user"})
 		return
 	}
 
+	tx.Commit()
 	c.JSON(http.StatusOK, gin.H{"message": "User deleted successfully"})
 }
 

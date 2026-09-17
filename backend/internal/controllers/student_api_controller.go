@@ -17,14 +17,8 @@ func GetStudentExams(c *gin.Context) {
 	}
 
 	var student models.Student
-	if err := config.DB.Where("user_id = ?", userID).First(&student).Error; err != nil {
+	if err := config.DB.Select("id, class_id").Where("user_id = ?", userID).First(&student).Error; err != nil {
 		c.JSON(http.StatusForbidden, gin.H{"error": "Bukan akun siswa"})
-		return
-	}
-
-	var class models.Class
-	if err := config.DB.First(&class, student.ClassID).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Data kelas tidak ditemukan"})
 		return
 	}
 
@@ -33,7 +27,7 @@ func GetStudentExams(c *gin.Context) {
 		Preload("Subject").
 		Preload("Category").
 		Joins("JOIN exam_classes ON exam_classes.exam_id = exams.id").
-		Where("exam_classes.class_id = ?", class.ID).
+		Where("exam_classes.class_id = ? AND exams.deleted_at IS NULL", student.ClassID).
 		Find(&exams).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengambil data ujian"})
 		return
@@ -57,6 +51,7 @@ func GetStudentExams(c *gin.Context) {
 		if status == "" {
 			status = "BELUM MULAI"
 		}
+
 		response = append(response, ExamResponse{
 			Exam:          exam,
 			SessionStatus: status,

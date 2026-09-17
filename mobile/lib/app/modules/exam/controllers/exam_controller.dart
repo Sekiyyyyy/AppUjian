@@ -1,3 +1,8 @@
+import 'package:google_fonts/google_fonts.dart';
+import '../../../routes/app_pages.dart';
+import '../../../theme/app_theme.dart';
+import '../../../utils/app_toast.dart';
+import '../../../data/api_client.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -5,7 +10,7 @@ import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ExamController extends GetxController {
-  final _dio = Dio();
+  final _dio = ApiClient().dio;
   
   // Passed arguments
   int examId = 0;
@@ -44,9 +49,9 @@ class ExamController extends GetxController {
     } else {
       errorMessage.value = "Data ujian tidak valid atau sesi kadaluarsa.";
       isLoading.value = false;
-      // Redirect to home if args are lost due to refresh
+      // Redirect to main if args are lost due to refresh
       Future.delayed(const Duration(milliseconds: 500), () {
-        Get.offAllNamed('/home');
+        Get.offAllNamed('/main');
       });
     }
   }
@@ -113,9 +118,13 @@ class ExamController extends GetxController {
         }
       }
       questions.assignAll(data);
-      // Initialize flagged state to false
+      // Initialize flagged state & restore previously answered questions
       for (var q in questions) {
-        flagged[q['id']] = false;
+        final qId = q['id'];
+        flagged[qId] = false;
+        if (q['student_answer'] != null && q['student_answer'].toString().isNotEmpty) {
+          answers[qId] = q['student_answer'].toString();
+        }
       }
     }
   }
@@ -187,37 +196,267 @@ class ExamController extends GetxController {
   void finishExamPrompt() {
     int answeredCount = answers.length;
     int totalCount = questions.length;
-    
-    Get.defaultDialog(
-      title: "Selesai Ujian?",
-      content: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            Text("Anda telah menjawab $answeredCount dari $totalCount soal."),
-            const SizedBox(height: 12),
-            const Text(
-              "Apakah Anda yakin ingin mengakhiri ujian? Jawaban tidak dapat diubah lagi setelah ini.",
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.red),
+    int unansweredCount = totalCount - answeredCount;
+    if (unansweredCount < 0) unansweredCount = 0;
+    bool allAnswered = answeredCount >= totalCount && totalCount > 0;
+    double progress = totalCount > 0 ? (answeredCount / totalCount).clamp(0.0, 1.0) : 0.0;
+
+    Get.dialog(
+      Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+        elevation: 16,
+        backgroundColor: Colors.white,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 400),
+          child: Padding(
+            padding: const EdgeInsets.all(28.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Top Visual Badge
+                Container(
+                  width: 68,
+                  height: 68,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: allAnswered
+                          ? [const Color(0xFF10B981), const Color(0xFF059669)]
+                          : [const Color(0xFFF59E0B), const Color(0xFFD97706)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(22),
+                    boxShadow: [
+                      BoxShadow(
+                        color: (allAnswered ? const Color(0xFF10B981) : const Color(0xFFF59E0B)).withOpacity(0.35),
+                        blurRadius: 18,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: Icon(
+                    allAnswered ? Icons.assignment_turned_in_rounded : Icons.pending_actions_rounded,
+                    size: 34,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // Title
+                Text(
+                  allAnswered ? "Selesaikan Ujian?" : "Yakin Selesai Ujian?",
+                  style: GoogleFonts.inter(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    color: AppTheme.textPrimary,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+                const SizedBox(height: 8),
+
+                // Subtitle
+                Text(
+                  allAnswered
+                      ? "Hebat! Semua pertanyaan telah Anda jawab."
+                      : "Masih terdapat soal yang belum dijawab.",
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    color: AppTheme.textSecondary,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // Progress Tracker Box
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            "Progres Jawaban",
+                            style: GoogleFonts.inter(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: AppTheme.textPrimary,
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: allAnswered ? Colors.green.shade50 : Colors.amber.shade50,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: allAnswered ? Colors.green.shade200 : Colors.amber.shade200,
+                              ),
+                            ),
+                            child: Text(
+                              "$answeredCount dari $totalCount Soal",
+                              style: GoogleFonts.inter(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: allAnswered ? Colors.green.shade800 : Colors.amber.shade900,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(6),
+                        child: LinearProgressIndicator(
+                          value: progress,
+                          minHeight: 8,
+                          backgroundColor: Colors.grey.shade200,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            allAnswered ? const Color(0xFF10B981) : AppTheme.primaryColor,
+                          ),
+                        ),
+                      ),
+                      if (!allAnswered) ...[
+                        const SizedBox(height: 10),
+                        Row(
+                          children: [
+                            Icon(Icons.info_outline_rounded, size: 14, color: Colors.amber.shade800),
+                            const SizedBox(width: 6),
+                            Text(
+                              "$unansweredCount soal belum dijawab",
+                              style: GoogleFonts.inter(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.amber.shade900,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Notice Banner
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFEF2F2),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: const Color(0xFFFECACA)),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(Icons.warning_amber_rounded, size: 18, color: Colors.red.shade600),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          "Setelah dikumpulkan, lembar jawaban tidak dapat diubah kembali.",
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            color: Colors.red.shade800,
+                            fontWeight: FontWeight.w500,
+                            height: 1.4,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                // Buttons
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          side: BorderSide(color: Colors.grey.shade300, width: 1.5),
+                          foregroundColor: AppTheme.textPrimary,
+                        ),
+                        onPressed: () => Get.back(),
+                        child: Text(
+                          "Periksa Lagi",
+                          style: GoogleFonts.inter(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          backgroundColor: const Color(0xFF1A9E4E),
+                          foregroundColor: Colors.white,
+                          elevation: 2,
+                          shadowColor: const Color(0xFF1A9E4E).withOpacity(0.4),
+                        ),
+                        onPressed: () {
+                          Get.back();
+                          _submitExam();
+                        },
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.check_circle_rounded, size: 18),
+                            const SizedBox(width: 6),
+                            Text(
+                              "Kumpulkan",
+                              style: GoogleFonts.inter(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
-      textConfirm: "Akhiri Ujian",
-      textCancel: "Batal",
-      confirmTextColor: Colors.white,
-      buttonColor: Colors.deepPurple,
-      onConfirm: () {
-        Get.back(); // close dialog
-        _submitExam();
-      },
+      barrierDismissible: true,
     );
   }
 
   Future<void> _submitExam() async {
     Get.dialog(
-      const Center(child: CircularProgressIndicator()),
+      Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const CircularProgressIndicator(color: AppTheme.primaryColor),
+              const SizedBox(width: 20),
+              Flexible(
+                child: Text(
+                  "Menyimpan jawaban ujian...",
+                  style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: AppTheme.textPrimary),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
       barrierDismissible: false,
     );
     
@@ -229,31 +468,56 @@ class ExamController extends GetxController {
       
       if (res.statusCode == 200) {
         _timer?.cancel();
-        Get.offAllNamed('/home');
-        Get.snackbar(
-          "Ujian Selesai",
-          "Jawaban ujian Anda telah berhasil dikumpulkan.",
-          backgroundColor: Colors.green,
-          colorText: Colors.white,
-          duration: const Duration(seconds: 5),
-        );
+        Get.offAllNamed(Routes.MAIN);
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          AppToast.success(
+            title: "Ujian Berhasil Dikumpulkan",
+            message: "Jawaban Anda telah tersimpan dengan aman di server.",
+          );
+        });
       }
     } catch (e) {
       Get.back();
-      Get.snackbar("Error", "Gagal mengakhiri ujian. Periksa koneksi internet.", backgroundColor: Colors.red, colorText: Colors.white);
+      AppToast.error(
+        title: "Gagal Mengumpulkan",
+        message: "Terjadi kesalahan saat menyimpan jawaban. Periksa koneksi internet Anda.",
+      );
     }
   }
 
   Future<void> _forceSubmitExam() async {
     Get.dialog(
-      const AlertDialog(
-        title: Text("Waktu Habis!"),
-        content: Text("Waktu pengerjaan ujian telah habis. Jawaban akan dikumpulkan otomatis."),
+      Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(color: Colors.red.shade50, shape: BoxShape.circle),
+                child: Icon(Icons.timer_off_rounded, color: Colors.red.shade600, size: 36),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                "Waktu Ujian Habis!",
+                style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                "Waktu pengerjaan telah berakhir. Jawaban Anda sedang dikumpulkan secara otomatis...",
+                textAlign: TextAlign.center,
+                style: GoogleFonts.inter(fontSize: 13, color: AppTheme.textSecondary, height: 1.4),
+              ),
+            ],
+          ),
+        ),
       ),
       barrierDismissible: false,
     );
     
-    await Future.delayed(const Duration(seconds: 3));
+    await Future.delayed(const Duration(seconds: 2));
     Get.back();
     await _submitExam();
   }

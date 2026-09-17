@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { X, RefreshCw, AlertCircle, Filter, Trash2, CheckCircle, Clock } from 'lucide-react';
+import { X, RefreshCw, AlertCircle, Filter, Trash2, CheckCircle, Clock, Download, Search } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { confirmAction, showSuccessToast, showErrorToast } from '../utils/alert';
 
@@ -22,7 +22,8 @@ interface Participant {
     department: string;
     number: string;
   };
-  session_status: string; // "BELUM MULAI", "ONGOING", "SUBMITTED", "TIMEOUT"
+  session_status: string; // "BELUM MULAI", "ONGOING", "FINISHED", "SUBMITTED", "TIMEOUT"
+  score?: number;
 }
 
 const ExamParticipantsModal: React.FC<ExamParticipantsModalProps> = ({ isOpen, onClose, examId, examTitle }) => {
@@ -30,6 +31,7 @@ const ExamParticipantsModal: React.FC<ExamParticipantsModalProps> = ({ isOpen, o
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedClassId, setSelectedClassId] = useState<number | 'ALL'>('ALL');
+  const [searchTerm, setSearchTerm] = useState('');
   
   const fetchParticipants = async () => {
     if (!examId) return;
@@ -51,6 +53,7 @@ const ExamParticipantsModal: React.FC<ExamParticipantsModalProps> = ({ isOpen, o
     if (isOpen) {
       fetchParticipants();
       setSelectedClassId('ALL');
+      setSearchTerm('');
     }
   }, [isOpen, examId]);
 
@@ -73,6 +76,49 @@ const ExamParticipantsModal: React.FC<ExamParticipantsModalProps> = ({ isOpen, o
     }
   };
 
+  const handleExportCSV = () => {
+    if (filteredParticipants.length === 0) {
+      showErrorToast("Tidak ada data peserta untuk diexport");
+      return;
+    }
+
+    const headers = ["No", "Nama Siswa", "NISN/NIS", "Kelas", "Status Ujian", "Nilai"];
+    const rows = filteredParticipants.map((p, index) => {
+      let statusText = "Belum Mulai";
+      if (p.session_status === "ONGOING") statusText = "Sedang Mengerjakan";
+      else if (p.session_status === "FINISHED" || p.session_status === "SUBMITTED") statusText = "Selesai";
+      else if (p.session_status === "TIMEOUT") statusText = "Waktu Habis";
+
+      const className = p.class ? `${p.class.level} ${p.class.department} ${p.class.number}` : "-";
+      const score = (p.session_status === "FINISHED" || p.session_status === "SUBMITTED" || p.session_status === "TIMEOUT") 
+        ? (p.score ?? 0) 
+        : 0;
+
+      return [
+        index + 1,
+        `"${(p.name || 'Tanpa Nama').replace(/"/g, '""')}"`,
+        `"${(p.nis || '-').replace(/"/g, '""')}"`,
+        `"${className}"`,
+        `"${statusText}"`,
+        score
+      ].join(",");
+    });
+
+    // Add UTF-8 BOM so Excel opens with proper encoding
+    const csvContent = "\uFEFF" + [headers.join(","), ...rows].join("\r\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const safeTitle = examTitle.replace(/[^a-zA-Z0-9_-]/g, "_");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `Rekap_Nilai_${safeTitle}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    showSuccessToast("Rekap nilai berhasil diexport!");
+  };
+
   if (!isOpen) return null;
 
   // Extract unique classes for filter
@@ -80,9 +126,13 @@ const ExamParticipantsModal: React.FC<ExamParticipantsModalProps> = ({ isOpen, o
     .map(classId => participants.find(p => p.class_id === classId)?.class)
     .filter(Boolean);
 
-  const filteredParticipants = selectedClassId === 'ALL' 
-    ? participants 
-    : participants.filter(p => p.class_id === selectedClassId);
+  const filteredParticipants = participants.filter(p => {
+    const matchesClass = selectedClassId === 'ALL' || p.class_id === selectedClassId;
+    const matchesSearch = !searchTerm || 
+      (p.name && p.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (p.nis && p.nis.toLowerCase().includes(searchTerm.toLowerCase()));
+    return matchesClass && matchesSearch;
+  });
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
@@ -102,30 +152,55 @@ const ExamParticipantsModal: React.FC<ExamParticipantsModalProps> = ({ isOpen, o
           </button>
         </div>
 
-        {/* Filters */}
-        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <Filter className="w-4 h-4 text-gray-400" />
-            <select
-              value={selectedClassId}
-              onChange={(e) => setSelectedClassId(e.target.value === 'ALL' ? 'ALL' : Number(e.target.value))}
-              className="px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
-            >
-              <option value="ALL">Semua Kelas</option>
-              {uniqueClasses.map((cls: any) => (
-                <option key={cls.ID} value={cls.ID}>
-                  {cls.level} {cls.department} {cls.number}
-                </option>
-              ))}
-            </select>
+        {/* Filters & Actions */}
+        <div className="px-6 py-3 border-b border-gray-100 flex flex-wrap gap-3 items-center justify-between bg-white">
+          <div className="flex flex-wrap items-center gap-3 flex-1 min-w-[280px]">
+            <div className="flex items-center space-x-2">
+              <Filter className="w-4 h-4 text-gray-400" />
+              <select
+                value={selectedClassId}
+                onChange={(e) => setSelectedClassId(e.target.value === 'ALL' ? 'ALL' : Number(e.target.value))}
+                className="px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+              >
+                <option value="ALL">Semua Kelas</option>
+                {uniqueClasses.map((cls: any) => (
+                  <option key={cls.ID} value={cls.ID}>
+                    {cls.level} {cls.department} {cls.number}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="relative flex-1 max-w-xs min-w-[180px]">
+              <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Cari nama atau NIS..."
+                className="w-full pl-9 pr-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+              />
+            </div>
           </div>
-          <button 
-            onClick={fetchParticipants}
-            className="flex items-center space-x-2 px-3 py-1.5 text-sm text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors"
-          >
-            <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-            <span>Refresh</span>
-          </button>
+
+          <div className="flex items-center space-x-2">
+            <button 
+              onClick={handleExportCSV}
+              disabled={filteredParticipants.length === 0}
+              className="flex items-center space-x-2 px-3 py-1.5 text-sm font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors border border-emerald-200"
+              title="Export Rekap Nilai ke Excel / CSV"
+            >
+              <Download className="w-4 h-4" />
+              <span>Export Nilai</span>
+            </button>
+            <button 
+              onClick={fetchParticipants}
+              className="flex items-center space-x-2 px-3 py-1.5 text-sm text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors"
+            >
+              <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+              <span>Refresh</span>
+            </button>
+          </div>
         </div>
 
         {/* Content */}
@@ -151,6 +226,7 @@ const ExamParticipantsModal: React.FC<ExamParticipantsModalProps> = ({ isOpen, o
                     <th className="px-6 py-4">NIS</th>
                     <th className="px-6 py-4">Kelas</th>
                     <th className="px-6 py-4">Status Ujian</th>
+                    <th className="px-6 py-4">Nilai</th>
                     <th className="px-6 py-4 text-right">Aksi</th>
                   </tr>
                 </thead>
@@ -167,14 +243,21 @@ const ExamParticipantsModal: React.FC<ExamParticipantsModalProps> = ({ isOpen, o
                       statusColor = "bg-yellow-50 text-yellow-700 border-yellow-200";
                       statusText = "Sedang Mengerjakan";
                       canReset = true;
-                    } else if (p.session_status === "SUBMITTED" || p.session_status === "TIMEOUT") {
+                    } else if (p.session_status === "FINISHED" || p.session_status === "SUBMITTED") {
                       StatusIcon = CheckCircle;
                       statusColor = "bg-green-50 text-green-700 border-green-200";
                       statusText = "Selesai";
                       canReset = true;
+                    } else if (p.session_status === "TIMEOUT") {
+                      StatusIcon = AlertCircle;
+                      statusColor = "bg-orange-50 text-orange-700 border-orange-200";
+                      statusText = "Waktu Habis";
+                      canReset = true;
                     } else {
                       statusText = "Belum Mulai";
                     }
+
+                    const isFinished = p.session_status === "FINISHED" || p.session_status === "SUBMITTED" || p.session_status === "TIMEOUT";
 
                     return (
                       <tr key={p.id} className="hover:bg-gray-50/50 transition-colors">
@@ -188,6 +271,13 @@ const ExamParticipantsModal: React.FC<ExamParticipantsModalProps> = ({ isOpen, o
                             <StatusIcon className="w-3.5 h-3.5 mr-1.5" />
                             {statusText}
                           </span>
+                        </td>
+                        <td className="px-6 py-4 font-semibold text-gray-800">
+                          {isFinished ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 font-bold text-xs">
+                              {p.score ?? 0} pts
+                            </span>
+                          ) : '-'}
                         </td>
                         <td className="px-6 py-4 text-right">
                           {canReset && (

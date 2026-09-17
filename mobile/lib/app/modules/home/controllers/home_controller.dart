@@ -1,9 +1,12 @@
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../../utils/app_toast.dart';
+import '../../../data/api_client.dart';
 
 class HomeController extends GetxController {
-  final Dio _dio = Dio();
+  final _dio = ApiClient().dio;
   var isLoading = true.obs;
   
   var exams = <dynamic>[].obs;
@@ -37,8 +40,9 @@ class HomeController extends GetxController {
         return;
       }
 
+      String baseUrl = GetPlatform.isAndroid ? 'http://10.0.2.2:8080' : 'http://127.0.0.1:8080';
       final response = await _dio.get(
-        'http://localhost:8080/api/v1/student/exams',
+        '$baseUrl/api/v1/student/exams',
         options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
 
@@ -81,7 +85,12 @@ class HomeController extends GetxController {
         }
       }
     } catch (e) {
-      Get.snackbar('Error', 'Gagal memuat jadwal ujian: $e');
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        AppToast.error(
+          title: "Gagal Memuat Jadwal",
+          message: "Tidak dapat menyinkronkan data ujian. Periksa koneksi internet Anda.",
+        );
+      });
     } finally {
       isLoading(false);
     }

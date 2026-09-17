@@ -140,10 +140,10 @@ func SubmitAnswer(c *gin.Context) {
 	}
 
 	var student models.Student
-	config.DB.Where("user_id = ?", userID).First(&student)
+	config.DB.Select("id").Where("user_id = ?", userID).First(&student)
 
 	var session models.ExamSession
-	if err := config.DB.Where("student_id = ? AND exam_id = ?", student.ID, examID).First(&session).Error; err != nil {
+	if err := config.DB.Select("id, status").Where("student_id = ? AND exam_id = ?", student.ID, examID).First(&session).Error; err != nil {
 		c.JSON(http.StatusForbidden, gin.H{"error": "Session not found"})
 		return
 	}
@@ -200,6 +200,7 @@ func FinishExam(c *gin.Context) {
 		answerMap[a.QuestionID] = a
 	}
 
+	var answersToUpdate []models.StudentAnswer
 	totalScore := 0.0
 	for _, q := range exam.Questions {
 		if ans, ok := answerMap[q.ID]; ok {
@@ -207,17 +208,25 @@ func FinishExam(c *gin.Context) {
 				if ans.Answer == q.CorrectAnswer {
 					ans.Score = float64(q.Points)
 					totalScore += ans.Score
-					config.DB.Save(&ans)
+					answersToUpdate = append(answersToUpdate, ans)
 				}
 			}
 		}
 	}
 
+	tx := config.DB.Begin()
+	for _, a := range answersToUpdate {
+		tx.Model(&models.StudentAnswer{}).Where("id = ?", a.ID).Update("score", a.Score)
+	}
+
 	now := time.Now()
-	session.Status = "SUBMITTED"
+	session.Status = "FINISHED"
 	session.EndTime = now
 	session.Score = totalScore
-	config.DB.Save(&session)
+	tx.Save(&session)
+	tx.Commit()
 
-	c.JSON(http.StatusOK, gin.H{"message": "Exam finished successfully"})
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Exam finished successfully",
+	})
 }

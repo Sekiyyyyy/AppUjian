@@ -64,13 +64,18 @@ class HomeView extends GetView<HomeController> {
                       ),
                     ),
                     // Content
-                    SafeArea(
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(24, 60, 24, 24),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
+                    ClipRect(
+                      child: OverflowBox(
+                        minHeight: 280,
+                        maxHeight: 280,
+                        alignment: Alignment.topCenter,
+                        child: SafeArea(
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(24, 60, 24, 24),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
                             Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -186,7 +191,9 @@ class HomeView extends GetView<HomeController> {
                         ),
                       ),
                     ),
-                  ],
+                  ),
+                ),
+              ],
                 ),
               ),
             ),
@@ -226,44 +233,47 @@ class HomeView extends GetView<HomeController> {
               }
 
               if (controller.activeExams.isEmpty) {
-                return SliverFillRemaining(
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(32),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: AppTheme.primaryColor.withOpacity(0.08),
-                                blurRadius: 30,
-                                offset: const Offset(0, 10),
-                                spreadRadius: 5
-                              )
-                            ],
+                return SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 24),
+                    child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(28),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppTheme.primaryColor.withOpacity(0.08),
+                                  blurRadius: 30,
+                                  offset: const Offset(0, 10),
+                                  spreadRadius: 5,
+                                ),
+                              ],
+                            ),
+                            child: Icon(Icons.coffee_rounded, size: 56, color: Colors.grey.shade300),
                           ),
-                          child: Icon(Icons.coffee_rounded, size: 64, color: Colors.grey.shade300),
-                        ),
-                        const SizedBox(height: 32),
-                        Text(
-                          'Belum Ada Ujian',
-                          style: GoogleFonts.inter(
-                            color: AppTheme.textPrimary,
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: -0.5
+                          const SizedBox(height: 20),
+                          Text(
+                            'Belum Ada Ujian',
+                            style: GoogleFonts.inter(
+                              color: AppTheme.textPrimary,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: -0.5,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          'Santai dulu, tidak ada ujian yang aktif\nuntuk Anda saat ini.',
-                          textAlign: TextAlign.center,
-                          style: GoogleFonts.inter(color: AppTheme.textSecondary, fontSize: 15, height: 1.5),
-                        ),
-                      ],
+                          const SizedBox(height: 8),
+                          Text(
+                            'Santai dulu, tidak ada jadwal ujian yang aktif\nuntuk Anda saat ini.',
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.inter(color: AppTheme.textSecondary, fontSize: 14, height: 1.5),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 );

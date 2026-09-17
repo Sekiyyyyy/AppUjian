@@ -9,7 +9,9 @@ import {
   Calendar, 
   Plus, 
   ArrowRight,
-  Sparkles
+  Sparkles,
+  Users,
+  GraduationCap
 } from 'lucide-react';
 
 const Dashboard = () => {
@@ -19,6 +21,8 @@ const Dashboard = () => {
     subjectsCount: 0,
     questionsCount: 0,
     examsCount: 0,
+    teachersCount: 0,
+    studentsCount: 0,
   });
   const [recentExams, setRecentExams] = useState<any[]>([]);
 
@@ -26,23 +30,29 @@ const Dashboard = () => {
     const fetchDashboardData = async () => {
       try {
         const headers = { Authorization: `Bearer ${token}` };
-        const [classesRes, subjectsRes, questionsRes, examsRes] = await Promise.allSettled([
+        const [classesRes, subjectsRes, questionsRes, examsRes, usersRes, studentsRes] = await Promise.allSettled([
           axios.get('http://localhost:8080/api/v1/admin/classes', { headers }),
           axios.get('http://localhost:8080/api/v1/admin/subjects', { headers }),
           axios.get('http://localhost:8080/api/v1/admin/questions', { headers }),
-          axios.get('http://localhost:8080/api/v1/admin/exams', { headers })
+          axios.get('http://localhost:8080/api/v1/admin/exams', { headers }),
+          axios.get('http://localhost:8080/api/v1/admin/users', { headers }),
+          axios.get('http://localhost:8080/api/v1/admin/students', { headers }),
         ]);
 
         const classes = classesRes.status === 'fulfilled' ? classesRes.value.data || [] : [];
         const subjects = subjectsRes.status === 'fulfilled' ? subjectsRes.value.data || [] : [];
         const questions = questionsRes.status === 'fulfilled' ? questionsRes.value.data || [] : [];
         const exams = examsRes.status === 'fulfilled' ? examsRes.value.data || [] : [];
+        const users = usersRes.status === 'fulfilled' ? usersRes.value.data || [] : [];
+        const students = studentsRes.status === 'fulfilled' ? studentsRes.value.data || [] : [];
 
         setStats({
           classesCount: classes.length,
           subjectsCount: subjects.length,
           questionsCount: questions.length,
           examsCount: exams.length,
+          teachersCount: users.length,
+          studentsCount: students.length,
         });
 
         setRecentExams(exams.slice(0, 5));
@@ -82,6 +92,20 @@ const Dashboard = () => {
       icon: <Calendar size={26} className="text-indigo-600" />, 
       bg: 'bg-indigo-50',
       link: '/dashboard/exams'
+    },
+    { 
+      label: 'Guru / Pengajar', 
+      value: stats.teachersCount, 
+      icon: <Users size={26} className="text-violet-600" />, 
+      bg: 'bg-violet-50',
+      link: '/dashboard/users'
+    },
+    { 
+      label: 'Siswa Terdaftar', 
+      value: stats.studentsCount, 
+      icon: <GraduationCap size={26} className="text-rose-600" />, 
+      bg: 'bg-rose-50',
+      link: '/dashboard/users'
     },
   ];
 

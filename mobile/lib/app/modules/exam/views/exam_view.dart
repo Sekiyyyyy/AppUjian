@@ -5,6 +5,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart';
 import '../controllers/exam_controller.dart';
 import '../../../theme/app_theme.dart';
+import '../../../routes/app_pages.dart';
+import '../../../utils/app_toast.dart';
 
 class ExamView extends GetView<ExamController> {
   const ExamView({Key? key}) : super(key: key);
@@ -243,10 +245,14 @@ class ExamView extends GetView<ExamController> {
 
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: () async {
-        Get.snackbar("Aksi Ditolak", "Gunakan tombol SELESAI UJIAN untuk keluar", backgroundColor: Colors.red.shade600, colorText: Colors.white, margin: const EdgeInsets.all(16), borderRadius: 16);
-        return false;
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        AppToast.warning(
+          title: "Aksi Ditolak",
+          message: "Gunakan tombol SELESAI UJIAN untuk keluar.",
+        );
       },
       child: Scaffold(
         backgroundColor: AppTheme.backgroundColor,
@@ -376,7 +382,7 @@ class ExamView extends GetView<ExamController> {
                       Text(controller.errorMessage.value, style: GoogleFonts.inter(color: Colors.red.shade600, fontSize: 16, fontWeight: FontWeight.w500)),
                       const SizedBox(height: 24),
                       ElevatedButton.icon(
-                        onPressed: () => Get.offAllNamed('/home'),
+                        onPressed: () => Get.offAllNamed(Routes.MAIN),
                         icon: const Icon(Icons.home_rounded),
                         label: const Text("Kembali ke Beranda"),
                         style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryColor, foregroundColor: Colors.white),

@@ -54,11 +54,11 @@ type Exam struct {
 // ExamSession represents a student's instance of taking an exam
 type ExamSession struct {
 	gorm.Model
-	StudentID          uint      `json:"student_id"`
-	ExamID             uint      `json:"exam_id"`
+	StudentID          uint      `gorm:"index:idx_student_exam" json:"student_id"`
+	ExamID             uint      `gorm:"index:idx_student_exam" json:"exam_id"`
 	StartTime          time.Time `json:"start_time"`
 	EndTime            time.Time `json:"end_time,omitempty"`
-	Status             string    `json:"status"` // ONGOING, SUBMITTED, TIMEOUT
+	Status             string    `json:"status"` // ONGOING, FINISHED, SUBMITTED, TIMEOUT
 	Score              float64   `json:"score"`
 	DeviceID           string    `json:"device_id"`           // Security: Zero Trust
 	IPAddress          string    `json:"ip_address"`          // Security
@@ -68,8 +68,8 @@ type ExamSession struct {
 // StudentAnswer stores individual answers given by a student during an ExamSession
 type StudentAnswer struct {
 	gorm.Model
-	SessionID  uint    `json:"session_id"`
-	QuestionID uint    `json:"question_id"`
+	SessionID  uint    `gorm:"index:idx_session_question" json:"session_id"`
+	QuestionID uint    `gorm:"index:idx_session_question" json:"question_id"`
 	Answer     string  `json:"answer"`
 	Score      float64 `json:"score"`
 }

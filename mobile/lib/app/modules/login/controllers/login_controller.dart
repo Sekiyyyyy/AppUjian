@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../routes/app_pages.dart';
+import '../../../data/api_client.dart';
 
 class LoginController extends GetxController {
   final nisnController = TextEditingController();
@@ -11,7 +12,7 @@ class LoginController extends GetxController {
   final isLoading = false.obs;
   final errorMessage = ''.obs;
 
-  final _dio = Dio();
+  final _dio = ApiClient().dio;
 
   @override
   void onClose() {
@@ -46,6 +47,7 @@ class LoginController extends GetxController {
         }
 
         final token = data['token'];
+        ApiClient().setToken(token);
         
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('token', token);

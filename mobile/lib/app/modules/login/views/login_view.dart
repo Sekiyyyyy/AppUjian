@@ -189,30 +189,40 @@ class LoginView extends GetView<LoginController> {
                                 )
                               : const SizedBox.shrink()),
 
-                          // Username Field
-                          Text(
-                            "Nomor Induk Siswa",
-                            style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.textPrimary),
-                          ),
-                          const SizedBox(height: 8),
-                          _buildTextField(
-                            controller: controller.nisnController,
-                            hint: "Masukkan NISN Anda",
-                            icon: Icons.person_outline_rounded,
-                          ),
-                          const SizedBox(height: 20),
+                          // Input Form with AutofillGroup
+                          AutofillGroup(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                // Username Field
+                                Text(
+                                  "Nomor Induk Siswa",
+                                  style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.textPrimary),
+                                ),
+                                const SizedBox(height: 8),
+                                _buildTextField(
+                                  controller: controller.nisnController,
+                                  hint: "Masukkan NISN Anda",
+                                  icon: Icons.person_outline_rounded,
+                                  autofillHints: const [AutofillHints.username],
+                                ),
+                                const SizedBox(height: 20),
 
-                          // Password Field
-                          Text(
-                            "Kata Sandi",
-                            style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.textPrimary),
-                          ),
-                          const SizedBox(height: 8),
-                          _buildTextField(
-                            controller: controller.passwordController,
-                            hint: "Masukkan kata sandi",
-                            icon: Icons.lock_outline_rounded,
-                            isPassword: true,
+                                // Password Field
+                                Text(
+                                  "Kata Sandi",
+                                  style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.textPrimary),
+                                ),
+                                const SizedBox(height: 8),
+                                _buildTextField(
+                                  controller: controller.passwordController,
+                                  hint: "Masukkan kata sandi",
+                                  icon: Icons.lock_outline_rounded,
+                                  isPassword: true,
+                                  autofillHints: const [AutofillHints.password],
+                                ),
+                              ],
+                            ),
                           ),
                           const SizedBox(height: 32),
 
@@ -273,10 +283,12 @@ class LoginView extends GetView<LoginController> {
     required String hint,
     required IconData icon,
     bool isPassword = false,
+    Iterable<String>? autofillHints,
   }) {
     return TextFormField(
       controller: controller,
       obscureText: isPassword,
+      autofillHints: autofillHints,
       style: GoogleFonts.inter(color: AppTheme.textPrimary),
       decoration: InputDecoration(
         hintText: hint,

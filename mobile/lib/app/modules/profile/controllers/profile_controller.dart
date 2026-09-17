@@ -1,5 +1,6 @@
 import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../../data/api_client.dart';
 
 class ProfileController extends GetxController {
   final studentName = ''.obs;
@@ -19,10 +20,12 @@ class ProfileController extends GetxController {
 
   void logout() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('token');
-    await prefs.remove('username');
-    await prefs.remove('name');
-    await prefs.remove('nis');
+    await prefs.clear();
+    ApiClient().clearToken();
+
+    // Delete all registered controllers to prevent stale state
+    Get.deleteAll(force: true);
+
     Get.offAllNamed('/login');
   }
 }
