@@ -17,8 +17,9 @@ type LoginRequest struct {
 }
 
 type LoginResponse struct {
-	Token string       `json:"token"`
-	User  models.User  `json:"user"`
+	Token   string          `json:"token"`
+	User    models.User     `json:"user"`
+	Student *models.Student `json:"student,omitempty"`
 }
 
 func LoginHandler(cfg *config.Config) gin.HandlerFunc {
@@ -45,16 +46,25 @@ func LoginHandler(cfg *config.Config) gin.HandlerFunc {
 		// Device Registration/Validation check could go here for Students
 		// Example: if user.Role == RoleStudent, verify req.DeviceID against device_registrations table
 
-		// Generate JWT Token (15 minutes expiry for high security)
-		token, err := GenerateToken(user.ID, string(user.Role), req.DeviceID, cfg.JWTSecret, 15*time.Minute)
+		// Generate JWT Token (24 hours expiry for development convenience)
+		token, err := GenerateToken(user.ID, string(user.Role), req.DeviceID, cfg.JWTSecret, 24*time.Hour)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
 			return
 		}
 
+		var studentPtr *models.Student
+		if user.Role == models.RoleStudent {
+			var student models.Student
+			if err := config.DB.Where("user_id = ?", user.ID).First(&student).Error; err == nil {
+				studentPtr = &student
+			}
+		}
+
 		c.JSON(http.StatusOK, LoginResponse{
-			Token: token,
-			User:  user,
+			Token:   token,
+			User:    user,
+			Student: studentPtr,
 		})
 	}
 }

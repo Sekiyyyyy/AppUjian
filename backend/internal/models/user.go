@@ -39,6 +39,7 @@ type Student struct {
 	NoTelp        string         `json:"no_telp"`
 	NamaOrangTua  string         `json:"nama_orang_tua"`
 	ClassID       uint           `gorm:"index" json:"class_id"` // Will map to Class model later
+	Class         *Class         `gorm:"foreignKey:ClassID" json:"class,omitempty"`
 	TokenPassword string         `json:"token_password"`
 	CreatedAt     time.Time      `json:"created_at"`
 	UpdatedAt     time.Time      `json:"updated_at"`

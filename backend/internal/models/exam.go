@@ -40,7 +40,7 @@ type Exam struct {
 	TotalPoints  int        `json:"total_points"`
 	Status       string     `json:"status"` // DRAFT, SCHEDULED, ACTIVE, COMPLETED
 	IsMakeupOpen bool       `json:"is_makeup_open"` // For manual makeup exam toggle
-	CategoryID   uint       `json:"category_id"`
+	CategoryID   *uint      `json:"category_id"`
 	Category    *Category  `gorm:"foreignKey:CategoryID" json:"category,omitempty"`
 	TeacherID   uint       `json:"teacher_id"`
 	Tahun       string     `json:"tahun"`

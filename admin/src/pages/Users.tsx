@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Plus, Users as UsersIcon, Shield, Trash2, AlertCircle, Edit2, Key, GraduationCap, School, Eye } from 'lucide-react';
+import { Plus, Users as UsersIcon, Search, ChevronLeft, ChevronRight, Shield, Trash2, AlertCircle, Edit2, Key, GraduationCap, School, Eye } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { confirmAction, showSuccessToast, showErrorToast, showWarningToast } from '../utils/alert';
 
@@ -51,6 +51,51 @@ const Users = () => {
   const [isStudentModalOpen, setIsStudentModalOpen] = useState(false);
   const [isStudentEditMode, setIsStudentEditMode] = useState(false);
   const [editingStudentId, setEditingStudentId] = useState<number | null>(null);
+
+  // Pagination & Search State
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterClassId, setFilterClassId] = useState('ALL');
+  const [sortOption, setSortOption] = useState('name_asc');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, activeTab, filterClassId, sortOption]);
+
+  const filteredUsers = users.filter(u => 
+    u.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    u.username.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+  const paginatedUsers = filteredUsers.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const totalUserPages = Math.ceil(filteredUsers.length / itemsPerPage);
+
+  const filteredStudents = students.filter(s => {
+    const studentClass = classes.find(c => c.ID === s.class_id);
+    const className = studentClass ? studentClass.name.toLowerCase() : '';
+    const q = searchQuery.toLowerCase();
+    
+    // Class Filter
+    if (filterClassId !== 'ALL' && s.class_id.toString() !== filterClassId) {
+      return false;
+    }
+    
+    // Search query
+    return s.user.name.toLowerCase().includes(q) || 
+           s.nisn.toLowerCase().includes(q) || 
+           s.user.username.toLowerCase().includes(q) ||
+           className.includes(q);
+  }).sort((a, b) => {
+    if (sortOption === 'name_asc') return a.user.name.localeCompare(b.user.name);
+    if (sortOption === 'name_desc') return b.user.name.localeCompare(a.user.name);
+    if (sortOption === 'nisn_asc') return a.nisn.localeCompare(b.nisn);
+    if (sortOption === 'nisn_desc') return b.nisn.localeCompare(a.nisn);
+    if (sortOption === 'class_asc') return a.class_id - b.class_id;
+    if (sortOption === 'class_desc') return b.class_id - a.class_id;
+    return 0;
+  });
+  const paginatedStudents = filteredStudents.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const totalStudentPages = Math.ceil(filteredStudents.length / itemsPerPage);
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -235,9 +280,9 @@ const Users = () => {
         await axios.put(`http://localhost:8080/api/v1/admin/students/${editingStudentId}`, 
           payload, { headers: { Authorization: `Bearer ${token}` } });
       } else {
-        const randomStr = Math.random().toString(36).substring(2, 8).toUpperCase();
-        payload.username = `TMP-${randomStr}`;
-        payload.password = randomStr;
+        const genNum = () => Math.floor(1000000 + Math.random() * 9000000).toString();
+        payload.username = genNum();
+        payload.password = genNum();
         await axios.post('http://localhost:8080/api/v1/admin/students', 
           payload, { headers: { Authorization: `Bearer ${token}` } });
       }
@@ -268,6 +313,7 @@ const Users = () => {
   const handleGenerateTokens = async () => {
     if (!(await confirmAction("PERHATIAN!", "Semua password dan username siswa akan direset menjadi token acak baru secara permanen. Anda akan langsung mengunduh file berisi daftar token baru.\n\nApakah Anda yakin ingin melanjutkan?"))) return;
 
+    setIsLoading(true);
     try {
       const response = await axios.post('http://localhost:8080/api/v1/admin/students/generate-tokens', {}, {
         headers: { Authorization: `Bearer ${token}` }
@@ -276,6 +322,7 @@ const Users = () => {
       const tokens = response.data;
       if (!tokens || tokens.length === 0) {
         showWarningToast("Tidak ada data siswa untuk di-generate.");
+        setIsLoading(false);
         return;
       }
 
@@ -283,6 +330,8 @@ const Users = () => {
       showSuccessToast("Token berhasil di-generate! Silakan gunakan tombol 'Unduh Token' jika ingin mencetaknya.");
     } catch (err) {
       showErrorToast("Gagal melakukan generate token.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -358,27 +407,71 @@ const Users = () => {
         </div>
       </header>
 
-      {/* Tabs */}
-      <div className="flex space-x-1 bg-slate-200/50 p-1 rounded-xl w-max">
-        <button
-          onClick={() => setActiveTab('teachers')}
-          className={`flex items-center space-x-2 px-5 py-2 rounded-lg text-sm font-bold transition-all ${
-            activeTab === 'teachers' ? 'bg-white text-primary-700 shadow-sm' : 'text-slate-600 hover:text-slate-800'
-          }`}
-        >
-          <UsersIcon size={16} /> <span>Data Guru</span>
-        </button>
-        <button
-          onClick={() => setActiveTab('students')}
-          className={`flex items-center space-x-2 px-5 py-2 rounded-lg text-sm font-bold transition-all ${
-            activeTab === 'students' ? 'bg-white text-primary-700 shadow-sm' : 'text-slate-600 hover:text-slate-800'
-          }`}
-        >
-          <GraduationCap size={16} /> <span>Data Siswa</span>
-        </button>
+            {/* Tabs & Search */}
+      <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+        <div className="flex space-x-1 bg-slate-200/50 p-1 rounded-xl w-max">
+          <button
+            onClick={() => setActiveTab('teachers')}
+            className={`flex items-center space-x-2 px-5 py-2 rounded-lg text-sm font-bold transition-all ${
+              activeTab === 'teachers' ? 'bg-white text-primary-700 shadow-sm' : 'text-slate-600 hover:text-slate-800'
+            }`}
+          >
+            <UsersIcon size={16} /> <span>Data Guru</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('students')}
+            className={`flex items-center space-x-2 px-5 py-2 rounded-lg text-sm font-bold transition-all ${
+              activeTab === 'students' ? 'bg-white text-primary-700 shadow-sm' : 'text-slate-600 hover:text-slate-800'
+            }`}
+          >
+            <GraduationCap size={16} /> <span>Data Siswa</span>
+          </button>
+        </div>
+        
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto mt-4 sm:mt-0">
+          {activeTab === 'students' && (
+            <>
+              <select
+                value={filterClassId}
+                onChange={(e) => setFilterClassId(e.target.value)}
+                className="w-full sm:w-auto px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none text-sm bg-white"
+              >
+                <option value="ALL">Semua Kelas</option>
+                {classes.map(c => (
+                  <option key={c.ID} value={c.ID.toString()}>{c.name}</option>
+                ))}
+              </select>
+              <select
+                value={sortOption}
+                onChange={(e) => setSortOption(e.target.value)}
+                className="w-full sm:w-auto px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none text-sm bg-white"
+              >
+                <option value="name_asc">Nama (A-Z)</option>
+                <option value="name_desc">Nama (Z-A)</option>
+                <option value="nisn_asc">NISN (Terkecil-Terbesar)</option>
+                <option value="nisn_desc">NISN (Terbesar-Terkecil)</option>
+                <option value="class_asc">Kelas (A-Z)</option>
+                <option value="class_desc">Kelas (Z-A)</option>
+              </select>
+            </>
+          )}
+          
+          <div className="relative w-full sm:w-72">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Search size={18} className="text-slate-400" />
+            </div>
+            <input
+              type="text"
+              placeholder="Cari nama, NISN, atau username..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none text-sm transition-all"
+            />
+          </div>
+        </div>
       </div>
 
-      <div className="glass-panel overflow-hidden">
+      <div className="glass-panel overflow-hidden flex flex-col min-h-[500px]">
         <div className="overflow-x-auto">
           {activeTab === 'teachers' && (
             <table className="w-full text-left border-collapse">
@@ -391,7 +484,7 @@ const Users = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {users.length === 0 ? (
+                {filteredUsers.length === 0 ? (
                   <tr>
                     <td colSpan={4} className="py-12 text-center text-slate-500">
                       <UsersIcon className="mx-auto text-slate-300 mb-3" size={32} />
@@ -399,7 +492,7 @@ const Users = () => {
                     </td>
                   </tr>
                 ) : (
-                  users.map((u) => (
+                  paginatedUsers.map((u) => (
                     <tr key={u.id} className="hover:bg-slate-50/50 transition-colors group">
                       <td className="py-4 px-6">
                         <div className="flex items-center space-x-3">
@@ -438,6 +531,30 @@ const Users = () => {
             </table>
           )}
 
+          {activeTab === 'teachers' && filteredUsers.length > 0 && (
+            <div className="px-6 py-4 border-t border-slate-100 flex items-center justify-between mt-auto">
+              <span className="text-sm text-slate-500">
+                Menampilkan <span className="font-semibold text-slate-700">{(currentPage - 1) * itemsPerPage + 1}</span> hingga <span className="font-semibold text-slate-700">{Math.min(currentPage * itemsPerPage, filteredUsers.length)}</span> dari <span className="font-semibold text-slate-700">{filteredUsers.length}</span> data
+              </span>
+              <div className="flex space-x-2">
+                <button 
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="p-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition-colors"
+                >
+                  <ChevronLeft size={18} />
+                </button>
+                <button 
+                  onClick={() => setCurrentPage(p => Math.min(totalUserPages, p + 1))}
+                  disabled={currentPage === totalUserPages}
+                  className="p-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition-colors"
+                >
+                  <ChevronRight size={18} />
+                </button>
+              </div>
+            </div>
+          )}
+
           {activeTab === 'students' && (
             <table className="w-full text-left border-collapse">
               <thead>
@@ -450,7 +567,7 @@ const Users = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {students.length === 0 ? (
+                {filteredStudents.length === 0 ? (
                   <tr>
                     <td colSpan={4} className="py-12 text-center text-slate-500">
                       <GraduationCap className="mx-auto text-slate-300 mb-3" size={32} />
@@ -458,7 +575,7 @@ const Users = () => {
                     </td>
                   </tr>
                 ) : (
-                  students.map((s) => {
+                  paginatedStudents.map((s) => {
                     const studentClass = classes.find(c => c.ID === s.class_id);
                     return (
                     <tr key={s.id} className="hover:bg-slate-50/50 transition-colors group">
@@ -507,6 +624,30 @@ const Users = () => {
                 )}
               </tbody>
             </table>
+          )}
+
+          {activeTab === 'students' && filteredStudents.length > 0 && (
+            <div className="px-6 py-4 border-t border-slate-100 flex items-center justify-between mt-auto">
+              <span className="text-sm text-slate-500">
+                Menampilkan <span className="font-semibold text-slate-700">{(currentPage - 1) * itemsPerPage + 1}</span> hingga <span className="font-semibold text-slate-700">{Math.min(currentPage * itemsPerPage, filteredStudents.length)}</span> dari <span className="font-semibold text-slate-700">{filteredStudents.length}</span> data
+              </span>
+              <div className="flex space-x-2">
+                <button 
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="p-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition-colors"
+                >
+                  <ChevronLeft size={18} />
+                </button>
+                <button 
+                  onClick={() => setCurrentPage(p => Math.min(totalStudentPages, p + 1))}
+                  disabled={currentPage === totalStudentPages}
+                  className="p-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition-colors"
+                >
+                  <ChevronRight size={18} />
+                </button>
+              </div>
+            </div>
           )}
         </div>
       </div>

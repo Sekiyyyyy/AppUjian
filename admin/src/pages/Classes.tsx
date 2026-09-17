@@ -10,10 +10,12 @@ import {
   CheckCircle2, 
   Search,
   Building2,
-  GraduationCap
+  GraduationCap,
+  ArrowUpCircle
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { confirmAction, showSuccessToast, showErrorToast } from '../utils/alert';
+import { useNavigate } from 'react-router-dom';
 
 interface ClassItem {
   ID: number;
@@ -36,6 +38,7 @@ const COMMON_DEPARTMENTS = [
 
 const Classes = () => {
   const { token } = useAuth();
+  const navigate = useNavigate();
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -96,7 +99,8 @@ const Classes = () => {
     }
   };
 
-  const handleDeleteClass = async (id: number, name: string) => {
+  const handleDeleteClass = async (e: React.MouseEvent, id: number, name: string) => {
+    e.stopPropagation();
     if (!(await confirmAction(`Hapus Kelas`, `Yakin ingin menghapus kelas ${name}?`))) return;
 
     try {
@@ -107,6 +111,28 @@ const Classes = () => {
       showSuccessToast('Kelas dihapus');
     } catch (err) {
       showErrorToast('Gagal menghapus kelas');
+    }
+  };
+
+  const handlePromoteClasses = async () => {
+    const isConfirmed = await confirmAction(
+      "Kenaikan Kelas Tahunan",
+      "Perhatian! Tindakan ini akan meluluskan (menghapus permanen) seluruh siswa kelas XII. Siswa kelas XI akan naik ke kelas XII, dan kelas X akan naik ke kelas XI. Apakah Anda yakin ingin memproses kenaikan kelas?"
+    );
+
+    if (isConfirmed) {
+      try {
+        setIsLoading(true);
+        await axios.post('http://localhost:8080/api/v1/admin/classes/promote', {}, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        showSuccessToast('Proses Kenaikan Kelas berhasil diselesaikan!');
+        fetchClasses();
+      } catch (err: any) {
+        showErrorToast(err.response?.data?.error || 'Gagal memproses kenaikan kelas');
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -136,13 +162,23 @@ const Classes = () => {
             Kelola Tingkat, Jurusan, dan Rombel (Lokal) untuk pemetaan jadwal ujian SMK.
           </p>
         </div>
-        <button 
-          onClick={() => setIsModalOpen(true)}
-          className="btn-primary flex items-center space-x-2"
-        >
-          <Plus size={20} />
-          <span>Tambah Kelas</span>
-        </button>
+        <div className="flex space-x-3">
+          <button 
+            onClick={handlePromoteClasses}
+            disabled={isLoading}
+            className="flex items-center space-x-2 px-4 py-2 border border-emerald-200 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-xl font-bold transition-colors"
+          >
+            <ArrowUpCircle size={20} />
+            <span>Kenaikan Kelas Tahunan</span>
+          </button>
+          <button 
+            onClick={() => setIsModalOpen(true)}
+            className="btn-primary flex items-center space-x-2"
+          >
+            <Plus size={20} />
+            <span>Tambah Kelas</span>
+          </button>
+        </div>
       </header>
 
       {/* Summary Stats */}
@@ -237,7 +273,8 @@ const Classes = () => {
           {filteredClasses.map((item) => (
             <div 
               key={item.ID} 
-              className="glass-panel p-5 group hover:border-primary-200 hover:shadow-md transition-all duration-200 relative overflow-hidden"
+              onClick={() => navigate(`/dashboard/classes/${item.ID}`)}
+              className="glass-panel p-5 group hover:border-primary-200 hover:shadow-md transition-all duration-200 relative overflow-hidden cursor-pointer"
             >
               <div className="flex justify-between items-start mb-3">
                 <span className={`px-2.5 py-1 rounded-lg text-xs font-bold ${
@@ -249,7 +286,7 @@ const Classes = () => {
                 </span>
 
                 <button
-                  onClick={() => handleDeleteClass(item.ID, item.name || `${item.level} ${item.department} ${item.number}`)}
+                  onClick={(e) => handleDeleteClass(e, item.ID, item.name || `${item.level} ${item.department} ${item.number}`)}
                   className="text-slate-300 hover:text-red-600 hover:bg-red-50 p-1.5 rounded-lg transition-colors"
                   title="Hapus Kelas"
                 >

@@ -89,7 +89,7 @@ export const GlobalAlert = () => {
 
       {/* Custom Tailwind Toast */}
       {toast.open && (
-        <div className="fixed top-6 right-6 z-[100] animate-in slide-in-from-top-2 fade-in duration-300">
+        <div className="fixed top-6 right-6 z-[200] animate-in slide-in-from-top-2 fade-in duration-300">
           <div className={`flex items-center space-x-3 px-4 py-3 rounded-xl shadow-lg border bg-white max-w-sm ${
             toast.type === 'success' ? 'border-emerald-200' : 
             toast.type === 'error' ? 'border-red-200' : 'border-amber-200'

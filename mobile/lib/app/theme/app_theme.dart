@@ -1,32 +1,46 @@
 import 'package:flutter/material.dart';
 
 class AppTheme {
+  static const Color primaryColor = Color(0xFF1A9E4E); // Green from logo
+  static const Color secondaryColor = Color(0xFFFDDB00); // Yellow from logo
+  static const Color accentColor = Color(0xFF1579BE); // Blue from logo
+  static const Color backgroundColor = Color(0xFFF8FAFC); // Slate 50
+  static const Color surfaceColor = Colors.white;
+  static const Color textPrimary = Color(0xFF0F172A); // Slate 900
+  static const Color textSecondary = Color(0xFF64748B); // Slate 500
+
   static ThemeData get studentTheme {
     return ThemeData(
       useMaterial3: true,
       colorScheme: ColorScheme.fromSeed(
-        seedColor: Colors.deepPurple,
-        primary: Colors.deepPurple,
-        secondary: Colors.amber,
-        surface: Colors.grey.shade50,
+        seedColor: primaryColor,
+        primary: primaryColor,
+        secondary: secondaryColor,
+        tertiary: accentColor,
+        surface: backgroundColor,
       ),
+      scaffoldBackgroundColor: backgroundColor,
       appBarTheme: const AppBarTheme(
-        backgroundColor: Colors.deepPurple,
-        foregroundColor: Colors.white,
+        backgroundColor: Colors.transparent,
+        foregroundColor: textPrimary,
         centerTitle: true,
         elevation: 0,
+        iconTheme: IconThemeData(color: textPrimary),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.deepPurple,
+          backgroundColor: primaryColor,
           foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(16),
           ),
+          elevation: 4,
+          shadowColor: primaryColor.withOpacity(0.5),
           textStyle: const TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.bold,
+            letterSpacing: 0.5,
           ),
         ),
       ),
@@ -34,20 +48,34 @@ class AppTheme {
         filled: true,
         fillColor: Colors.white,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey.shade300),
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: Colors.grey.shade200),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey.shade300),
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: Colors.grey.shade200),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Colors.deepPurple, width: 2),
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: primaryColor, width: 2),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: Colors.redAccent, width: 1.5),
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+        hintStyle: TextStyle(color: Colors.grey.shade400),
       ),
-      fontFamily: 'Roboto', // You can change this to a custom font later
+      cardTheme: CardThemeData(
+        color: surfaceColor,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(color: Colors.grey.shade200, width: 1),
+        ),
+        margin: const EdgeInsets.symmetric(vertical: 8),
+      ),
+      fontFamily: 'Inter', // Modern font if imported, otherwise fallbacks
     );
   }
 }

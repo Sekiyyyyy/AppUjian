@@ -52,6 +52,18 @@ class LoginController extends GetxController {
         await prefs.setString('username', data['user']['username'] ?? '');
         await prefs.setString('name', data['user']['name'] ?? 'Siswa');
 
+        if (data['student'] != null) {
+          final nisn = data['student']['nisn']?.toString() ?? '';
+          final nis = data['student']['nis']?.toString() ?? '';
+          String combinedNis = '';
+          if (nis.isNotEmpty) {
+            combinedNis = "$nisn/$nis";
+          } else {
+            combinedNis = "$nisn/-";
+          }
+          await prefs.setString('nis', combinedNis);
+        }
+
         Get.offAllNamed(Routes.HOME);
       }
     } on DioException catch (e) {

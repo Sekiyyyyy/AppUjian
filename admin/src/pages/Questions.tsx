@@ -20,27 +20,118 @@ interface Question {
   points: number;
   CreatedAt: string;
 }
-const modules = {
-  toolbar: [
-    ['bold', 'italic', 'underline', 'strike'],
-    ['blockquote', 'code-block'],
-    [{ 'script': 'sub'}, { 'script': 'super' }],
-    [{ 'direction': 'rtl' }], // Supports Arabic Right-to-Left
-    [{ 'size': ['small', false, 'large', 'huge'] }],
-    [{ 'color': [] }, { 'background': [] }],
-    ['link', 'image', 'video', 'formula'], // Added formula for KaTeX
-    ['clean']
-  ]
+const compressImage = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target?.result as string;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+        
+        // Max width/height constraint
+        const MAX_DIM = 800;
+        if (width > height) {
+          if (width > MAX_DIM) {
+            height *= MAX_DIM / width;
+            width = MAX_DIM;
+          }
+        } else {
+          if (height > MAX_DIM) {
+            width *= MAX_DIM / height;
+            height = MAX_DIM;
+          }
+        }
+        
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
+        
+        // Output as WebP or JPEG with quality 0.7
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+        resolve(dataUrl);
+      };
+      img.onerror = (error) => reject(error);
+    };
+    reader.onerror = (error) => reject(error);
+  });
 };
 
-const miniModules = {
-  toolbar: [
-    ['bold', 'italic', 'underline'],
-    [{ 'script': 'sub'}, { 'script': 'super' }],
-    ['image', 'formula'], // Allow image and math formulas for options
-    ['clean']
-  ]
-};
+const getCommonModules = (quillRef: React.MutableRefObject<ReactQuill | null>) => ({
+  toolbar: {
+    container: [
+      ['bold', 'italic', 'underline', 'strike'],
+      ['blockquote', 'code-block'],
+      [{ 'script': 'sub'}, { 'script': 'super' }],
+      [{ 'direction': 'rtl' }],
+      [{ 'size': ['small', false, 'large', 'huge'] }],
+      [{ 'color': [] }, { 'background': [] }],
+      ['link', 'image', 'video', 'formula'],
+      ['clean']
+    ],
+    handlers: {
+      image: function() {
+        const input = document.createElement('input');
+        input.setAttribute('type', 'file');
+        input.setAttribute('accept', 'image/*');
+        input.click();
+
+        input.onchange = async () => {
+          const file = input.files ? input.files[0] : null;
+          if (file && quillRef.current) {
+            try {
+              const base64Str = await compressImage(file);
+              const quill = quillRef.current.getEditor();
+              const range = quill.getSelection(true);
+              quill.insertEmbed(range.index, 'image', base64Str);
+              quill.setSelection(range.index + 1, 0);
+            } catch (e) {
+              console.error("Image compression failed", e);
+            }
+          }
+        };
+      }
+    }
+  }
+});
+
+const getMiniModules = (quillRef: React.MutableRefObject<ReactQuill | null>) => ({
+  toolbar: {
+    container: [
+      ['bold', 'italic', 'underline'],
+      [{ 'script': 'sub'}, { 'script': 'super' }],
+      ['image', 'formula'],
+      ['clean']
+    ],
+    handlers: {
+      image: function() {
+        const input = document.createElement('input');
+        input.setAttribute('type', 'file');
+        input.setAttribute('accept', 'image/*');
+        input.click();
+
+        input.onchange = async () => {
+          const file = input.files ? input.files[0] : null;
+          if (file && quillRef.current) {
+            try {
+              const base64Str = await compressImage(file);
+              const quill = quillRef.current.getEditor();
+              const range = quill.getSelection(true);
+              quill.insertEmbed(range.index, 'image', base64Str);
+              quill.setSelection(range.index + 1, 0);
+            } catch (e) {
+              console.error("Image compression failed", e);
+            }
+          }
+        };
+      }
+    }
+  }
+});
 
 const Questions = () => {
   const { token } = useAuth();
@@ -51,6 +142,39 @@ const Questions = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const mainQuillRef = React.useRef<ReactQuill>(null);
+  const optAQuillRef = React.useRef<ReactQuill>(null);
+  const optBQuillRef = React.useRef<ReactQuill>(null);
+  const optCQuillRef = React.useRef<ReactQuill>(null);
+  const optDQuillRef = React.useRef<ReactQuill>(null);
+  const optEQuillRef = React.useRef<ReactQuill>(null);
+
+  // Memoize modules unconditionally at the top level to obey Rules of Hooks
+  const mainModules = React.useMemo(() => getCommonModules(mainQuillRef), []);
+  const optAModules = React.useMemo(() => getMiniModules(optAQuillRef), []);
+  const optBModules = React.useMemo(() => getMiniModules(optBQuillRef), []);
+  const optCModules = React.useMemo(() => getMiniModules(optCQuillRef), []);
+  const optDModules = React.useMemo(() => getMiniModules(optDQuillRef), []);
+  const optEModules = React.useMemo(() => getMiniModules(optEQuillRef), []);
+
+  const getModulesForOption = (opt: string) => {
+    switch (opt) {
+      case 'A': return optAModules;
+      case 'B': return optBModules;
+      case 'C': return optCModules;
+      case 'D': return optDModules;
+      case 'E': return optEModules;
+      default: return optAModules;
+    }
+  };
+
+  const getRefForOption = (opt: string) => {
+    if (opt === 'A') return optAQuillRef;
+    if (opt === 'B') return optBQuillRef;
+    if (opt === 'C') return optCQuillRef;
+    if (opt === 'D') return optDQuillRef;
+    return optEQuillRef;
+  };
 
   // Form State
   const [content, setContent] = useState('');
@@ -290,10 +414,11 @@ const Questions = () => {
                 <label className="block text-sm font-semibold text-slate-700 mb-2">Pertanyaan Utama</label>
                 <div className="h-64 mb-12">
                    <ReactQuill 
+                      ref={mainQuillRef}
                       theme="snow" 
                       value={content} 
                       onChange={setContent}
-                      modules={modules}
+                      modules={mainModules}
                       className="h-48"
                       placeholder="Ketik pertanyaan, sisipkan gambar, atau gunakan teks Arab di sini..."
                    />
@@ -322,10 +447,11 @@ const Questions = () => {
                       </div>
                       <div className="bg-white">
                         <ReactQuill 
+                          ref={getRefForOption(opt)}
                           theme="snow" 
                           value={getOptionValue(opt)} 
                           onChange={(val) => setOptionValue(opt, val)}
-                          modules={miniModules}
+                          modules={getModulesForOption(opt)}
                           className="h-24 pb-12"
                           placeholder={`Ketik atau sisipkan gambar untuk opsi ${opt}...`}
                         />

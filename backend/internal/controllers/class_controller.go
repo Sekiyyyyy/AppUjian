@@ -54,12 +54,95 @@ func CreateClass(c *gin.Context) {
 	c.JSON(http.StatusCreated, class)
 }
 
-// DeleteClass deletes a class by ID
+// DeleteClass deletes a class
 func DeleteClass(c *gin.Context) {
 	id := c.Param("id")
-	if err := config.DB.Delete(&models.Class{}, id).Error; err != nil {
+
+	var class models.Class
+	if err := config.DB.First(&class, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Kelas tidak ditemukan"})
+		return
+	}
+
+	if err := config.DB.Delete(&class).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menghapus kelas"})
 		return
 	}
+
 	c.JSON(http.StatusOK, gin.H{"message": "Kelas berhasil dihapus"})
+}
+
+// PromoteClasses processes yearly class promotion
+func PromoteClasses(c *gin.Context) {
+	tx := config.DB.Begin()
+
+	var students []models.Student
+	if err := tx.Preload("Class").Find(&students).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengambil data siswa"})
+		return
+	}
+
+	var allClasses []models.Class
+	if err := tx.Find(&allClasses).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengambil data kelas"})
+		return
+	}
+
+	// Create quick map for class lookup by Level-Department-Number
+	classMap := make(map[string]uint)
+	for _, cls := range allClasses {
+		key := fmt.Sprintf("%s-%s-%s", cls.Level, cls.Department, cls.Number)
+		classMap[key] = cls.ID
+	}
+
+	for _, s := range students {
+		if s.Class == nil {
+			continue
+		}
+		
+		if s.Class.Level == "XII" {
+			// Delete XII student
+			if err := tx.Delete(&s).Error; err != nil {
+				tx.Rollback()
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menghapus siswa kelas XII"})
+				return
+			}
+			// Delete user
+			if err := tx.Delete(&models.User{}, s.UserID).Error; err != nil {
+				tx.Rollback()
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menghapus user siswa kelas XII"})
+				return
+			}
+		} else if s.Class.Level == "XI" {
+			// Promote to XII
+			newKey := fmt.Sprintf("XII-%s-%s", s.Class.Department, s.Class.Number)
+			if newID, ok := classMap[newKey]; ok {
+				if err := tx.Model(&s).Update("class_id", newID).Error; err != nil {
+					tx.Rollback()
+					c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal update kelas siswa XI ke XII"})
+					return
+				}
+			}
+		} else if s.Class.Level == "X" {
+			// Promote to XI
+			newKey := fmt.Sprintf("XI-%s-%s", s.Class.Department, s.Class.Number)
+			if newID, ok := classMap[newKey]; ok {
+				if err := tx.Model(&s).Update("class_id", newID).Error; err != nil {
+					tx.Rollback()
+					c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal update kelas siswa X ke XI"})
+					return
+				}
+			}
+		}
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal memproses kenaikan kelas"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Kenaikan kelas berhasil diproses"})
 }

@@ -8,9 +8,9 @@ class ExamController extends GetxController {
   final _dio = Dio();
   
   // Passed arguments
-  late int examId;
-  late String examTitle;
-  late int duration; // in minutes
+  int examId = 0;
+  String examTitle = '';
+  int duration = 0; // in minutes
   Map<String, dynamic>? examData;
   
   // State
@@ -37,13 +37,17 @@ class ExamController extends GetxController {
     final args = Get.arguments;
     if (args != null) {
       examId = args['exam_id'];
-      examTitle = args['title'];
-      duration = args['duration'];
+      examTitle = args['title'] ?? 'Ujian';
+      duration = args['duration'] ?? 90;
       examData = args['exam_data'];
       _startExamProcess();
     } else {
-      errorMessage.value = "Data ujian tidak valid.";
+      errorMessage.value = "Data ujian tidak valid atau sesi kadaluarsa.";
       isLoading.value = false;
+      // Redirect to home if args are lost due to refresh
+      Future.delayed(const Duration(milliseconds: 500), () {
+        Get.offAllNamed('/home');
+      });
     }
   }
 
@@ -93,7 +97,7 @@ class ExamController extends GetxController {
     } on DioException catch (e) {
       errorMessage.value = e.response?.data['error'] ?? "Gagal memulai ujian.";
     } catch (e) {
-      errorMessage.value = "Terjadi kesalahan tidak terduga.";
+      errorMessage.value = "Error: $e";
     } finally {
       isLoading.value = false;
     }
@@ -102,7 +106,13 @@ class ExamController extends GetxController {
   Future<void> _fetchQuestions(String baseUrl) async {
     final res = await _dio.get('$baseUrl/api/v1/student/exams/$examId/questions');
     if (res.statusCode == 200) {
-      questions.assignAll(res.data);
+      final List data = res.data['questions'] ?? [];
+      for (var q in data) {
+        if (q['id'] == null && q['ID'] != null) {
+          q['id'] = q['ID'];
+        }
+      }
+      questions.assignAll(data);
       // Initialize flagged state to false
       for (var q in questions) {
         flagged[q['id']] = false;

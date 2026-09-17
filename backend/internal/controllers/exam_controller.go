@@ -17,7 +17,7 @@ type ExamInput struct {
 	EndTime     time.Time `json:"end_time" binding:"required"`
 	Duration    int       `json:"duration" binding:"required"`
 	TotalPoints int       `json:"total_points"`
-	CategoryID  uint      `json:"category_id" binding:"required"`
+	CategoryID  *uint     `json:"category_id"`
 	ClassIDs    []uint    `json:"class_ids"`
 	QuestionIDs []uint    `json:"question_ids"`
 	Tahun       string    `json:"tahun"`
@@ -242,7 +242,7 @@ func GetExamParticipants(c *gin.Context) {
 	}
 
 	var students []models.Student
-	if err := config.DB.Preload("Class").Where("class_id IN ?", classIDs).Find(&students).Error; err != nil {
+	if err := config.DB.Preload("Class").Preload("User").Where("class_id IN ?", classIDs).Find(&students).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengambil data siswa"})
 		return
 	}
@@ -257,6 +257,7 @@ func GetExamParticipants(c *gin.Context) {
 
 	type ParticipantResponse struct {
 		models.Student
+		Name          string `json:"name"`
 		SessionStatus string `json:"session_status"`
 	}
 
@@ -269,6 +270,7 @@ func GetExamParticipants(c *gin.Context) {
 
 		responses = append(responses, ParticipantResponse{
 			Student:       student,
+			Name:          student.User.Name,
 			SessionStatus: status,
 		})
 	}

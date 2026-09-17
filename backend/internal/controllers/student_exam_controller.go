@@ -30,6 +30,19 @@ func StartExam(c *gin.Context) {
 		return
 	}
 
+	// Security: Validate Exam Time Constraints
+	now := time.Now()
+	if !exam.IsMakeupOpen {
+		if now.Before(exam.StartTime) {
+			c.JSON(http.StatusForbidden, gin.H{"error": "Ujian belum dimulai"})
+			return
+		}
+		if now.After(exam.EndTime) {
+			c.JSON(http.StatusForbidden, gin.H{"error": "Waktu ujian sudah habis"})
+			return
+		}
+	}
+
 	var session models.ExamSession
 	err := config.DB.Where("student_id = ? AND exam_id = ?", student.ID, exam.ID).First(&session).Error
 	if err == nil {
@@ -81,7 +94,7 @@ func GetExamQuestions(c *gin.Context) {
 	}
 
 	type QuestionResponse struct {
-		ID            uint           `json:"ID"`
+		ID            uint           `json:"id"`
 		Type          string         `json:"type"`
 		Content       string         `json:"content"`
 		Options       any            `json:"options,omitempty"`

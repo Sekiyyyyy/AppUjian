@@ -10,6 +10,7 @@ import Exams from './pages/Exams';
 import Users from './pages/Users';
 import Settings from './pages/Settings';
 import Categories from './pages/Categories';
+import ClassDetails from './pages/ClassDetails';
 import { GlobalAlert } from './components/GlobalAlert';
 
 function App() {
@@ -23,6 +24,7 @@ function App() {
           <Route path="/dashboard" element={<AdminLayout />}>
             <Route index element={<Dashboard />} />
             <Route path="classes" element={<Classes />} />
+            <Route path="classes/:id" element={<ClassDetails />} />
             <Route path="subjects" element={<Subjects />} />
             <Route path="questions" element={<Questions />} />
             <Route path="exams" element={<Exams />} />

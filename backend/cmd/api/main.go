@@ -42,7 +42,7 @@ func main() {
 
 	// Configure CORS
 	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:5173", "http://localhost:3000"},
+		AllowAllOrigins:  true,
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization", "X-Device-ID"},
 		ExposeHeaders:    []string{"Content-Length"},
@@ -74,6 +74,7 @@ func main() {
 			// Classes Management
 			adminRoutes.GET("/classes", controllers.GetClasses)
 			adminRoutes.POST("/classes", controllers.CreateClass)
+			adminRoutes.POST("/classes/promote", controllers.PromoteClasses)
 			adminRoutes.DELETE("/classes/:id", controllers.DeleteClass)
 
 			// Categories Management
@@ -111,6 +112,7 @@ func main() {
 			// Student Management
 			adminRoutes.GET("/students", controllers.GetStudents)
 			adminRoutes.POST("/students", controllers.CreateStudent)
+			adminRoutes.POST("/students/import", controllers.ImportStudentsCSV)
 			adminRoutes.POST("/students/generate-tokens", controllers.GenerateTokens)
 			adminRoutes.GET("/students/export-tokens", controllers.ExportTokens)
 			adminRoutes.PUT("/students/:id", controllers.UpdateStudent)
