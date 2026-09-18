@@ -31,10 +31,7 @@ class LoginController extends GetxController {
     errorMessage.value = '';
 
     try {
-      // For Windows/Web desktop, use 127.0.0.1. For Android Emulator, use 10.0.2.2
-      String baseUrl = GetPlatform.isAndroid ? 'http://10.0.2.2:8080' : 'http://127.0.0.1:8080';
-      
-      final response = await _dio.post('$baseUrl/api/v1/auth/login', data: {
+      final response = await _dio.post('/api/v1/auth/login', data: {
         'username': nisnController.text.trim(),
         'password': passwordController.text,
       });

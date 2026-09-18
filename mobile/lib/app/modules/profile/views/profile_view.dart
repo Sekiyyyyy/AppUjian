@@ -5,7 +5,7 @@ import '../controllers/profile_controller.dart';
 import '../../../theme/app_theme.dart';
 
 class ProfileView extends GetView<ProfileController> {
-  const ProfileView({Key? key}) : super(key: key);
+  const ProfileView({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -41,7 +41,7 @@ class ProfileView extends GetView<ProfileController> {
                       height: 200,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: Colors.white.withOpacity(0.1),
+                        color: Colors.white.withValues(alpha: 0.1),
                       ),
                     ),
                   ),
@@ -83,7 +83,7 @@ class ProfileView extends GetView<ProfileController> {
                               Obx(() => Text(
                                 controller.studentNis.value,
                                 style: GoogleFonts.inter(
-                                  color: Colors.white.withOpacity(0.8),
+                                  color: Colors.white.withValues(alpha: 0.8),
                                   fontSize: 16,
                                 ),
                               )),
@@ -102,11 +102,14 @@ class ProfileView extends GetView<ProfileController> {
             sliver: SliverList(
               delegate: SliverChildListDelegate([
                 const SizedBox(height: 20),
-                _buildMenuCard(
-                  icon: Icons.logout_rounded,
-                  title: 'Keluar',
-                  color: Colors.red.shade600,
-                  onTap: () {
+                Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 600),
+                    child: _buildMenuCard(
+                      icon: Icons.logout_rounded,
+                      title: 'Keluar',
+                      color: Colors.red.shade600,
+                      onTap: () {
                     Get.dialog(
                       Dialog(
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -162,7 +165,9 @@ class ProfileView extends GetView<ProfileController> {
                     );
                   },
                 ),
-                const SizedBox(height: 100), // padding for bottom nav
+              ),
+            ),
+            const SizedBox(height: 100), // padding for bottom nav
               ]),
             ),
           ),
@@ -188,7 +193,7 @@ class ProfileView extends GetView<ProfileController> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
+                  color: color.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(icon, color: color),

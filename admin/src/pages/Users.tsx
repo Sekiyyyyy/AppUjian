@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Plus, Users as UsersIcon, Search, ChevronLeft, ChevronRight, Shield, Trash2, AlertCircle, Edit2, Key, GraduationCap, School, Eye } from 'lucide-react';
+import { Plus, Users as UsersIcon, Search, ChevronLeft, ChevronRight, Shield, Trash2, AlertCircle, Edit2, Key, GraduationCap, School, Eye, Award, Copy, RefreshCw } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { confirmAction, showSuccessToast, showErrorToast, showWarningToast } from '../utils/alert';
 
@@ -9,6 +9,10 @@ interface UserItem {
   username: string;
   name: string;
   role: string;
+  nip?: string;
+  nuptk?: string;
+  jabatan?: string;
+  token_password?: string;
   created_at: string;
 }
 
@@ -55,18 +59,28 @@ const Users = () => {
   // Pagination & Search State
   const [searchQuery, setSearchQuery] = useState('');
   const [filterClassId, setFilterClassId] = useState('ALL');
+  const [filterTeacherJabatan, setFilterTeacherJabatan] = useState('ALL');
   const [sortOption, setSortOption] = useState('name_asc');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, activeTab, filterClassId, sortOption]);
+  }, [searchQuery, activeTab, filterClassId, sortOption, filterTeacherJabatan]);
 
-  const filteredUsers = users.filter(u => 
-    u.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    u.username.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredUsers = users.filter(u => {
+    const q = searchQuery.toLowerCase();
+    const matchesSearch = 
+      u.name.toLowerCase().includes(q) || 
+      u.username.toLowerCase().includes(q) ||
+      (u.nip && u.nip.toLowerCase().includes(q)) ||
+      (u.nuptk && u.nuptk.toLowerCase().includes(q)) ||
+      (u.jabatan && u.jabatan.toLowerCase().includes(q));
+
+    const matchesJabatan = filterTeacherJabatan === 'ALL' || (u.jabatan || 'Guru') === filterTeacherJabatan;
+
+    return matchesSearch && matchesJabatan;
+  });
   const paginatedUsers = filteredUsers.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
   const totalUserPages = Math.ceil(filteredUsers.length / itemsPerPage);
 
@@ -103,14 +117,14 @@ const Users = () => {
   // Form State for Teacher
   const [name, setName] = useState('');
   const [nip, setNip] = useState('');
+  const [nuptk, setNuptk] = useState('');
+  const [jabatan, setJabatan] = useState('Guru');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
 
   // Form State for Student
   const [studentName, setStudentName] = useState('');
   const [nisn, setNisn] = useState('');
-  const [studentUsername, setStudentUsername] = useState('');
-  const [studentPassword, setStudentPassword] = useState('');
   const [classId, setClassId] = useState('');
   const [nis, setNis] = useState('');
   const [jenisKelamin, setJenisKelamin] = useState('');
@@ -164,9 +178,22 @@ const Users = () => {
     fetchClasses();
   }, []);
 
+  const generateRandom7Digits = () => {
+    return Math.floor(1000000 + Math.random() * 9000000).toString();
+  };
+
+  const generateTeacherUsername = (nameStr: string) => {
+    const clean = nameStr.split(',')[0].replace(/\b(dr|dra|drs|ir|h|hj|spd|mpd|msi|kom)\.?\b/gi, '').trim();
+    const parts = clean.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(Boolean);
+    if (parts.length === 0) return '';
+    if (parts.length === 1) return parts[0];
+    return `${parts[0]}.${parts[parts.length - 1]}`;
+  };
+
   const openCreateTeacher = () => {
     setIsEditMode(false);
-    setName(''); setNip(''); setUsername(''); setPassword('');
+    setName(''); setNip(''); setNuptk(''); setJabatan('Guru'); setUsername(''); setPassword(generateRandom7Digits());
+    setError('');
     setIsModalOpen(true);
   };
 
@@ -175,9 +202,31 @@ const Users = () => {
     setEditingUserId(u.id);
     setName(u.name);
     setUsername(u.username);
-    setNip(''); // NIP is not fetched by default
-    setPassword('');
+    setNip(u.nip || '');
+    setNuptk(u.nuptk || '');
+    setJabatan(u.jabatan || 'Guru');
+    setPassword(u.token_password || generateRandom7Digits());
+    setError('');
     setIsModalOpen(true);
+  };
+
+  const handleGenerateTeacherPasswords = async () => {
+    if (!(await confirmAction('Generate Password Guru', 'Apakah Anda yakin ingin mengacak ulang password semua guru menjadi 7 digit angka baru? Akun login guru akan terupdate.'))) {
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const res = await axios.post('http://localhost:8080/api/v1/admin/users/generate-tokens', {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      showSuccessToast(res.data?.message || 'Berhasil membuat password 7 digit baru untuk semua guru');
+      fetchUsers();
+    } catch (err: any) {
+      showErrorToast(err.response?.data?.error || 'Gagal generate password guru');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleSaveTeacher = async (e: React.FormEvent) => {
@@ -188,12 +237,14 @@ const Users = () => {
     try {
       if (isEditMode && editingUserId) {
         await axios.put(`http://localhost:8080/api/v1/admin/users/${editingUserId}`, {
-          name, nip, username, password
+          name, nip, nuptk, jabatan, username, password
         }, { headers: { Authorization: `Bearer ${token}` } });
+        showSuccessToast('Data guru berhasil diperbarui');
       } else {
         await axios.post('http://localhost:8080/api/v1/admin/users', {
-          name, nip, username, password
+          name, nip, nuptk, jabatan, username, password
         }, { headers: { Authorization: `Bearer ${token}` } });
+        showSuccessToast('Data guru berhasil ditambahkan');
       }
       
       setIsModalOpen(false);
@@ -219,14 +270,14 @@ const Users = () => {
       });
       setUsers(users.filter(u => u.id !== id));
       showSuccessToast('Pengguna dihapus');
-    } catch (err) {
+    } catch {
       showErrorToast('Gagal menghapus pengguna');
     }
   };
 
   const openCreateStudent = () => {
     setIsStudentEditMode(false);
-    setStudentName(''); setNisn(''); setStudentUsername(''); setStudentPassword(''); setClassId('');
+    setStudentName(''); setNisn(''); setClassId('');
     setNis(''); setJenisKelamin(''); setAgama(''); setTempatLahir(''); setTanggalLahir('');
     setAlamat(''); setNoTelp(''); setNamaOrangTua('');
     setIsStudentModalOpen(true);
@@ -236,10 +287,8 @@ const Users = () => {
     setIsStudentEditMode(true);
     setEditingStudentId(s.id);
     setStudentName(s.user.name);
-    setStudentUsername(s.user.username);
     setNisn(s.nisn);
     setClassId(s.class_id.toString());
-    setStudentPassword('');
     
     // Biodata
     setNis(s.nis || '');
@@ -305,7 +354,7 @@ const Users = () => {
       });
       setStudents(students.filter(s => s.id !== id));
       showSuccessToast('Siswa dihapus');
-    } catch (err) {
+    } catch {
       showErrorToast('Gagal menghapus siswa');
     }
   };
@@ -328,7 +377,7 @@ const Users = () => {
 
       fetchStudents();
       showSuccessToast("Token berhasil di-generate! Silakan gunakan tombol 'Unduh Token' jika ingin mencetaknya.");
-    } catch (err) {
+    } catch {
       showErrorToast("Gagal melakukan generate token.");
     } finally {
       setIsLoading(false);
@@ -374,33 +423,42 @@ const Users = () => {
       document.body.removeChild(link);
 
       showSuccessToast("Token berhasil diunduh!");
-    } catch (err) {
+    } catch {
       showErrorToast("Gagal mengunduh token.");
     }
   };
 
   return (
     <div className="space-y-6">
-      <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-slate-800 tracking-tight">Manajemen Pengguna</h1>
-          <p className="text-slate-500 mt-1">Kelola akses akun Guru dan Siswa untuk sistem CBT.</p>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-800 tracking-tight">Manajemen Pengguna</h1>
+          <p className="text-xs sm:text-sm text-slate-500 mt-1">Kelola akses akun Guru dan Siswa untuk sistem CBT.</p>
         </div>
-        <div className="flex space-x-2">
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
           {activeTab === 'teachers' ? (
-            <button onClick={openCreateTeacher} className="btn-primary flex items-center space-x-2">
-              <Plus size={20} /><span>Tambah Guru</span>
-            </button>
+            <>
+              <button 
+                onClick={handleGenerateTeacherPasswords} 
+                className="bg-amber-500 hover:bg-amber-600 text-white px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center space-x-1.5 shadow-xs transition-colors w-full sm:w-auto"
+                title="Generate ulang password 7 digit acak untuk seluruh guru"
+              >
+                <Key size={16} /><span>Generate Password Guru</span>
+              </button>
+              <button onClick={openCreateTeacher} className="btn-primary flex items-center justify-center space-x-2 text-xs sm:text-sm py-2 px-3.5 w-full sm:w-auto shadow-xs">
+                <Plus size={18} /><span>Tambah Guru</span>
+              </button>
+            </>
           ) : (
             <>
-              <button onClick={handleExportTokens} className="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-xl font-bold flex items-center space-x-2 shadow-sm transition-colors">
-                <Key size={18} /><span>Unduh Token</span>
+              <button onClick={handleExportTokens} className="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center space-x-1.5 shadow-xs transition-colors w-full sm:w-auto">
+                <Key size={16} /><span>Unduh Token</span>
               </button>
-              <button onClick={handleGenerateTokens} className="bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-xl font-bold flex items-center space-x-2 shadow-sm transition-colors">
-                <Key size={18} /><span>Generate Token Baru</span>
+              <button onClick={handleGenerateTokens} className="bg-amber-500 hover:bg-amber-600 text-white px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center space-x-1.5 shadow-xs transition-colors w-full sm:w-auto">
+                <Key size={16} /><span>Generate Token</span>
               </button>
-              <button onClick={openCreateStudent} className="btn-primary flex items-center space-x-2">
-                <Plus size={20} /><span>Tambah Siswa</span>
+              <button onClick={openCreateStudent} className="btn-primary flex items-center justify-center space-x-1.5 text-xs sm:text-sm py-2 px-3.5 w-full sm:w-auto shadow-xs">
+                <Plus size={16} /><span>Tambah Siswa</span>
               </button>
             </>
           )}
@@ -429,6 +487,18 @@ const Users = () => {
         </div>
         
         <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto mt-4 sm:mt-0">
+          {activeTab === 'teachers' && (
+            <select
+              value={filterTeacherJabatan}
+              onChange={(e) => setFilterTeacherJabatan(e.target.value)}
+              className="w-full sm:w-auto px-3.5 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none text-sm bg-white text-slate-700 font-medium cursor-pointer"
+            >
+              <option value="ALL">Semua Jabatan</option>
+              <option value="Kepala Sekolah">Kepala Sekolah</option>
+              <option value="Guru">Guru</option>
+            </select>
+          )}
+
           {activeTab === 'students' && (
             <>
               <select
@@ -462,7 +532,7 @@ const Users = () => {
             </div>
             <input
               type="text"
-              placeholder="Cari nama, NISN, atau username..."
+              placeholder={activeTab === 'teachers' ? "Cari nama, NIP, NUPTK, atau username..." : "Cari nama, NISN, atau username..."}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none text-sm transition-all"
@@ -476,56 +546,131 @@ const Users = () => {
           {activeTab === 'teachers' && (
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-slate-50/50 border-b border-slate-200">
-                  <th className="py-4 px-6 text-xs font-semibold text-slate-500 uppercase tracking-wider">Pengguna</th>
-                  <th className="py-4 px-6 text-xs font-semibold text-slate-500 uppercase tracking-wider">Peran (Role)</th>
-                  <th className="py-4 px-6 text-xs font-semibold text-slate-500 uppercase tracking-wider">Username</th>
-                  <th className="py-4 px-6 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">Aksi</th>
+                <tr className="bg-slate-50/70 border-b border-slate-200">
+                  <th className="py-3.5 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider w-14 text-center">No</th>
+                  <th className="py-3.5 px-6 text-xs font-semibold text-slate-500 uppercase tracking-wider">Nama Guru</th>
+                  <th className="py-3.5 px-6 text-xs font-semibold text-slate-500 uppercase tracking-wider">NIP</th>
+                  <th className="py-3.5 px-6 text-xs font-semibold text-slate-500 uppercase tracking-wider">NUPTK</th>
+                  <th className="py-3.5 px-6 text-xs font-semibold text-slate-500 uppercase tracking-wider">Jabatan</th>
+                  <th className="py-3.5 px-6 text-xs font-semibold text-slate-500 uppercase tracking-wider">Username</th>
+                  <th className="py-3.5 px-6 text-xs font-semibold text-slate-500 uppercase tracking-wider">Password</th>
+                  <th className="py-3.5 px-6 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right w-24">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {filteredUsers.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="py-12 text-center text-slate-500">
+                    <td colSpan={8} className="py-16 text-center text-slate-500">
                       <UsersIcon className="mx-auto text-slate-300 mb-3" size={32} />
-                      Belum ada data guru.
+                      Belum ada data guru yang cocok.
                     </td>
                   </tr>
                 ) : (
-                  paginatedUsers.map((u) => (
-                    <tr key={u.id} className="hover:bg-slate-50/50 transition-colors group">
+                  paginatedUsers.map((u, idx) => {
+                    const rowNum = (currentPage - 1) * itemsPerPage + idx + 1;
+                    const isKepalaSekolah = u.jabatan === 'Kepala Sekolah';
+                    const teacherPassword = u.token_password || 'guru123';
+
+                    return (
+                    <tr key={u.id} className="hover:bg-slate-50/70 transition-colors group">
+                      {/* No */}
+                      <td className="py-4 px-4 text-xs text-slate-400 font-mono text-center font-medium">
+                        {rowNum}
+                      </td>
+
+                      {/* Nama Guru */}
                       <td className="py-4 px-6">
                         <div className="flex items-center space-x-3">
-                          <div className="w-10 h-10 rounded-full bg-primary-100 text-primary-700 font-bold flex items-center justify-center">
+                          <div className={`w-9 h-9 rounded-full font-bold flex items-center justify-center text-xs shrink-0 ${
+                            isKepalaSekolah ? 'bg-amber-100 text-amber-800 border border-amber-300' : 'bg-primary-100 text-primary-700'
+                          }`}>
                             {u.name.charAt(0).toUpperCase()}
                           </div>
                           <div>
-                            <p className="font-bold text-slate-800">{u.name}</p>
-                            <p className="text-xs text-slate-500">Terdaftar: {new Date(u.created_at).toLocaleDateString('id-ID')}</p>
+                            <p className="font-bold text-slate-800 text-sm group-hover:text-primary-700 transition-colors">{u.name}</p>
+                            <p className="text-[11px] text-slate-400">Terdaftar: {new Date(u.created_at).toLocaleDateString('id-ID')}</p>
                           </div>
                         </div>
                       </td>
-                      <td className="py-4 px-6">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                          <Shield size={12} className="mr-1" /> {u.role}
-                        </span>
+
+                      {/* NIP */}
+                      <td className="py-4 px-6 text-xs font-mono text-slate-700">
+                        {u.nip && u.nip.trim() !== '' && u.nip !== '-' ? (
+                          <span className="bg-slate-100/90 text-slate-700 px-2 py-0.5 rounded border border-slate-200">
+                            {u.nip}
+                          </span>
+                        ) : (
+                          <span className="text-slate-400 italic">-</span>
+                        )}
                       </td>
-                      <td className="py-4 px-6 text-sm text-slate-600 font-medium">
+
+                      {/* NUPTK */}
+                      <td className="py-4 px-6 text-xs font-mono text-slate-700">
+                        {u.nuptk && u.nuptk.trim() !== '' && u.nuptk !== '-' ? (
+                          <span className="bg-slate-100/90 text-slate-700 px-2 py-0.5 rounded border border-slate-200">
+                            {u.nuptk}
+                          </span>
+                        ) : (
+                          <span className="text-slate-400 italic">-</span>
+                        )}
+                      </td>
+
+                      {/* Jabatan */}
+                      <td className="py-4 px-6">
+                        {isKepalaSekolah ? (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                            <Award size={12} className="mr-1 text-amber-600" /> Kepala Sekolah
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            <Shield size={12} className="mr-1 text-emerald-600" /> {u.jabatan || 'Guru'}
+                          </span>
+                        )}
+                      </td>
+
+                      {/* Username */}
+                      <td className="py-4 px-6 text-xs font-mono text-primary-700 font-bold">
                         @{u.username}
                       </td>
-                      <td className="py-4 px-6 text-right space-x-2">
-                        <button onClick={() => openEditTeacher(u)} className="p-2 text-slate-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors">
+
+                      {/* Password */}
+                      <td className="py-4 px-6">
+                        <div className="inline-flex items-center space-x-1.5 bg-amber-50/90 border border-amber-200/90 text-amber-900 px-2.5 py-1 rounded-lg text-xs font-mono font-bold shadow-2xs">
+                          <span>{teacherPassword}</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              navigator.clipboard.writeText(teacherPassword);
+                              showSuccessToast(`Password @${u.username} disalin!`);
+                            }}
+                            className="p-1 text-amber-600 hover:text-amber-800 hover:bg-amber-100 rounded transition-colors"
+                            title="Salin Password Akun"
+                          >
+                            <Copy size={13} />
+                          </button>
+                        </div>
+                      </td>
+
+                      {/* Aksi */}
+                      <td className="py-4 px-6 text-right space-x-1">
+                        <button 
+                          onClick={() => openEditTeacher(u)} 
+                          className="p-1.5 text-slate-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors inline-flex"
+                          title="Edit Guru"
+                        >
                           <Edit2 size={16} />
                         </button>
                         <button 
                           onClick={() => handleDeleteUser(u.id, u.username)}
-                          className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors inline-flex"
+                          title="Hapus Guru"
                         >
                           <Trash2 size={16} />
                         </button>
                       </td>
                     </tr>
-                  ))
+                    );
+                  })
                 )}
               </tbody>
             </table>
@@ -671,52 +816,104 @@ const Users = () => {
               )}
               
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Nama Lengkap</label>
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Nama Lengkap Guru</label>
                 <input
                   type="text"
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  onChange={(e) => {
+                    const newName = e.target.value;
+                    setName(newName);
+                    if (!isEditMode && (!username || username === generateTeacherUsername(name))) {
+                      setUsername(generateTeacherUsername(newName));
+                    }
+                  }}
                   className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none text-sm"
-                  placeholder="Contoh: Budi Santoso, S.Kom"
+                  placeholder="Contoh: Asron Batubara, S.Pd., M.Si"
                   required
                 />
               </div>
-              
+
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1.5">NIP / ID Pegawai</label>
-                <input
-                  type="text"
-                  value={nip}
-                  onChange={(e) => setNip(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none text-sm"
-                  placeholder={isEditMode ? "Kosongkan jika tidak diubah" : "Masukkan NIP"}
-                  required={!isEditMode}
-                />
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Jabatan</label>
+                <select
+                  value={jabatan}
+                  onChange={(e) => setJabatan(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none text-sm bg-white"
+                >
+                  <option value="Guru">Guru</option>
+                  <option value="Kepala Sekolah">Kepala Sekolah</option>
+                  <option value="Wakil Kepala Sekolah">Wakil Kepala Sekolah</option>
+                </select>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                    NIP <span className="text-xs text-slate-400 font-normal">(Opsional)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={nip}
+                    onChange={(e) => setNip(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none text-sm"
+                    placeholder="Contoh: 1973-1216-2005-0210-03"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                    NUPTK <span className="text-xs text-slate-400 font-normal">(Opsional)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={nuptk}
+                    onChange={(e) => setNuptk(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none text-sm"
+                    placeholder="Contoh: 6548-7516-5320-0013"
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">Username</label>
+                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                    Username <span className="text-xs text-slate-400 font-normal">(nama)</span>
+                  </label>
                   <input
                     type="text"
                     value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none text-sm bg-slate-50"
-                    placeholder="Username login"
+                    onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/\s+/g, '.'))}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none text-sm bg-slate-50 font-mono"
+                    placeholder="Contoh: sumarno"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">Password</label>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-sm font-semibold text-slate-700">
+                      Password (7 Digit)
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setPassword(generateRandom7Digits())}
+                      className="text-xs text-primary-600 hover:text-primary-800 font-semibold flex items-center space-x-1"
+                      title="Acak password 7 digit baru"
+                    >
+                      <RefreshCw size={12} />
+                      <span>Acak Baru</span>
+                    </button>
+                  </div>
                   <input
-                    type="password"
+                    type="text"
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none text-sm"
-                    placeholder={isEditMode ? "Kosongkan jika tidak diubah" : "Minimal 6 karakter"}
+                    onChange={(e) => setPassword(e.target.value.replace(/\D/g, '').slice(0, 7))}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none text-sm font-mono tracking-wider font-bold text-amber-800 bg-amber-50/50"
+                    placeholder={isEditMode ? "Kosongkan jika tidak diubah" : "7 digit angka"}
+                    maxLength={7}
                     required={!isEditMode}
-                    minLength={isEditMode && !password ? 0 : 6}
                   />
+                  <span className="text-[11px] text-slate-400 mt-0.5 block">
+                    Password berupa 7 digit angka acak (sama seperti siswa)
+                  </span>
                 </div>
               </div>
 

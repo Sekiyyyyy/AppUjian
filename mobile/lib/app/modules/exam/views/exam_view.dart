@@ -9,19 +9,22 @@ import '../../../routes/app_pages.dart';
 import '../../../utils/app_toast.dart';
 
 class ExamView extends GetView<ExamController> {
-  const ExamView({Key? key}) : super(key: key);
+  const ExamView({super.key});
 
   void _showQuestionGrid(BuildContext context) {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (context) => Container(
-        height: MediaQuery.of(context).size.height * 0.7,
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-        ),
+      builder: (context) => Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 580),
+          child: Container(
+            height: MediaQuery.of(context).size.height * 0.7,
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+            ),
         padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -101,8 +104,8 @@ class ExamView extends GetView<ExamController> {
                         borderRadius: BorderRadius.circular(16),
                         border: isCurrent ? Border.all(color: AppTheme.secondaryColor, width: 3) : null,
                         boxShadow: isCurrent 
-                          ? [BoxShadow(color: AppTheme.secondaryColor.withOpacity(0.4), blurRadius: 12, spreadRadius: 2)]
-                          : (isAnswered || isFlagged ? [BoxShadow(color: bgColor.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 4))] : []),
+                          ? [BoxShadow(color: AppTheme.secondaryColor.withValues(alpha: 0.4), blurRadius: 12, spreadRadius: 2)]
+                          : (isAnswered || isFlagged ? [BoxShadow(color: bgColor.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 4))] : []),
                       ),
                       alignment: Alignment.center,
                       child: Text(
@@ -117,8 +120,10 @@ class ExamView extends GetView<ExamController> {
           ],
         ),
       ),
-    );
-  }
+    ),
+  ),
+);
+}
 
   Widget _buildLegend(Color color, String label, {Color? textColor}) {
     return Row(
@@ -129,7 +134,7 @@ class ExamView extends GetView<ExamController> {
           decoration: BoxDecoration(
             color: color, 
             borderRadius: BorderRadius.circular(6),
-            boxShadow: [BoxShadow(color: color.withOpacity(0.3), blurRadius: 4, offset: const Offset(0, 2))],
+            boxShadow: [BoxShadow(color: color.withValues(alpha: 0.3), blurRadius: 4, offset: const Offset(0, 2))],
           )
         ),
         const SizedBox(width: 8),
@@ -143,12 +148,15 @@ class ExamView extends GetView<ExamController> {
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(32),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-        ),
+      builder: (context) => Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 580),
+          child: Container(
+            padding: const EdgeInsets.all(32),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+            ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -185,7 +193,7 @@ class ExamView extends GetView<ExamController> {
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                   elevation: 8,
-                  shadowColor: AppTheme.primaryColor.withOpacity(0.5),
+                  shadowColor: AppTheme.primaryColor.withValues(alpha: 0.5),
                 ),
                 onPressed: () => Get.back(),
                 child: Text("Tutup", style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold)),
@@ -194,8 +202,10 @@ class ExamView extends GetView<ExamController> {
           ],
         ),
       ),
-    );
-  }
+    ),
+  ),
+);
+}
 
   Widget _buildInfoRow(IconData icon, String label, String value) {
     return Padding(
@@ -206,7 +216,7 @@ class ExamView extends GetView<ExamController> {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: AppTheme.primaryColor.withOpacity(0.1),
+              color: AppTheme.primaryColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(icon, size: 20, color: AppTheme.primaryColor),
@@ -259,7 +269,7 @@ class ExamView extends GetView<ExamController> {
         extendBody: true, // Allow body to flow behind bottom nav
         appBar: AppBar(
           automaticallyImplyLeading: false, // hide back button
-          backgroundColor: Colors.white.withOpacity(0.9),
+          backgroundColor: Colors.white.withValues(alpha: 0.9),
           flexibleSpace: ClipRRect(
             child: BackdropFilter(
               filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
@@ -309,6 +319,31 @@ class ExamView extends GetView<ExamController> {
                       }
                     },
                   ),
+                  Obx(() {
+                    if (controller.violationCount.value == 0) return const SizedBox.shrink();
+                    return Container(
+                      margin: const EdgeInsets.only(right: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: Colors.red.shade600,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(color: Colors.red.withValues(alpha: 0.3), blurRadius: 6, offset: const Offset(0, 2))
+                        ]
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.warning_rounded, color: Colors.white, size: 14),
+                          const SizedBox(width: 4),
+                          Text(
+                            "${controller.violationCount.value}/3",
+                            style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+                          )
+                        ],
+                      ),
+                    );
+                  }),
                   Container(
                     margin: const EdgeInsets.only(right: 16, top: 8, bottom: 8),
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
@@ -320,7 +355,7 @@ class ExamView extends GetView<ExamController> {
                       ),
                       borderRadius: BorderRadius.circular(20),
                       boxShadow: [
-                        BoxShadow(color: AppTheme.primaryColor.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 2))
+                        BoxShadow(color: AppTheme.primaryColor.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 2))
                       ]
                     ),
                     child: Row(
@@ -359,7 +394,7 @@ class ExamView extends GetView<ExamController> {
                 height: 300,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: AppTheme.secondaryColor.withOpacity(0.1),
+                  color: AppTheme.secondaryColor.withValues(alpha: 0.1),
                 ),
                 child: BackdropFilter(
                   filter: ImageFilter.blur(sigmaX: 50, sigmaY: 50),
@@ -407,18 +442,21 @@ class ExamView extends GetView<ExamController> {
                     child: SingleChildScrollView(
                       physics: const BouncingScrollPhysics(),
                       padding: const EdgeInsets.fromLTRB(24, 24, 24, 120), // Extra padding at bottom for floating nav
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
+                      child: Center(
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 860),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
                           // Question Header (Number & Flag) Glassmorphic Card
                           Container(
                             margin: const EdgeInsets.only(bottom: 24),
                             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                             decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.8),
+                              color: Colors.white.withValues(alpha: 0.8),
                               borderRadius: BorderRadius.circular(24),
                               border: Border.all(color: Colors.white, width: 2),
-                              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 4))]
+                              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4))]
                             ),
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -429,7 +467,7 @@ class ExamView extends GetView<ExamController> {
                                       width: 40,
                                       height: 40,
                                       decoration: BoxDecoration(
-                                        color: AppTheme.primaryColor.withOpacity(0.1),
+                                        color: AppTheme.primaryColor.withValues(alpha: 0.1),
                                         borderRadius: BorderRadius.circular(12),
                                       ),
                                       child: Center(
@@ -452,7 +490,7 @@ class ExamView extends GetView<ExamController> {
                                     decoration: BoxDecoration(
                                       color: (controller.flagged[qId] ?? false) ? Colors.amber.shade500 : Colors.grey.shade100,
                                       borderRadius: BorderRadius.circular(20),
-                                      boxShadow: (controller.flagged[qId] ?? false) ? [BoxShadow(color: Colors.amber.withOpacity(0.4), blurRadius: 8, offset: const Offset(0,2))] : []
+                                      boxShadow: (controller.flagged[qId] ?? false) ? [BoxShadow(color: Colors.amber.withValues(alpha: 0.4), blurRadius: 8, offset: const Offset(0,2))] : []
                                     ),
                                     child: Row(
                                       children: [
@@ -477,7 +515,7 @@ class ExamView extends GetView<ExamController> {
                             decoration: BoxDecoration(
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(24),
-                              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 15, offset: const Offset(0, 5))],
+                              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 15, offset: const Offset(0, 5))],
                             ),
                             child: HtmlWidget(
                               currentQuestion['content'] ?? '',
@@ -518,14 +556,14 @@ class ExamView extends GetView<ExamController> {
                                 child: InkWell(
                                   onTap: () => controller.selectAnswer(key),
                                   borderRadius: BorderRadius.circular(20),
-                                  splashColor: AppTheme.primaryColor.withOpacity(0.1),
+                                  splashColor: AppTheme.primaryColor.withValues(alpha: 0.1),
                                   highlightColor: Colors.transparent,
                                   child: AnimatedContainer(
                                     duration: const Duration(milliseconds: 250),
                                     curve: Curves.easeInOut,
                                     padding: const EdgeInsets.all(20),
                                     decoration: BoxDecoration(
-                                      color: isSelected ? AppTheme.primaryColor.withOpacity(0.04) : Colors.white,
+                                      color: isSelected ? AppTheme.primaryColor.withValues(alpha: 0.04) : Colors.white,
                                       borderRadius: BorderRadius.circular(20),
                                       border: Border.all(
                                         color: isSelected ? AppTheme.primaryColor : Colors.grey.shade200,
@@ -533,7 +571,7 @@ class ExamView extends GetView<ExamController> {
                                       ),
                                       boxShadow: [
                                         BoxShadow(
-                                          color: isSelected ? AppTheme.primaryColor.withOpacity(0.15) : Colors.black.withOpacity(0.02), 
+                                          color: isSelected ? AppTheme.primaryColor.withValues(alpha: 0.15) : Colors.black.withValues(alpha: 0.02), 
                                           blurRadius: isSelected ? 12 : 8, 
                                           offset: const Offset(0, 4),
                                           spreadRadius: isSelected ? 2 : 0,
@@ -556,7 +594,7 @@ class ExamView extends GetView<ExamController> {
                                             color: isSelected ? null : Colors.grey.shade50,
                                             shape: BoxShape.circle,
                                             border: isSelected ? null : Border.all(color: Colors.grey.shade200, width: 2),
-                                            boxShadow: isSelected ? [BoxShadow(color: AppTheme.primaryColor.withOpacity(0.4), blurRadius: 8, offset: const Offset(0,3))] : []
+                                            boxShadow: isSelected ? [BoxShadow(color: AppTheme.primaryColor.withValues(alpha: 0.4), blurRadius: 8, offset: const Offset(0,3))] : []
                                           ),
                                           child: AnimatedSwitcher(
                                             duration: const Duration(milliseconds: 200),
@@ -599,13 +637,15 @@ class ExamView extends GetView<ExamController> {
                                   ),
                                 ),
                               );
-                            }).toList(),
+                            }),
                         ],
                       ),
                     ),
                   ),
-                ],
-              );
+                ),
+              ),
+            ],
+          );
             }),
 
             // Floating Bottom Navigation
@@ -614,22 +654,26 @@ class ExamView extends GetView<ExamController> {
                 return const SizedBox.shrink();
               }
               final currentIndex = controller.currentIndex.value;
+              final bottomPadding = MediaQuery.of(context).padding.bottom;
               return Positioned(
-                bottom: 24,
-                left: 24,
-                right: 24,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(24),
-                  child: BackdropFilter(
+                bottom: bottomPadding > 0 ? bottomPadding + 8 : 16,
+                left: 16,
+                right: 16,
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 680),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(24),
+                      child: BackdropFilter(
                     filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.85),
+                        color: Colors.white.withValues(alpha: 0.85),
                         borderRadius: BorderRadius.circular(24),
-                        border: Border.all(color: Colors.white.withOpacity(0.5), width: 1.5),
+                        border: Border.all(color: Colors.white.withValues(alpha: 0.5), width: 1.5),
                         boxShadow: [
-                          BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 20, offset: const Offset(0, 10))
+                          BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 20, offset: const Offset(0, 10))
                         ]
                       ),
                       child: Row(
@@ -641,10 +685,10 @@ class ExamView extends GetView<ExamController> {
                               onPressed: currentIndex > 0 ? controller.previousQuestion : null,
                               style: OutlinedButton.styleFrom(
                                 foregroundColor: AppTheme.primaryColor,
-                                side: BorderSide(color: currentIndex > 0 ? AppTheme.primaryColor.withOpacity(0.3) : Colors.grey.shade200, width: 1.5),
+                                side: BorderSide(color: currentIndex > 0 ? AppTheme.primaryColor.withValues(alpha: 0.3) : Colors.grey.shade200, width: 1.5),
                                 padding: const EdgeInsets.symmetric(vertical: 16),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                                backgroundColor: Colors.white.withOpacity(0.5),
+                                backgroundColor: Colors.white.withValues(alpha: 0.5),
                               ),
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
@@ -665,7 +709,7 @@ class ExamView extends GetView<ExamController> {
                             child: Container(
                               padding: const EdgeInsets.all(16),
                               decoration: BoxDecoration(
-                                color: AppTheme.primaryColor.withOpacity(0.1),
+                                color: AppTheme.primaryColor.withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(16),
                               ),
                               child: const Icon(Icons.grid_view_rounded, color: AppTheme.primaryColor, size: 24),
@@ -682,7 +726,7 @@ class ExamView extends GetView<ExamController> {
                                   backgroundColor: AppTheme.primaryColor,
                                   foregroundColor: Colors.white,
                                   elevation: 8,
-                                  shadowColor: AppTheme.primaryColor.withOpacity(0.4),
+                                  shadowColor: AppTheme.primaryColor.withValues(alpha: 0.4),
                                   padding: const EdgeInsets.symmetric(vertical: 16),
                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                                 ),
@@ -701,7 +745,7 @@ class ExamView extends GetView<ExamController> {
                                   backgroundColor: Colors.green.shade500,
                                   foregroundColor: Colors.white,
                                   elevation: 8,
-                                  shadowColor: Colors.green.withOpacity(0.4),
+                                  shadowColor: Colors.green.withValues(alpha: 0.4),
                                   padding: const EdgeInsets.symmetric(vertical: 16),
                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                                 ),
@@ -720,8 +764,10 @@ class ExamView extends GetView<ExamController> {
                     ),
                   ),
                 ),
-              );
-            }),
+              ),
+            ),
+          );
+        }),
           ],
         ),
       ),

@@ -36,7 +36,7 @@ class AppTheme {
             borderRadius: BorderRadius.circular(16),
           ),
           elevation: 4,
-          shadowColor: primaryColor.withOpacity(0.5),
+          shadowColor: primaryColor.withValues(alpha: 0.5),
           textStyle: const TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.bold,

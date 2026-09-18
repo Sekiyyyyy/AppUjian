@@ -37,7 +37,6 @@ dependencies:
   get: ^4.7.3
   dio: ^5.11.1
   shared_preferences: ^2.5.5
-  flutter_windowmanager: ^0.2.0
   intl: ^0.20.3
   google_fonts: ^8.2.1
   flutter_widget_from_html_core: ^0.17.4

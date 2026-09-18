@@ -1,5 +1,6 @@
+import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:dio/dio.dart';
-import 'package:get/get.dart' as getx;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiClient {
@@ -45,8 +46,51 @@ class ApiClient {
     );
   }
 
+  static String? _customBaseUrl;
+
+  static String get defaultBaseUrl {
+    if (kIsWeb) {
+      return 'http://localhost:8080';
+    }
+    try {
+      if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) {
+        return 'http://localhost:8080';
+      }
+    } catch (_) {}
+    // IP Wi-Fi lokal laptop untuk HP Android fisik
+    return 'http://192.168.1.8:8080';
+  }
+
   static String get baseUrl {
-    return getx.GetPlatform.isAndroid ? 'http://10.0.2.2:8080' : 'http://127.0.0.1:8080';
+    return _customBaseUrl ?? defaultBaseUrl;
+  }
+
+  static Future<void> init() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedUrl = prefs.getString('server_base_url');
+    if (savedUrl != null && savedUrl.isNotEmpty && !savedUrl.contains('192.168.0.116')) {
+      _customBaseUrl = savedUrl;
+      _instance.dio.options.baseUrl = savedUrl;
+    } else {
+      _customBaseUrl = defaultBaseUrl;
+      _instance.dio.options.baseUrl = defaultBaseUrl;
+      await prefs.setString('server_base_url', defaultBaseUrl);
+    }
+  }
+
+  void updateBaseUrl(String newUrl) {
+    String formatted = newUrl.trim();
+    if (!formatted.startsWith('http://') && !formatted.startsWith('https://')) {
+      formatted = 'http://$formatted';
+    }
+    if (formatted.endsWith('/')) {
+      formatted = formatted.substring(0, formatted.length - 1);
+    }
+    _customBaseUrl = formatted;
+    dio.options.baseUrl = formatted;
+    SharedPreferences.getInstance().then((prefs) {
+      prefs.setString('server_base_url', formatted);
+    });
   }
 
   void setToken(String token) {

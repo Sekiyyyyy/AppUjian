@@ -1,4 +1,5 @@
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter/services.dart';
 import '../../../routes/app_pages.dart';
 import '../../../theme/app_theme.dart';
 import '../../../utils/app_toast.dart';
@@ -9,8 +10,9 @@ import 'package:get/get.dart';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-class ExamController extends GetxController {
+class ExamController extends GetxController with WidgetsBindingObserver {
   final _dio = ApiClient().dio;
+  static const _kioskChannel = MethodChannel('com.smkn1beringin.cbt/kiosk');
   
   // Passed arguments
   int examId = 0;
@@ -35,10 +37,20 @@ class ExamController extends GetxController {
   // Timer
   Timer? _timer;
   final timeRemaining = 0.obs; // in seconds
+
+  // Anti-Cheating Violation Tracking
+  final violationCount = 0.obs;
+  static const int maxViolations = 3;
+  bool _isShowingWarning = false;
+  bool _isExamFinished = false;
+  bool _wasInBackground = false;
   
   @override
   void onInit() {
     super.onInit();
+    WidgetsBinding.instance.addObserver(this);
+    _enableKioskMode();
+
     final args = Get.arguments;
     if (args != null) {
       examId = args['exam_id'];
@@ -58,8 +70,216 @@ class ExamController extends GetxController {
 
   @override
   void onClose() {
+    WidgetsBinding.instance.removeObserver(this);
     _timer?.cancel();
+    _disableKioskMode();
+    _stopAlarm();
     super.onClose();
+  }
+
+  Future<void> _enableKioskMode() async {
+    try {
+      await _kioskChannel.invokeMethod('startLockTask');
+    } catch (_) {}
+  }
+
+  Future<void> _disableKioskMode() async {
+    try {
+      await _kioskChannel.invokeMethod('stopLockTask');
+    } catch (_) {}
+  }
+
+  Future<void> _startAlarm() async {
+    try {
+      await _kioskChannel.invokeMethod('startAlarm');
+    } catch (_) {}
+  }
+
+  Future<void> _stopAlarm() async {
+    try {
+      await _kioskChannel.invokeMethod('stopAlarm');
+    } catch (_) {}
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) async {
+    if (_isExamFinished || isLoading.value || questions.isEmpty) return;
+
+    if (state == AppLifecycleState.paused || 
+        state == AppLifecycleState.inactive || 
+        state == AppLifecycleState.hidden) {
+      // Siswa keluar atau meminimalkan aplikasi
+      if (!_wasInBackground) {
+        _wasInBackground = true;
+
+        // Cek apakah layar masih aktif (siswa lolos keluar ke Home / aplikasi lain)
+        // atau layar mati (siswa hanya menekan tombol power)
+        bool isScreenInteractive = false;
+        try {
+          isScreenInteractive = await _kioskChannel.invokeMethod<bool>('isScreenInteractive') ?? false;
+        } catch (_) {}
+
+        if (isScreenInteractive) {
+          // Siswa benar-benar lolos keluar dari aplikasi saat layar masih hidup (Kecurangan nyata!)
+          violationCount.value++;
+          _startAlarm();
+        } else {
+          // Layar mati (hanya tombol power) -> Bukan kecurangan, kunci Kiosk tetap aman saat dinyalakan, tidak perlu sirine
+        }
+      }
+    } else if (state == AppLifecycleState.resumed) {
+      // Siswa kembali ke aplikasi ujian
+      if (_wasInBackground) {
+        _wasInBackground = false;
+        if (violationCount.value >= maxViolations) {
+          _handleMaxViolationsReached();
+        } else if (violationCount.value > 0 && !_isShowingWarning) {
+          // Hanya tampilkan dialog peringatan jika memang ada pelanggaran nyata yang terjadi
+          _showViolationWarningDialog();
+        }
+      }
+    }
+  }
+
+  Future<void> _handleMaxViolationsReached() async {
+    _isShowingWarning = true;
+    _isExamFinished = true;
+    _timer?.cancel();
+    _startAlarm();
+
+    if (Get.isDialogOpen ?? false) {
+      Get.back();
+    }
+
+    await Get.dialog(
+      PopScope(
+        canPop: false,
+        child: Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(color: Colors.red.shade100, shape: BoxShape.circle),
+                  child: Icon(Icons.block_rounded, color: Colors.red.shade700, size: 48),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  "Ujian Dibatalkan!",
+                  style: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.red.shade700),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  "Anda telah keluar dari aplikasi sebanyak $maxViolations kali.\n\nSesi ujian Anda dihentikan secara permanen dan jawaban Anda saat ini sedang dikumpulkan ke server.",
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.inter(fontSize: 13, color: AppTheme.textPrimary, height: 1.5),
+                ),
+                const SizedBox(height: 20),
+                const CircularProgressIndicator(color: Colors.red),
+              ],
+            ),
+          ),
+        ),
+      ),
+      barrierDismissible: false,
+    );
+
+    await _submitExam();
+    _stopAlarm();
+    _disableKioskMode();
+  }
+
+  void _showViolationWarningDialog() {
+    _isShowingWarning = true;
+    _startAlarm(); // Bunyikan sirine darurat & getaran keras 100% volume (bypass mute)
+
+    if (Get.isDialogOpen ?? false) {
+      Get.back();
+    }
+
+    Get.dialog(
+      PopScope(
+        canPop: false,
+        child: Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade100,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.red.withValues(alpha: 0.4),
+                        blurRadius: 16,
+                        spreadRadius: 2,
+                      )
+                    ],
+                  ),
+                  child: Icon(Icons.campaign_rounded, color: Colors.red.shade700, size: 48),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  "🚨 ALARM KECURANGAN AKTIF! 🚨",
+                  style: GoogleFonts.inter(fontSize: 17, fontWeight: FontWeight.bold, color: Colors.red.shade800),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.red.shade300),
+                  ),
+                  child: Text(
+                    "Pelanggaran ke-${violationCount.value} dari $maxViolations",
+                    style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: Colors.red.shade700, fontSize: 13),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  "HP Anda berbunyi sirine keras dan bergetar karena terdeteksi keluar dari aplikasi ujian!\n\nPengawas dan seisi ruangan dapat mendengar alarm ini.\n\nJika Anda mencoba keluar lagi hingga $maxViolations kali, ujian akan OTOMATIS DIBATALKAN!",
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.inter(fontSize: 13, color: AppTheme.textPrimary, height: 1.4),
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red.shade700,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      elevation: 4,
+                      shadowColor: Colors.red.withValues(alpha: 0.5),
+                    ),
+                    onPressed: () {
+                      _stopAlarm(); // Hentikan sirine & getaran
+                      _isShowingWarning = false;
+                      Get.back();
+                    },
+                    child: Text(
+                      "HENTIKAN ALARM & KEMBALI UJIAN",
+                      style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13, letterSpacing: 0.5),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+      barrierDismissible: false,
+    );
   }
 
   Future<void> _startExamProcess() async {
@@ -74,11 +294,8 @@ class ExamController extends GetxController {
         return;
       }
 
-      String baseUrl = GetPlatform.isAndroid ? 'http://10.0.2.2:8080' : 'http://127.0.0.1:8080';
-      _dio.options.headers['Authorization'] = 'Bearer $token';
-
       // 1. Start Exam Session
-      final startRes = await _dio.post('$baseUrl/api/v1/student/exams/$examId/start');
+      final startRes = await _dio.post('/api/v1/student/exams/$examId/start');
       if (startRes.statusCode == 201 || startRes.statusCode == 200) {
         final session = startRes.data;
         
@@ -97,7 +314,7 @@ class ExamController extends GetxController {
         _startTimer();
         
         // 2. Fetch Questions
-        await _fetchQuestions(baseUrl);
+        await _fetchQuestions();
       }
     } on DioException catch (e) {
       errorMessage.value = e.response?.data['error'] ?? "Gagal memulai ujian.";
@@ -108,8 +325,8 @@ class ExamController extends GetxController {
     }
   }
   
-  Future<void> _fetchQuestions(String baseUrl) async {
-    final res = await _dio.get('$baseUrl/api/v1/student/exams/$examId/questions');
+  Future<void> _fetchQuestions() async {
+    final res = await _dio.get('/api/v1/student/exams/$examId/questions');
     if (res.statusCode == 200) {
       final List data = res.data['questions'] ?? [];
       for (var q in data) {
@@ -182,8 +399,7 @@ class ExamController extends GetxController {
     
     // Sync to server in background
     try {
-      String baseUrl = GetPlatform.isAndroid ? 'http://10.0.2.2:8080' : 'http://127.0.0.1:8080';
-      await _dio.post('$baseUrl/api/v1/student/exams/$examId/answer', data: {
+      await _dio.post('/api/v1/student/exams/$examId/answer', data: {
         'question_id': qId,
         'answer': answer,
       });
@@ -229,7 +445,7 @@ class ExamController extends GetxController {
                     borderRadius: BorderRadius.circular(22),
                     boxShadow: [
                       BoxShadow(
-                        color: (allAnswered ? const Color(0xFF10B981) : const Color(0xFFF59E0B)).withOpacity(0.35),
+                        color: (allAnswered ? const Color(0xFF10B981) : const Color(0xFFF59E0B)).withValues(alpha: 0.35),
                         blurRadius: 18,
                         offset: const Offset(0, 8),
                       ),
@@ -403,7 +619,7 @@ class ExamController extends GetxController {
                           backgroundColor: const Color(0xFF1A9E4E),
                           foregroundColor: Colors.white,
                           elevation: 2,
-                          shadowColor: const Color(0xFF1A9E4E).withOpacity(0.4),
+                          shadowColor: const Color(0xFF1A9E4E).withValues(alpha: 0.4),
                         ),
                         onPressed: () {
                           Get.back();
@@ -461,12 +677,13 @@ class ExamController extends GetxController {
     );
     
     try {
-      String baseUrl = GetPlatform.isAndroid ? 'http://10.0.2.2:8080' : 'http://127.0.0.1:8080';
-      final res = await _dio.post('$baseUrl/api/v1/student/exams/$examId/finish');
+      final res = await _dio.post('/api/v1/student/exams/$examId/finish');
       
       Get.back(); // close loading
       
       if (res.statusCode == 200) {
+        _isExamFinished = true;
+        _disableKioskMode();
         _timer?.cancel();
         Get.offAllNamed(Routes.MAIN);
         WidgetsBinding.instance.addPostFrameCallback((_) {

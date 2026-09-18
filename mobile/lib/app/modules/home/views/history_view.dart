@@ -5,7 +5,7 @@ import '../controllers/home_controller.dart';
 import '../../../theme/app_theme.dart';
 
 class HistoryView extends GetView<HomeController> {
-  const HistoryView({Key? key}) : super(key: key);
+  const HistoryView({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -24,9 +24,12 @@ class HistoryView extends GetView<HomeController> {
         elevation: 0,
         centerTitle: true,
       ),
-      body: RefreshIndicator(
-        onRefresh: controller.fetchExams,
-        color: AppTheme.primaryColor,
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 960),
+          child: RefreshIndicator(
+            onRefresh: controller.fetchExams,
+            color: AppTheme.primaryColor,
         child: Obx(() {
           if (controller.isLoading.value) {
             return const Center(child: CircularProgressIndicator(color: AppTheme.primaryColor));
@@ -49,7 +52,7 @@ class HistoryView extends GetView<HomeController> {
                             shape: BoxShape.circle,
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.05),
+                                color: Colors.black.withValues(alpha: 0.05),
                                 blurRadius: 20,
                                 offset: const Offset(0, 10),
                               )
@@ -80,53 +83,52 @@ class HistoryView extends GetView<HomeController> {
           }
 
           return ListView.builder(
-            cacheExtent: 600,
             physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
             padding: const EdgeInsets.fromLTRB(24, 24, 24, 100),
             itemCount: controller.historyExams.length,
-          itemBuilder: (context, index) {
-            final exam = controller.historyExams[index];
-            final status = exam['session_status']?.toString() ?? 'BELUM MULAI';
-            final isTimeout = status == 'TIMEOUT';
-            final isMissed = status == 'BELUM MULAI';
+            itemBuilder: (context, index) {
+              final exam = controller.historyExams[index];
+              final status = exam['session_status']?.toString() ?? 'BELUM MULAI';
+              final isTimeout = status == 'TIMEOUT';
+              final isMissed = status == 'BELUM MULAI';
 
-            Color bgColor = Colors.green.shade50;
-            Color borderColor = Colors.green.shade100;
-            Color textColor = Colors.green.shade700;
-            Color iconColor = Colors.green.shade600;
-            IconData statusIcon = Icons.check_circle_rounded;
-            String statusLabel = 'Selesai';
+              Color bgColor = Colors.green.shade50;
+              Color borderColor = Colors.green.shade100;
+              Color textColor = Colors.green.shade700;
+              Color iconColor = Colors.green.shade600;
+              IconData statusIcon = Icons.check_circle_rounded;
+              String statusLabel = 'Selesai';
 
-            if (isTimeout) {
-              bgColor = Colors.red.shade50;
-              borderColor = Colors.red.shade100;
-              textColor = Colors.red.shade700;
-              iconColor = Colors.red.shade600;
-              statusIcon = Icons.timer_off_rounded;
-              statusLabel = 'Waktu Habis';
-            } else if (isMissed) {
-              bgColor = Colors.amber.shade50;
-              borderColor = Colors.amber.shade100;
-              textColor = Colors.amber.shade800;
-              iconColor = Colors.amber.shade700;
-              statusIcon = Icons.event_busy_rounded;
-              statusLabel = 'Terlewat';
-            }
-            
-            return Container(
-              margin: const EdgeInsets.only(bottom: 16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.grey.shade100),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.02),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
+              if (isTimeout) {
+                bgColor = Colors.red.shade50;
+                borderColor = Colors.red.shade100;
+                textColor = Colors.red.shade700;
+                iconColor = Colors.red.shade600;
+                statusIcon = Icons.timer_off_rounded;
+                statusLabel = 'Waktu Habis';
+              } else if (isMissed) {
+                bgColor = Colors.amber.shade50;
+                borderColor = Colors.amber.shade100;
+                textColor = Colors.amber.shade800;
+                iconColor = Colors.amber.shade700;
+                statusIcon = Icons.event_busy_rounded;
+                statusLabel = 'Terlewat';
+              }
+              
+              return Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: Colors.grey.shade100),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.02),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
               child: Padding(
                 padding: const EdgeInsets.all(20),
                 child: Column(
@@ -207,6 +209,8 @@ class HistoryView extends GetView<HomeController> {
         );
       }),
     ),
-  );
+  ),
+),
+);
 }
 }

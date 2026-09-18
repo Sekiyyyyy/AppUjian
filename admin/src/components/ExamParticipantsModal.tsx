@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { X, RefreshCw, AlertCircle, Filter, Trash2, CheckCircle, Clock, Download, Search } from 'lucide-react';
+import { X, RefreshCw, AlertCircle, Filter, Trash2, CheckCircle, Clock, Download, Search, FileSpreadsheet } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { confirmAction, showSuccessToast, showErrorToast } from '../utils/alert';
 
@@ -73,6 +73,55 @@ const ExamParticipantsModal: React.FC<ExamParticipantsModalProps> = ({ isOpen, o
       } catch (error: any) {
         showErrorToast(error.response?.data?.error || "Gagal mereset ujian");
       }
+    }
+  };
+
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handleExportExcel = async () => {
+    if (filteredParticipants.length === 0) {
+      showErrorToast("Tidak ada data peserta untuk diexport");
+      return;
+    }
+
+    try {
+      setIsExporting(true);
+      const url = `http://localhost:8080/api/v1/admin/exams/${examId}/export-grades${
+        selectedClassId !== 'ALL' ? `?class_id=${selectedClassId}` : ''
+      }`;
+      const response = await axios.get(url, {
+        headers: { Authorization: `Bearer ${token}` },
+        responseType: 'blob'
+      });
+
+      // Extract filename from header or build one
+      const contentDisposition = response.headers['content-disposition'];
+      let filename = `Rekap_Nilai_${examTitle.replace(/[^a-zA-Z0-9_-]/g, '_')}.xlsx`;
+      if (contentDisposition) {
+        const match = contentDisposition.match(/filename=(.+)/);
+        if (match && match[1]) {
+          filename = match[1].replace(/["']/g, '');
+        }
+      }
+
+      const blob = new Blob([response.data], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      });
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(downloadUrl);
+
+      showSuccessToast('Berhasil mengunduh rekap nilai Excel resmi!');
+    } catch (err: any) {
+      console.error('Failed to export excel:', err);
+      showErrorToast('Gagal mengunduh file Excel');
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -185,13 +234,22 @@ const ExamParticipantsModal: React.FC<ExamParticipantsModalProps> = ({ isOpen, o
 
           <div className="flex items-center space-x-2">
             <button 
+              onClick={handleExportExcel}
+              disabled={filteredParticipants.length === 0 || isExporting}
+              className="flex items-center space-x-2 px-3 py-1.5 text-sm font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors border border-emerald-200 shadow-sm"
+              title="Unduh Rekap Nilai Format Microsoft Excel (.xlsx)"
+            >
+              <FileSpreadsheet className={`w-4 h-4 text-emerald-600 ${isExporting ? 'animate-spin' : ''}`} />
+              <span>{isExporting ? 'Mengunduh...' : 'Download Excel'}</span>
+            </button>
+            <button 
               onClick={handleExportCSV}
               disabled={filteredParticipants.length === 0}
-              className="flex items-center space-x-2 px-3 py-1.5 text-sm font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors border border-emerald-200"
-              title="Export Rekap Nilai ke Excel / CSV"
+              className="flex items-center space-x-1.5 px-2.5 py-1.5 text-xs font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 rounded-lg transition-colors"
+              title="Export Format CSV"
             >
-              <Download className="w-4 h-4" />
-              <span>Export Nilai</span>
+              <Download className="w-3.5 h-3.5" />
+              <span>CSV</span>
             </button>
             <button 
               onClick={fetchParticipants}

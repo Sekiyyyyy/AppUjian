@@ -49,7 +49,10 @@ type Teacher struct {
 	ID        uint           `gorm:"primaryKey" json:"id"`
 	UserID    uint           `gorm:"uniqueIndex" json:"user_id"`
 	User      User           `gorm:"foreignKey:UserID" json:"user"`
-	NIP       string         `gorm:"uniqueIndex;not null" json:"nip"`
-	CreatedAt time.Time      `json:"created_at"`
-	UpdatedAt time.Time      `json:"updated_at"`
+	NIP       string         `gorm:"index" json:"nip"`
+	NUPTK     string         `gorm:"index" json:"nuptk"`
+	Jabatan       string         `gorm:"type:varchar(100);default:'Guru'" json:"jabatan"`
+	TokenPassword string         `json:"token_password"`
+	CreatedAt     time.Time      `json:"created_at"`
+	UpdatedAt     time.Time      `json:"updated_at"`
 }

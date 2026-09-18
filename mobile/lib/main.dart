@@ -9,6 +9,7 @@ import 'app/data/api_client.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('id_ID', null);
+  await ApiClient.init();
 
   // Auto-login: check if token exists & warm up ApiClient
   final prefs = await SharedPreferences.getInstance();

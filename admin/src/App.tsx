@@ -16,6 +16,7 @@ const Users = lazy(() => import('./pages/Users'));
 const Settings = lazy(() => import('./pages/Settings'));
 const Categories = lazy(() => import('./pages/Categories'));
 const ClassDetails = lazy(() => import('./pages/ClassDetails'));
+const SubjectDetails = lazy(() => import('./pages/SubjectDetails'));
 
 const PageLoader = () => (
   <div className="flex items-center justify-center min-h-[400px] w-full">
@@ -40,6 +41,7 @@ function App() {
               <Route path="classes" element={<Classes />} />
               <Route path="classes/:id" element={<ClassDetails />} />
               <Route path="subjects" element={<Subjects />} />
+              <Route path="subjects/:id" element={<SubjectDetails />} />
               <Route path="questions" element={<Questions />} />
               <Route path="exams" element={<Exams />} />
               <Route path="categories" element={<Categories />} />

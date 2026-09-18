@@ -6,7 +6,7 @@ import '../controllers/home_controller.dart';
 import '../../../theme/app_theme.dart';
 
 class HomeView extends GetView<HomeController> {
-  const HomeView({Key? key}) : super(key: key);
+  const HomeView({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -47,7 +47,7 @@ class HomeView extends GetView<HomeController> {
                         height: 250,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: Colors.white.withOpacity(0.1),
+                          color: Colors.white.withValues(alpha: 0.1),
                         ),
                       ),
                     ),
@@ -59,7 +59,7 @@ class HomeView extends GetView<HomeController> {
                         height: 180,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: Colors.white.withOpacity(0.05),
+                          color: Colors.white.withValues(alpha: 0.05),
                         ),
                       ),
                     ),
@@ -70,12 +70,15 @@ class HomeView extends GetView<HomeController> {
                         maxHeight: 280,
                         alignment: Alignment.topCenter,
                         child: SafeArea(
-                          child: Padding(
-                            padding: const EdgeInsets.fromLTRB(24, 60, 24, 24),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisAlignment: MainAxisAlignment.end,
-                              children: [
+                          child: Center(
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(maxWidth: 960),
+                              child: Padding(
+                                padding: const EdgeInsets.fromLTRB(24, 60, 24, 24),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisAlignment: MainAxisAlignment.end,
+                                  children: [
                             Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -87,7 +90,7 @@ class HomeView extends GetView<HomeController> {
                                       Text(
                                         'Selamat Datang,',
                                         style: GoogleFonts.inter(
-                                          color: Colors.white.withOpacity(0.8),
+                                          color: Colors.white.withValues(alpha: 0.8),
                                           fontSize: 16,
                                           fontWeight: FontWeight.w500,
                                         ),
@@ -144,16 +147,16 @@ class HomeView extends GetView<HomeController> {
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                                   decoration: BoxDecoration(
-                                    color: Colors.white.withOpacity(0.15),
+                                    color: Colors.white.withValues(alpha: 0.15),
                                     borderRadius: BorderRadius.circular(20),
-                                    border: Border.all(color: Colors.white.withOpacity(0.2)),
+                                    border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
                                   ),
                                   child: Row(
                                     children: [
                                       Container(
                                         padding: const EdgeInsets.all(10),
                                         decoration: BoxDecoration(
-                                          color: Colors.white.withOpacity(0.2),
+                                          color: Colors.white.withValues(alpha: 0.2),
                                           shape: BoxShape.circle,
                                         ),
                                         child: const Icon(Icons.person_outline, color: Colors.white, size: 24),
@@ -165,7 +168,7 @@ class HomeView extends GetView<HomeController> {
                                           Text(
                                             'NISN / NIS',
                                             style: GoogleFonts.inter(
-                                              color: Colors.white.withOpacity(0.7),
+                                              color: Colors.white.withValues(alpha: 0.7),
                                               fontSize: 12,
                                               fontWeight: FontWeight.w500,
                                             ),
@@ -193,35 +196,42 @@ class HomeView extends GetView<HomeController> {
                     ),
                   ),
                 ),
-              ],
-                ),
               ),
             ),
+          ],
+        ),
+      ),
+    ),
 
             SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(24, 32, 24, 16),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: AppTheme.primaryColor.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(Icons.assignment_rounded, color: AppTheme.primaryColor, size: 20),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 960),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 32, 24, 16),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(Icons.assignment_rounded, color: AppTheme.primaryColor, size: 20),
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          'Ujian Aktif',
+                          style: GoogleFonts.inter(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.textPrimary,
+                            letterSpacing: -0.5,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 12),
-                    Text(
-                      'Ujian Aktif',
-                      style: GoogleFonts.inter(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.textPrimary,
-                        letterSpacing: -0.5,
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
             ),
@@ -234,9 +244,12 @@ class HomeView extends GetView<HomeController> {
 
               if (controller.activeExams.isEmpty) {
                 return SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 24),
-                    child: Center(
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 960),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 24),
+                        child: Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
@@ -247,7 +260,7 @@ class HomeView extends GetView<HomeController> {
                               shape: BoxShape.circle,
                               boxShadow: [
                                 BoxShadow(
-                                  color: AppTheme.primaryColor.withOpacity(0.08),
+                                  color: AppTheme.primaryColor.withValues(alpha: 0.08),
                                   blurRadius: 30,
                                   offset: const Offset(0, 10),
                                   spreadRadius: 5,
@@ -276,7 +289,9 @@ class HomeView extends GetView<HomeController> {
                       ),
                     ),
                   ),
-                );
+                ),
+              ),
+            );
               }
 
               return SliverPadding(
@@ -288,31 +303,34 @@ class HomeView extends GetView<HomeController> {
                       final isOngoing = exam['session_status'] == 'ONGOING';
                       final isUpcoming = DateTime.parse(exam['start_time']).toLocal().isAfter(DateTime.now());
                       
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 20),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(24),
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppTheme.primaryColor.withOpacity(0.06),
-                              blurRadius: 24,
-                              offset: const Offset(0, 8),
+                      return Center(
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 960),
+                          child: Container(
+                            margin: const EdgeInsets.only(bottom: 20),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(24),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppTheme.primaryColor.withValues(alpha: 0.06),
+                                  blurRadius: 24,
+                                  offset: const Offset(0, 8),
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
-                        child: Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            onTap: () {
-                              _showStartExamDialog(context, exam, isOngoing);
-                            },
-                            borderRadius: BorderRadius.circular(24),
-                            splashColor: AppTheme.primaryColor.withOpacity(0.1),
-                            highlightColor: AppTheme.primaryColor.withOpacity(0.05),
-                            child: Padding(
-                              padding: const EdgeInsets.all(24),
-                              child: Column(
+                            child: Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                onTap: () {
+                                  _showStartExamDialog(context, exam, isOngoing);
+                                },
+                                borderRadius: BorderRadius.circular(24),
+                                splashColor: AppTheme.primaryColor.withValues(alpha: 0.1),
+                                highlightColor: AppTheme.primaryColor.withValues(alpha: 0.05),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(24),
+                                  child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Row(
@@ -334,10 +352,10 @@ class HomeView extends GetView<HomeController> {
                                       Container(
                                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                                         decoration: BoxDecoration(
-                                          color: isOngoing ? Colors.amber.shade50 : (isUpcoming ? Colors.blue.shade50 : AppTheme.primaryColor.withOpacity(0.1)),
+                                          color: isOngoing ? Colors.amber.shade50 : (isUpcoming ? Colors.blue.shade50 : AppTheme.primaryColor.withValues(alpha: 0.1)),
                                           borderRadius: BorderRadius.circular(20),
                                           border: Border.all(
-                                            color: isOngoing ? Colors.amber.shade200 : (isUpcoming ? Colors.blue.shade200 : AppTheme.primaryColor.withOpacity(0.2)),
+                                            color: isOngoing ? Colors.amber.shade200 : (isUpcoming ? Colors.blue.shade200 : AppTheme.primaryColor.withValues(alpha: 0.2)),
                                           ),
                                         ),
                                         child: Row(
@@ -381,50 +399,57 @@ class HomeView extends GetView<HomeController> {
                             ),
                           ),
                         ),
-                      );
-                    },
-                    childCount: controller.activeExams.length,
-                  ),
-                ),
-              );
-            }),
-            
-            // Panduan Ujian Section (To fill empty space at bottom)
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(24, 8, 24, 40),
-                child: Container(
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: AppTheme.primaryColor.withOpacity(0.03),
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(color: AppTheme.primaryColor.withOpacity(0.1)),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(Icons.lightbulb_outline_rounded, color: AppTheme.primaryColor, size: 20),
-                          const SizedBox(width: 8),
-                          Text("Panduan & Tata Tertib", style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 16, color: AppTheme.textPrimary)),
-                        ],
                       ),
-                      const SizedBox(height: 16),
-                      _buildRuleItem("1", "Pastikan koneksi internet Anda stabil sebelum memulai."),
-                      _buildRuleItem("2", "Jangan keluar dari aplikasi saat ujian sedang berlangsung."),
-                      _buildRuleItem("3", "Hubungi pengawas jika Anda mengalami kendala teknis."),
-                      const SizedBox(height: 100), // padding for bottom nav
-                    ],
+                    ),
+                  );
+                },
+                childCount: controller.activeExams.length,
+                ),
+              ),
+            );
+          }),
+          
+          // Panduan Ujian Section (To fill empty space at bottom)
+          SliverToBoxAdapter(
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 960),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 8, 24, 40),
+                  child: Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primaryColor.withValues(alpha: 0.03),
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.1)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.lightbulb_outline_rounded, color: AppTheme.primaryColor, size: 20),
+                            const SizedBox(width: 8),
+                            Text("Panduan & Tata Tertib", style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 16, color: AppTheme.textPrimary)),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        _buildRuleItem("1", "Pastikan koneksi internet Anda stabil sebelum memulai."),
+                        _buildRuleItem("2", "Jangan keluar dari aplikasi saat ujian sedang berlangsung."),
+                        _buildRuleItem("3", "Hubungi pengawas jika Anda mengalami kendala teknis."),
+                        const SizedBox(height: 100), // padding for bottom nav
+                      ],
+                    ),
                   ),
                 ),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildInfoChip(IconData icon, String label) {
     return Row(
@@ -453,7 +478,7 @@ class HomeView extends GetView<HomeController> {
             width: 24,
             height: 24,
             decoration: BoxDecoration(
-              color: AppTheme.primaryColor.withOpacity(0.1),
+              color: AppTheme.primaryColor.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
             alignment: Alignment.center,
@@ -474,7 +499,10 @@ class HomeView extends GetView<HomeController> {
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (context) => Container(
+      builder: (context) => Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 580),
+          child: Container(
         padding: const EdgeInsets.all(32),
         decoration: const BoxDecoration(
           color: Colors.white,
@@ -496,7 +524,7 @@ class HomeView extends GetView<HomeController> {
               children: [
                 Container(
                   padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(color: AppTheme.primaryColor.withOpacity(0.1), borderRadius: BorderRadius.circular(16)),
+                  decoration: BoxDecoration(color: AppTheme.primaryColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(16)),
                   child: const Icon(Icons.assignment_rounded, color: AppTheme.primaryColor, size: 28),
                 ),
                 const SizedBox(width: 16),
@@ -581,7 +609,7 @@ class HomeView extends GetView<HomeController> {
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                       elevation: 4,
-                      shadowColor: AppTheme.primaryColor.withOpacity(0.4)
+                      shadowColor: AppTheme.primaryColor.withValues(alpha: 0.4)
                     ),
                     child: Text(isOngoing ? "Lanjutkan" : (isUpcoming ? "Belum Waktunya" : "Mulai Ujian"), style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
                   ),
@@ -591,6 +619,8 @@ class HomeView extends GetView<HomeController> {
           ],
         ),
       ),
-    );
-  }
+    ),
+  ),
+);
+}
 }

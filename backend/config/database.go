@@ -18,13 +18,14 @@ func ConnectDB(cfg *Config) {
 
 	DB = db
 
-	// Database Connection Pool Tuning for High Concurrent Performance
+	// Database Connection Pool Tuning for High Concurrent Performance (Supports 800 - 1000 concurrent students)
 	sqlDB, err := db.DB()
 	if err == nil {
-		sqlDB.SetMaxIdleConns(25)
-		sqlDB.SetMaxOpenConns(100)
+		sqlDB.SetMaxIdleConns(75)
+		sqlDB.SetMaxOpenConns(300)
+		sqlDB.SetConnMaxIdleTime(10 * time.Minute)
 		sqlDB.SetConnMaxLifetime(time.Hour)
-		log.Println("Database connection pool configured (MaxIdle: 25, MaxOpen: 100)")
+		log.Println("Database connection pool configured (MaxIdle: 75, MaxOpen: 300, MaxIdleTime: 10m)")
 	}
 
 	log.Println("Database connection established")

@@ -13,6 +13,7 @@ import {
   Users,
   GraduationCap
 } from 'lucide-react';
+import ClassBadgesList from '../components/ClassBadgesList';
 
 const Dashboard = () => {
   const { user, token } = useAuth();
@@ -127,21 +128,23 @@ const Dashboard = () => {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4">
         {statCards.map((stat, idx) => (
           <Link
             key={idx}
             to={stat.link}
-            className="glass-panel p-6 flex items-center space-x-4 group hover:shadow-lg hover:border-primary-200 transition-all duration-300"
+            className="glass-panel p-3.5 sm:p-4 flex flex-col justify-between group hover:shadow-md hover:border-primary-200 transition-all duration-300"
           >
-            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${stat.bg} group-hover:scale-110 transition-transform duration-300`}>
-              {stat.icon}
+            <div className="flex items-center justify-between mb-2">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${stat.bg} group-hover:scale-105 transition-transform duration-300`}>
+                {stat.icon}
+              </div>
+              <ArrowRight size={15} className="text-slate-300 group-hover:text-primary-600 group-hover:translate-x-0.5 transition-all" />
             </div>
-            <div className="flex-1 overflow-hidden">
-              <p className="text-slate-500 text-[11px] lg:text-xs font-bold uppercase leading-tight line-clamp-2">{stat.label}</p>
-              <p className="text-2xl font-extrabold text-slate-800 mt-1">{stat.value}</p>
+            <div>
+              <p className="text-xl sm:text-2xl font-extrabold text-slate-800">{stat.value}</p>
+              <p className="text-slate-500 text-[11px] font-bold uppercase leading-tight line-clamp-2 mt-0.5">{stat.label}</p>
             </div>
-            <ArrowRight size={18} className="text-slate-300 group-hover:text-primary-600 group-hover:translate-x-1 transition-all" />
           </Link>
         ))}
       </div>
@@ -194,18 +197,8 @@ const Dashboard = () => {
                           {exam.subject?.name || 'Mapel'}
                         </span>
                       </td>
-                      <td className="py-3.5 text-xs text-slate-600">
-                        <div className="flex flex-wrap gap-1 max-w-[200px]">
-                          {exam.classes && exam.classes.length > 0 ? (
-                            exam.classes.map((c: any) => (
-                              <span key={c.ID} className="bg-slate-100 px-1.5 py-0.5 rounded text-[11px] font-bold text-slate-700">
-                                {c.name || `${c.level} ${c.department} ${c.number}`}
-                              </span>
-                            ))
-                          ) : (
-                            <span className="text-slate-400 italic">Semua</span>
-                          )}
-                        </div>
+                      <td className="py-3.5 text-xs text-slate-600 align-top">
+                        <ClassBadgesList classes={exam.classes} maxVisible={2} containerClassName="max-w-[200px]" emptyText="Semua" />
                       </td>
                       <td className="py-3.5 text-xs font-bold text-slate-700">
                         {exam.duration} mnt

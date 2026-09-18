@@ -20,6 +20,9 @@ func main() {
 	// 2. Connect to Database
 	config.ConnectDB(cfg)
 
+	// Clean up subjects invalid teacher_id if table exists before auto-migrating constraints
+	config.DB.Exec("UPDATE subjects SET teacher_id = NULL WHERE teacher_id = 0 OR teacher_id NOT IN (SELECT id FROM users)")
+
 	// Database Auto Migrate
 	err := config.DB.AutoMigrate(
 		&models.User{},
@@ -85,13 +88,19 @@ func main() {
 
 			// Subjects Management
 			adminRoutes.GET("/subjects", controllers.GetSubjects)
+			adminRoutes.GET("/subjects/categories", controllers.GetSubjectCategories)
+			adminRoutes.GET("/subjects/categories/:id/teachers", controllers.GetCategoryTeacherSubjects)
+			adminRoutes.POST("/subjects/teacher-subject", controllers.CreateTeacherSubject)
+			adminRoutes.PUT("/subjects/teacher-subject/:id", controllers.UpdateTeacherSubject)
 			adminRoutes.POST("/subjects", controllers.CreateSubject)
 			adminRoutes.PUT("/subjects/:id", controllers.UpdateSubject)
 			adminRoutes.DELETE("/subjects/:id", controllers.DeleteSubject)
 
 			// Question Bank
 			adminRoutes.GET("/questions", controllers.GetQuestions)
+			adminRoutes.GET("/questions/template", controllers.DownloadQuestionTemplateExcel)
 			adminRoutes.POST("/questions", controllers.CreateQuestion)
+			adminRoutes.POST("/questions/import-excel", controllers.ImportQuestionsExcel)
 			adminRoutes.DELETE("/questions/:id", controllers.DeleteQuestion)
 
 			// Exam Management
@@ -100,12 +109,14 @@ func main() {
 			adminRoutes.PUT("/exams/:id", controllers.UpdateExam)
 			adminRoutes.POST("/exams/:id/toggle-makeup", controllers.ToggleMakeup)
 			adminRoutes.GET("/exams/:id/participants", controllers.GetExamParticipants)
+			adminRoutes.GET("/exams/:id/export-grades", controllers.ExportExamGradesExcel)
 			adminRoutes.DELETE("/exams/:id/reset/:student_id", controllers.ResetStudentExam)
 			adminRoutes.DELETE("/exams/:id", controllers.DeleteExam)
 
 			// User Management
 			adminRoutes.GET("/users", controllers.GetUsers)
 			adminRoutes.POST("/users", controllers.CreateTeacher)
+			adminRoutes.POST("/users/generate-tokens", controllers.GenerateTeacherTokens)
 			adminRoutes.PUT("/users/:id", controllers.UpdateUser)
 			adminRoutes.DELETE("/users/:id", controllers.DeleteUser)
 

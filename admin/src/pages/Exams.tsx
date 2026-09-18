@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { useSearchParams, Link } from 'react-router-dom';
 import {
   Plus,
   Calendar,
@@ -11,11 +12,17 @@ import {
   CheckCircle2,
   Search,
   Edit2,
-  Users
+  Users,
+  Calculator,
+  Target,
+  FileSpreadsheet,
+  Download,
+  Sparkles
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { confirmAction, showSuccessToast, showErrorToast } from '../utils/alert';
 import ExamParticipantsModal from '../components/ExamParticipantsModal';
+import ClassBadgesList from '../components/ClassBadgesList';
 
 interface CategoryItem {
   ID: number;
@@ -35,6 +42,10 @@ interface SubjectItem {
   name: string;
   type: string;
   class: string;
+  tahun?: string;
+  semester?: string;
+  classes?: ClassItem[];
+  parent_id?: number;
 }
 
 interface QuestionItem {
@@ -69,6 +80,7 @@ interface ExamItem {
 
 const Exams = () => {
   const { token, user: currentUser } = useAuth();
+  const [searchParams] = useSearchParams();
   const [exams, setExams] = useState<ExamItem[]>([]);
   const [subjects, setSubjects] = useState<SubjectItem[]>([]);
   const [classes, setClasses] = useState<ClassItem[]>([]);
@@ -77,10 +89,59 @@ const Exams = () => {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingExam, setEditingExam] = useState<ExamItem | null>(null);
 
   // Participants Modal State
   const [isParticipantsModalOpen, setIsParticipantsModalOpen] = useState(false);
   const [selectedExamForParticipants, setSelectedExamForParticipants] = useState<{ id: number, title: string } | null>(null);
+
+  // Download Grades Excel Modal State
+  const [isDownloadModalOpen, setIsDownloadModalOpen] = useState(false);
+  const [selectedExamForDownload, setSelectedExamForDownload] = useState<ExamItem | null>(null);
+  const [selectedClassForDownload, setSelectedClassForDownload] = useState<number | 'ALL'>('ALL');
+  const [isDownloadingExcel, setIsDownloadingExcel] = useState(false);
+
+  const handleDownloadExcel = async (examId: number, examTitle: string, classId: number | 'ALL') => {
+    try {
+      setIsDownloadingExcel(true);
+      const url = `http://localhost:8080/api/v1/admin/exams/${examId}/export-grades${
+        classId !== 'ALL' ? `?class_id=${classId}` : ''
+      }`;
+      const response = await axios.get(url, {
+        headers: { Authorization: `Bearer ${token}` },
+        responseType: 'blob'
+      });
+
+      const contentDisposition = response.headers['content-disposition'];
+      let filename = `Rekap_Nilai_${examTitle.replace(/[^a-zA-Z0-9_-]/g, '_')}.xlsx`;
+      if (contentDisposition) {
+        const match = contentDisposition.match(/filename=(.+)/);
+        if (match && match[1]) {
+          filename = match[1].replace(/["']/g, '');
+        }
+      }
+
+      const blob = new Blob([response.data], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      });
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(downloadUrl);
+
+      showSuccessToast('Berhasil mengunduh nilai Excel!');
+      setIsDownloadModalOpen(false);
+    } catch (err: any) {
+      console.error('Failed to download excel:', err);
+      showErrorToast('Gagal mengunduh nilai Excel');
+    } finally {
+      setIsDownloadingExcel(false);
+    }
+  };
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -101,6 +162,7 @@ const Exams = () => {
   const [semester, setSemester] = useState('Ganjil');
   const [proktor, setProktor] = useState('');
   const [pengawas, setPengawas] = useState('');
+  const [templatePreset, setTemplatePreset] = useState<'ALL' | '35' | '40' | '45'>('ALL');
 
   // Fetch initial data
   const fetchData = async () => {
@@ -148,6 +210,27 @@ const Exams = () => {
     setEndTime(formatLocalISO(end));
   }, []);
 
+  // Handle URL query params to auto-open create modal or schedule modal for a specific exam
+  useEffect(() => {
+    const subjectParam = searchParams.get('subject');
+    const examParam = searchParams.get('exam');
+    const actionParam = searchParams.get('action');
+
+    if (subjectParam) {
+      setSubjectId(Number(subjectParam));
+    }
+
+    if (actionParam === 'create') {
+      resetForm();
+      setIsModalOpen(true);
+    } else if (actionParam === 'schedule' && examParam && exams.length > 0) {
+      const found = exams.find(e => e.ID === Number(examParam));
+      if (found) {
+        handleEditClick(found);
+      }
+    }
+  }, [searchParams, exams]);
+
   // Filtered available questions for chosen subject
   const availableQuestions = questions.filter(q => q.subject_id === Number(subjectId));
 
@@ -175,13 +258,14 @@ const Exams = () => {
   };
 
   const handleEditClick = (exam: ExamItem) => {
+    setEditingExam(exam);
     setEditingId(exam.ID);
     setTitle(exam.title);
     setSubjectId(exam.subject_id);
-    setCategoryId(exam.category_id);
-    setStartTime(exam.start_time.substring(0, 16)); // Format to datetime-local yyyy-MM-ddThh:mm
-    setEndTime(exam.end_time.substring(0, 16));
-    setDuration(exam.duration);
+    if (exam.category_id) setCategoryId(exam.category_id);
+    setStartTime(exam.start_time ? exam.start_time.substring(0, 16) : '');
+    setEndTime(exam.end_time ? exam.end_time.substring(0, 16) : '');
+    setDuration(exam.duration || 90);
     setTahun(exam.tahun || '');
     setSemester(exam.semester || 'Ganjil');
     setProktor(exam.proktor || '');
@@ -191,6 +275,7 @@ const Exams = () => {
   };
 
   const resetForm = () => {
+    setEditingExam(null);
     setEditingId(null);
     setTitle('');
     setSubjectId('');
@@ -203,6 +288,7 @@ const Exams = () => {
     setProktor('');
     setPengawas('');
     setSelectedClassIds([]);
+    setTemplatePreset('ALL');
     setError('');
   };
 
@@ -211,8 +297,8 @@ const Exams = () => {
     setIsLoading(true);
     setError('');
 
-    if (!subjectId || !categoryId) {
-      setError('Silakan lengkapi pilihan kategori dan mata pelajaran');
+    if (!subjectId) {
+      setError('Silakan pilih mata pelajaran terlebih dahulu');
       setIsLoading(false);
       return;
     }
@@ -224,25 +310,47 @@ const Exams = () => {
     }
 
     try {
-      const questionIdsToSend = autoIncludeAllQuestions
-        ? availableQuestions.map(q => q.ID)
-        : selectedQuestionIds;
+      let questionIdsToSend: number[] | undefined = undefined;
+      if (!editingId) {
+        let ids = autoIncludeAllQuestions
+          ? availableQuestions.map(q => q.ID)
+          : selectedQuestionIds;
 
-      const payload = {
+        if (templatePreset !== 'ALL') {
+          const targetCount = Number(templatePreset);
+          if (ids.length > targetCount) {
+            ids = ids.slice(0, targetCount);
+          }
+        }
+        questionIdsToSend = ids;
+      } else if (autoIncludeAllQuestions && (!editingExam?.questions || editingExam.questions.length === 0)) {
+        let ids = availableQuestions.map(q => q.ID);
+        if (templatePreset !== 'ALL') {
+          const targetCount = Number(templatePreset);
+          if (ids.length > targetCount) ids = ids.slice(0, targetCount);
+        }
+        questionIdsToSend = ids;
+      }
+
+      const payload: any = {
         title,
         subject_id: Number(subjectId),
-        category_id: Number(categoryId),
+        category_id: categoryId ? Number(categoryId) : undefined,
         start_time: new Date(startTime).toISOString(),
         end_time: new Date(endTime).toISOString(),
         duration: Number(duration),
+        total_points: 100,
         status: 'SCHEDULED',
         class_ids: selectedClassIds,
-        question_ids: questionIdsToSend,
         tahun,
         semester,
         proktor,
         pengawas
       };
+
+      if (questionIdsToSend && questionIdsToSend.length > 0) {
+        payload.question_ids = questionIdsToSend;
+      }
 
       if (editingId) {
         await axios.put(`http://localhost:8080/api/v1/admin/exams/${editingId}`, payload, {
@@ -275,7 +383,7 @@ const Exams = () => {
       });
       setExams(exams.filter(e => e.ID !== id));
       showSuccessToast('Jadwal ujian dihapus');
-    } catch (err) {
+    } catch {
       showErrorToast('Gagal menghapus jadwal ujian');
     }
   };
@@ -299,16 +407,20 @@ const Exams = () => {
       return { text: "SUSULAN DIBUKA", color: "bg-amber-100 text-amber-700 border-amber-200" };
     }
 
+    if (exam.status === 'DRAFT') {
+      return { text: "DRAFT / BELUM TERJADWAL", color: "bg-amber-50 text-amber-700 border-amber-200" };
+    }
+
     const now = new Date();
     const start = new Date(exam.start_time);
     const end = new Date(exam.end_time);
 
     if (now < start) {
-      return { text: "BELUM MULAI", color: "bg-slate-100 text-slate-600 border-slate-200" };
+      return { text: "TERJADWAL", color: "bg-blue-50 text-blue-700 border-blue-200" };
     } else if (now >= start && now <= end) {
-      return { text: "BERLANGSUNG", color: "bg-emerald-100 text-emerald-700 border-emerald-200" };
+      return { text: "SEDANG BERLANGSUNG", color: "bg-emerald-100 text-emerald-700 border-emerald-200" };
     } else {
-      return { text: "WAKTU HABIS", color: "bg-red-100 text-red-700 border-red-200" };
+      return { text: "SELESAI", color: "bg-slate-100 text-slate-600 border-slate-200" };
     }
   };
 
@@ -320,29 +432,66 @@ const Exams = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center space-x-3">
-            <h1 className="text-3xl font-bold text-slate-800 tracking-tight">Jadwal Ujian SMK</h1>
+          <div className="flex flex-wrap items-center gap-2.5">
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-800 tracking-tight">Jadwal Ujian SMK</h1>
             <span className="bg-indigo-50 text-indigo-700 text-xs font-semibold px-2.5 py-1 rounded-full border border-indigo-100">
               CBT Manager
             </span>
           </div>
-          <p className="text-slate-500 mt-1">
+          <p className="text-xs sm:text-sm text-slate-500 mt-1">
             Atur pelaksanaan ujian, alokasi waktu, serta distribusi soal ke kelas, jurusan, dan rombel SMK.
           </p>
         </div>
         <button
-          onClick={() => setIsModalOpen(true)}
-          className="btn-primary flex items-center space-x-2"
+          onClick={() => {
+            resetForm();
+            setIsModalOpen(true);
+          }}
+          className="btn-primary flex items-center justify-center space-x-2 w-full sm:w-auto shrink-0 shadow-sm"
         >
-          <Plus size={20} />
+          <Plus size={18} />
           <span>Jadwalkan Ujian Baru</span>
         </button>
       </header>
 
+      {/* Workflow Step Guide Bar */}
+      <div className="bg-gradient-to-r from-primary-50 via-white to-emerald-50 border border-primary-200/70 rounded-2xl p-3 sm:p-3.5 shadow-2xs">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
+          <div className="flex items-center space-x-2 font-bold text-primary-900 uppercase tracking-wider">
+            <Sparkles size={16} className="text-primary-600" />
+            <span>Alur Pembuatan Ujian:</span>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 font-semibold">
+            <Link 
+              to="/dashboard/subjects"
+              className="flex items-center space-x-1.5 bg-white border border-slate-200 hover:border-primary-300 text-slate-700 px-3 py-1.5 rounded-xl transition-all"
+            >
+              <span className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[11px] font-bold">✓</span>
+              <span>Pilih Mapel</span>
+            </Link>
+            <div className="flex items-center space-x-1.5 bg-white border border-slate-200 text-slate-700 px-3 py-1.5 rounded-xl">
+              <span className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[11px] font-bold">✓</span>
+              <span>Buat Ujian</span>
+            </div>
+            <Link 
+              to="/dashboard/questions"
+              className="flex items-center space-x-1.5 bg-white border border-slate-200 hover:border-primary-300 text-slate-700 px-3 py-1.5 rounded-xl transition-all"
+            >
+              <span className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[11px] font-bold">✓</span>
+              <span>Masukkan Soal</span>
+            </Link>
+            <div className="flex items-center space-x-1.5 bg-primary-600 text-white px-3 py-1.5 rounded-xl shadow-xs">
+              <span className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-[11px] font-bold">4</span>
+              <span>Atur Jadwal (Aktif)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Search and Filters */}
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="relative w-full sm:w-80">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
           <input
@@ -350,10 +499,10 @@ const Exams = () => {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Cari judul ujian atau mata pelajaran..."
-            className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 shadow-xs"
           />
         </div>
-        <div className="text-sm font-medium text-slate-500">
+        <div className="text-xs sm:text-sm font-medium text-slate-500">
           Total: <span className="font-bold text-slate-800">{filteredExams.length}</span> Jadwal Ujian
         </div>
       </div>
@@ -406,6 +555,17 @@ const Exams = () => {
                     </div>
 
                     <div className="flex space-x-1">
+                      <button
+                        onClick={() => {
+                          setSelectedExamForDownload(exam);
+                          setSelectedClassForDownload('ALL');
+                          setIsDownloadModalOpen(true);
+                        }}
+                        className="text-slate-300 hover:text-emerald-600 hover:bg-emerald-50 p-1.5 rounded-lg transition-colors"
+                        title="Download Nilai Per Kelas (Excel)"
+                      >
+                        <FileSpreadsheet size={16} />
+                      </button>
                       <button
                         onClick={() => {
                           setSelectedExamForParticipants({ id: exam.ID, title: exam.title });
@@ -467,29 +627,38 @@ const Exams = () => {
                       <School size={14} className="mr-1.5 text-primary-600" />
                       Peserta Ujian ({exam.classes?.length || 0} Kelas):
                     </p>
-                    <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto">
-                      {exam.classes && exam.classes.length > 0 ? (
-                        exam.classes.map(c => (
-                          <span
-                            key={c.ID}
-                            className="bg-primary-50 text-primary-700 border border-primary-200 text-xs font-semibold px-2 py-0.5 rounded-lg"
-                          >
-                            {c.name || `${c.level} ${c.department} ${c.number}`}
-                          </span>
-                        ))
-                      ) : (
-                        <span className="text-xs text-slate-400 italic">Belum ada kelas dipilih</span>
-                      )}
-                    </div>
+                    <ClassBadgesList 
+                      classes={exam.classes} 
+                      maxVisible={4} 
+                      containerClassName="w-full"
+                      badgeClassName="bg-primary-50 text-primary-700 border border-primary-200 text-xs font-semibold px-2 py-0.5 rounded-lg"
+                      emptyText="Belum ada kelas dipilih"
+                    />
                   </div>
                 </div>
 
                 {/* Footer: Question count & Points & Toggle Makeup */}
-                <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-                  <span className="flex items-center">
-                    <BookOpen size={14} className="mr-1 text-slate-400" />
-                    <strong>{exam.questions?.length || 0}</strong> Soal Ujian
-                  </span>
+                <div className="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
+                  <div className="flex items-center space-x-1.5">
+                    <Link
+                      to={`/dashboard/questions?subject=${exam.subject_id}&exam_id=${exam.ID}`}
+                      className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold flex items-center space-x-1 transition-all"
+                      title="Kelola & Masukkan Butir Soal"
+                    >
+                      <BookOpen size={13} className="text-slate-500" />
+                      <span>{exam.questions?.length || 0} Soal (Kelola)</span>
+                    </Link>
+
+                    {exam.status === 'DRAFT' && (
+                      <button
+                        onClick={() => handleEditClick(exam)}
+                        className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold flex items-center space-x-1 shadow-2xs transition-all"
+                      >
+                        <Clock size={13} />
+                        <span>Atur Jadwal</span>
+                      </button>
+                    )}
+                  </div>
 
                   {isExpired && currentUser?.role === 'ADMIN' ? (
                     <button
@@ -583,16 +752,28 @@ const Exams = () => {
                   </label>
                   <select
                     value={subjectId}
-                    onChange={(e) => setSubjectId(Number(e.target.value))}
+                    onChange={(e) => {
+                      const newSubId = Number(e.target.value);
+                      setSubjectId(newSubId);
+                      const foundSub = subjects.find(s => s.ID === newSubId);
+                      if (foundSub) {
+                        if (foundSub.tahun && !tahun) setTahun(foundSub.tahun);
+                        if (foundSub.semester) setSemester(foundSub.semester);
+                      }
+                    }}
                     className="w-full px-3 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none text-sm bg-white font-medium"
                     required
                   >
                     <option value="">-- Pilih Mata Pelajaran --</option>
-                    {subjects.map(s => (
-                      <option key={s.ID} value={s.ID}>
-                        {s.name} ({s.type === 'JURUSAN' ? 'Mapel Kejuruan SMK' : 'Mapel Umum/Akademik'})
-                      </option>
-                    ))}
+                    {subjects.map(s => {
+                      const classList = s.classes && s.classes.length > 0 ? s.classes.map(c => c.name).join(', ') : s.class;
+                      const info = [s.tahun, s.semester, classList].filter(Boolean).join(' • ');
+                      return (
+                        <option key={s.ID} value={s.ID}>
+                          {s.name} {info ? `(${info})` : `(${s.type === 'JURUSAN' ? 'Mapel Kejuruan SMK' : 'Mapel Umum/Akademik'})`}
+                        </option>
+                      );
+                    })}
                   </select>
                   {subjectId && (
                     <p className="text-xs text-primary-600 mt-1 font-medium">
@@ -779,12 +960,99 @@ const Exams = () => {
                 </div>
               </div>
 
-              {/* OPSI SOAL */}
-              <div className="border border-slate-200 rounded-xl p-4 space-y-3">
-                <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center">
-                  <BookOpen size={16} className="mr-1.5 text-primary-600" />
-                  Konfigurasi Soal Ujian
-                </h4>
+              {/* OPSI SOAL & PRESET TEMPLATE */}
+              <div className="border border-slate-200 rounded-2xl p-5 bg-slate-50/50 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center">
+                    <Target size={16} className="mr-1.5 text-primary-600" />
+                    Format Preset Template Soal & Perhitungan Nilai
+                  </h4>
+                  <span className="text-xs font-semibold text-primary-600 bg-primary-50 px-2.5 py-0.5 rounded-full border border-primary-100">
+                    Skala Standar 100 Poin
+                  </span>
+                </div>
+
+                {/* Preset Options Buttons */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">
+                    Pilih Target Butir Soal Ujian:
+                  </label>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {[
+                      { id: 'ALL', label: 'Semua Soal', desc: `${availableQuestions.length} Soal Ada` },
+                      { id: '35', label: 'Template 35', desc: '35 Butir Soal' },
+                      { id: '40', label: 'Template 40', desc: 'Standar 40 Butir' },
+                      { id: '45', label: 'Template 45', desc: '45 Butir Soal' }
+                    ].map((p) => {
+                      const isSelected = templatePreset === p.id;
+                      return (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => {
+                            setTemplatePreset(p.id as any);
+                            setAutoIncludeAllQuestions(true);
+                          }}
+                          className={`p-3 rounded-xl border text-left transition-all ${
+                            isSelected
+                              ? 'bg-primary-600 text-white border-primary-600 shadow-md shadow-primary-500/20'
+                              : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
+                          }`}
+                        >
+                          <p className={`text-xs font-bold ${isSelected ? 'text-white' : 'text-slate-800'}`}>
+                            {p.label}
+                          </p>
+                          <p className={`text-[11px] mt-0.5 ${isSelected ? 'text-primary-100' : 'text-slate-500'}`}>
+                            {p.desc}
+                          </p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Status Ketersediaan Soal & Formula Auto-Scoring */}
+                <div className="bg-white rounded-xl p-3.5 border border-slate-200 space-y-2.5">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-slate-500">Soal Tersedia di Bank Soal:</span>
+                    <strong className="text-slate-800 font-bold">{availableQuestions.length} Soal</strong>
+                  </div>
+
+                  {templatePreset !== 'ALL' && (
+                    <div className="flex items-center justify-between text-xs border-t border-slate-100 pt-2">
+                      <span className="text-slate-500">Soal yang Digunakan:</span>
+                      <strong className="text-primary-600 font-bold">
+                        {Math.min(availableQuestions.length, Number(templatePreset))} dari {templatePreset} Butir
+                      </strong>
+                    </div>
+                  )}
+
+                  {/* Formula Auto-Score Banner */}
+                  <div className="p-3 bg-emerald-50/70 border border-emerald-200/70 rounded-lg text-xs text-emerald-900 flex items-start space-x-2">
+                    <Calculator size={16} className="text-emerald-600 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <strong className="font-semibold block mb-0.5">Sistem Perhitungan Nilai Otomatis:</strong>
+                      {templatePreset === 'ALL' ? (
+                        <span>
+                          Siswa akan dinilai dengan rumus: <code>(Benar ÷ {availableQuestions.length || 'N'}) × 100</code> (Skala Maksimal 100 Poin).
+                        </span>
+                      ) : (
+                        <span>
+                          Siswa akan dinilai dengan rumus: <code>(Benar ÷ {templatePreset}) × 100</code>. Nilai akhir otomatis dihitung presisi skala 100 saat ujian selesai.
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {templatePreset !== 'ALL' && availableQuestions.length < Number(templatePreset) && (
+                    <div className="p-2.5 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800 flex items-center space-x-2">
+                      <AlertCircle size={15} className="text-amber-600 flex-shrink-0" />
+                      <span>
+                        Bank soal baru memiliki {availableQuestions.length} soal (kurang {Number(templatePreset) - availableQuestions.length} soal). Anda dapat upload soal via Excel di menu Bank Soal.
+                      </span>
+                    </div>
+                  )}
+                </div>
 
                 <label className="flex items-center space-x-3 cursor-pointer select-none">
                   <input
@@ -794,7 +1062,10 @@ const Exams = () => {
                     className="w-4 h-4 rounded text-primary-600 focus:ring-primary-500"
                   />
                   <span className="text-sm text-slate-700 font-medium">
-                    Otomatis sertakan semua ({availableQuestions.length}) soal dari mata pelajaran ini
+                    {templatePreset === 'ALL' 
+                      ? `Sertakan semua (${availableQuestions.length}) butir soal yang tersedia`
+                      : `Sertakan hingga ${templatePreset} butir soal dari bank soal mata pelajaran ini`
+                    }
                   </span>
                 </label>
               </div>
@@ -818,6 +1089,89 @@ const Exams = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Download Nilai Per Kelas (Excel) */}
+      {isDownloadModalOpen && selectedExamForDownload && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setIsDownloadModalOpen(false)}></div>
+          <div className="glass-panel w-full max-w-md bg-white shadow-2xl relative z-10 rounded-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+              <div className="flex items-center space-x-2.5">
+                <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center">
+                  <FileSpreadsheet size={18} />
+                </div>
+                <div>
+                  <h2 className="text-base font-bold text-slate-800 leading-tight">Download Rekap Nilai</h2>
+                  <p className="text-xs text-slate-500">Format Resmi Microsoft Excel (.xlsx)</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsDownloadModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-200 transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-100 space-y-1">
+                <p className="text-xs font-bold text-primary-700">{selectedExamForDownload.subject?.name || 'Mata Pelajaran'}</p>
+                <p className="text-sm font-bold text-slate-800">{selectedExamForDownload.title}</p>
+                <p className="text-xs text-slate-500">
+                  Total Peserta: {selectedExamForDownload.classes?.length || 0} Rombel Kelas Terdaftar
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                  Pilih Kelas yang Ingin Diunduh:
+                </label>
+                <select
+                  value={selectedClassForDownload}
+                  onChange={(e) => setSelectedClassForDownload(e.target.value === 'ALL' ? 'ALL' : Number(e.target.value))}
+                  className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-sm font-semibold text-slate-800 focus:ring-2 focus:ring-emerald-500 outline-none"
+                >
+                  <option value="ALL">Semua Kelas Peserta Ujian</option>
+                  {selectedExamForDownload.classes?.map((cls) => (
+                    <option key={cls.ID} value={cls.ID}>
+                      {cls.name || `${cls.level} ${cls.department} ${cls.number}`}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="bg-emerald-50 border border-emerald-200 p-3 rounded-xl text-xs text-emerald-800 space-y-1">
+                <p className="font-bold flex items-center">
+                  <CheckCircle2 size={14} className="mr-1 text-emerald-600" />
+                  Format Nilai SMK Negeri 1 Beringin:
+                </p>
+                <p className="text-emerald-700 leading-relaxed">
+                  File Excel (.xlsx) mencakup Kop Resmi, NISN, NIS, Nama Siswa, L/P, Status Ujian, Nilai Akhir, Keterangan Tuntas/Belum Tuntas, serta rumus Rata-rata dan Nilai Tertinggi/Terendah.
+                </p>
+              </div>
+            </div>
+
+            <div className="px-6 py-3.5 bg-slate-50 border-t border-slate-100 flex justify-end space-x-2.5">
+              <button
+                type="button"
+                onClick={() => setIsDownloadModalOpen(false)}
+                className="px-4 py-2 border border-slate-300 text-slate-700 rounded-xl text-xs font-semibold hover:bg-slate-100 transition-colors"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDownloadExcel(selectedExamForDownload.ID, selectedExamForDownload.title, selectedClassForDownload)}
+                disabled={isDownloadingExcel}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-500/20 flex items-center space-x-1.5 transition-all disabled:opacity-50 cursor-pointer"
+              >
+                <Download size={14} className={isDownloadingExcel ? 'animate-bounce' : ''} />
+                <span>{isDownloadingExcel ? 'Memproses...' : 'Unduh Excel (.xlsx)'}</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../utils/app_toast.dart';
 import '../../../data/api_client.dart';
@@ -40,11 +39,7 @@ class HomeController extends GetxController {
         return;
       }
 
-      String baseUrl = GetPlatform.isAndroid ? 'http://10.0.2.2:8080' : 'http://127.0.0.1:8080';
-      final response = await _dio.get(
-        '$baseUrl/api/v1/student/exams',
-        options: Options(headers: {'Authorization': 'Bearer $token'}),
-      );
+      final response = await _dio.get('/api/v1/student/exams');
 
       if (response.statusCode == 200) {
         List data = response.data ?? [];

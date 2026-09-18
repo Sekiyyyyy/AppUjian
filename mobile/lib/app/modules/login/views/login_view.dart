@@ -4,9 +4,10 @@ import 'package:get/get.dart';
 import '../controllers/login_controller.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../theme/app_theme.dart';
+import '../../../data/api_client.dart';
 
 class LoginView extends GetView<LoginController> {
-  const LoginView({Key? key}) : super(key: key);
+  const LoginView({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -42,7 +43,7 @@ class LoginView extends GetView<LoginController> {
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    AppTheme.primaryColor.withOpacity(0.4),
+                    AppTheme.primaryColor.withValues(alpha: 0.4),
                     Colors.transparent,
                   ],
                 ),
@@ -59,7 +60,7 @@ class LoginView extends GetView<LoginController> {
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    AppTheme.accentColor.withOpacity(0.3),
+                    AppTheme.accentColor.withValues(alpha: 0.3),
                     Colors.transparent,
                   ],
                 ),
@@ -76,7 +77,7 @@ class LoginView extends GetView<LoginController> {
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    AppTheme.secondaryColor.withOpacity(0.3),
+                    AppTheme.secondaryColor.withValues(alpha: 0.3),
                     Colors.transparent,
                   ],
                 ),
@@ -89,28 +90,36 @@ class LoginView extends GetView<LoginController> {
             child: Center(
               child: SingleChildScrollView(
                 physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(32),
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-                    child: Container(
-                      padding: const EdgeInsets.all(32),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.6),
-                        borderRadius: BorderRadius.circular(32),
-                        border: Border.all(
-                          color: Colors.white.withOpacity(0.8),
-                          width: 1.5,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.05),
-                            blurRadius: 30,
-                            offset: const Offset(0, 10),
+                padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 24.0),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 460),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(32),
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                        child: Container(
+                          padding: const EdgeInsets.all(32),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.75),
+                            borderRadius: BorderRadius.circular(32),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.9),
+                              width: 1.5,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppTheme.primaryColor.withValues(alpha: 0.08),
+                                blurRadius: 40,
+                                offset: const Offset(0, 16),
+                              ),
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.06),
+                                blurRadius: 20,
+                                offset: const Offset(0, 8),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -124,7 +133,7 @@ class LoginView extends GetView<LoginController> {
                                 shape: BoxShape.circle,
                                 boxShadow: [
                                   BoxShadow(
-                                    color: AppTheme.primaryColor.withOpacity(0.2),
+                                    color: AppTheme.primaryColor.withValues(alpha: 0.2),
                                     blurRadius: 20,
                                     offset: const Offset(0, 8),
                                   )
@@ -164,30 +173,30 @@ class LoginView extends GetView<LoginController> {
                           ),
                           const SizedBox(height: 40),
 
-                          // Error Message
-                          Obx(() => controller.errorMessage.isNotEmpty
-                              ? Container(
-                                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                                  margin: const EdgeInsets.only(bottom: 24),
-                                  decoration: BoxDecoration(
-                                    color: Colors.red.shade50.withOpacity(0.8),
-                                    borderRadius: BorderRadius.circular(16),
-                                    border: Border.all(color: Colors.red.shade200),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      Icon(Icons.error_outline, color: Colors.red.shade600, size: 20),
-                                      const SizedBox(width: 12),
-                                      Expanded(
-                                        child: Text(
-                                          controller.errorMessage.value,
-                                          style: GoogleFonts.inter(color: Colors.red.shade700, fontSize: 13, fontWeight: FontWeight.w500),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                )
-                              : const SizedBox.shrink()),
+                           // Error Message
+                           Obx(() => controller.errorMessage.isNotEmpty
+                               ? Container(
+                                   padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                                   margin: const EdgeInsets.only(bottom: 24),
+                                   decoration: BoxDecoration(
+                                     color: Colors.red.shade50.withValues(alpha: 0.8),
+                                     borderRadius: BorderRadius.circular(16),
+                                     border: Border.all(color: Colors.red.shade200),
+                                   ),
+                                   child: Row(
+                                     children: [
+                                       Icon(Icons.error_outline, color: Colors.red.shade600, size: 20),
+                                       const SizedBox(width: 12),
+                                       Expanded(
+                                         child: Text(
+                                           controller.errorMessage.value,
+                                           style: GoogleFonts.inter(color: Colors.red.shade700, fontSize: 13, fontWeight: FontWeight.w500),
+                                         ),
+                                       ),
+                                     ],
+                                   ),
+                                 )
+                               : const SizedBox.shrink()),
 
                           // Input Form with AutofillGroup
                           AutofillGroup(
@@ -233,7 +242,7 @@ class LoginView extends GetView<LoginController> {
                                   borderRadius: BorderRadius.circular(16),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: AppTheme.primaryColor.withOpacity(0.3),
+                                      color: AppTheme.primaryColor.withValues(alpha: 0.3),
                                       blurRadius: 16,
                                       offset: const Offset(0, 8),
                                     )
@@ -273,6 +282,110 @@ class LoginView extends GetView<LoginController> {
               ),
             ),
           ),
+        ),
+      ),
+          // 3. Tombol Pengaturan Alamat Server di Pojok Kanan Atas
+          Positioned(
+            top: 12,
+            right: 16,
+            child: SafeArea(
+              child: IconButton(
+                tooltip: 'Pengaturan Alamat Server',
+                icon: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.85),
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.08),
+                        blurRadius: 10,
+                        offset: const Offset(0, 2),
+                      )
+                    ],
+                  ),
+                  child: const Icon(Icons.dns_rounded, size: 20, color: AppTheme.textSecondary),
+                ),
+                onPressed: () => _showServerSettingsDialog(context),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showServerSettingsDialog(BuildContext context) {
+    final serverController = TextEditingController(text: ApiClient.baseUrl);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            const Icon(Icons.dns_rounded, color: AppTheme.primaryColor),
+            const SizedBox(width: 8),
+            Text(
+              'Alamat Server CBT',
+              style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 18),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Masukkan IP laptop atau domain server CBT:',
+              style: GoogleFonts.inter(fontSize: 13, color: AppTheme.textSecondary),
+            ),
+            const SizedBox(height: 12),
+              TextField(
+                controller: serverController,
+                decoration: InputDecoration(
+                  hintText: ApiClient.defaultBaseUrl,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                ),
+              style: GoogleFonts.inter(fontSize: 14),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              serverController.text = ApiClient.defaultBaseUrl;
+            },
+            child: const Text('Reset Default'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.primaryColor,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            onPressed: () {
+              final newUrl = serverController.text.trim();
+              if (newUrl.isNotEmpty) {
+                ApiClient().updateBaseUrl(newUrl);
+                Navigator.pop(ctx);
+                Get.snackbar(
+                  'Server Disimpan',
+                  'Alamat server berhasil diubah ke: $newUrl',
+                  backgroundColor: Colors.green.shade600,
+                  colorText: Colors.white,
+                  snackPosition: SnackPosition.BOTTOM,
+                  margin: const EdgeInsets.all(16),
+                  borderRadius: 12,
+                );
+              }
+            },
+            child: const Text('Simpan'),
+          ),
         ],
       ),
     );
@@ -292,10 +405,10 @@ class LoginView extends GetView<LoginController> {
       style: GoogleFonts.inter(color: AppTheme.textPrimary),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: GoogleFonts.inter(color: AppTheme.textSecondary.withOpacity(0.6)),
+        hintStyle: GoogleFonts.inter(color: AppTheme.textSecondary.withValues(alpha: 0.6)),
         prefixIcon: Icon(icon, color: AppTheme.textSecondary),
         filled: true,
-        fillColor: Colors.white.withOpacity(0.8),
+        fillColor: Colors.white.withValues(alpha: 0.8),
         contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
@@ -303,7 +416,7 @@ class LoginView extends GetView<LoginController> {
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(color: Colors.white.withOpacity(0.5)),
+          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.5)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),

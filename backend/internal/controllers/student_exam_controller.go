@@ -1,7 +1,9 @@
 package controllers
 
 import (
+	"math"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/AppUjian/backend/config"
@@ -154,17 +156,25 @@ func SubmitAnswer(c *gin.Context) {
 	}
 
 	var studentAnswer models.StudentAnswer
-	err := config.DB.Where("session_id = ? AND question_id = ?", session.ID, req.QuestionID).First(&studentAnswer).Error
-	if err == nil {
-		studentAnswer.Answer = req.Answer
-		config.DB.Save(&studentAnswer)
-	} else {
-		studentAnswer = models.StudentAnswer{
+	res := config.DB.Model(&studentAnswer).
+		Where("session_id = ? AND question_id = ?", session.ID, req.QuestionID).
+		Update("answer", req.Answer)
+
+	if res.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save answer"})
+		return
+	}
+
+	if res.RowsAffected == 0 {
+		newAnswer := models.StudentAnswer{
 			SessionID:  session.ID,
 			QuestionID: req.QuestionID,
 			Answer:     req.Answer,
 		}
-		config.DB.Create(&studentAnswer)
+		if err := config.DB.Create(&newAnswer).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to record answer"})
+			return
+		}
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Answer saved"})
@@ -202,15 +212,34 @@ func FinishExam(c *gin.Context) {
 
 	var answersToUpdate []models.StudentAnswer
 	totalScore := 0.0
+	correctCount := 0
+	totalQuestions := len(exam.Questions)
+
 	for _, q := range exam.Questions {
 		if ans, ok := answerMap[q.ID]; ok {
 			if q.Type == models.MultipleChoice {
-				if ans.Answer == q.CorrectAnswer {
+				if strings.EqualFold(strings.TrimSpace(ans.Answer), strings.TrimSpace(q.CorrectAnswer)) {
+					correctCount++
 					ans.Score = float64(q.Points)
-					totalScore += ans.Score
 					answersToUpdate = append(answersToUpdate, ans)
 				}
 			}
+		}
+	}
+
+	if totalQuestions > 0 {
+		maxScore := 100.0
+		if exam.TotalPoints > 0 {
+			maxScore = float64(exam.TotalPoints)
+		}
+		// Final student score: percentage of correct answers * maxScore
+		totalScore = (float64(correctCount) / float64(totalQuestions)) * maxScore
+		totalScore = math.Round(totalScore*100) / 100
+
+		// Also update individual answer points proportionally
+		pointPerQ := math.Round((maxScore/float64(totalQuestions))*100) / 100
+		for i := range answersToUpdate {
+			answersToUpdate[i].Score = pointPerQ
 		}
 	}
 

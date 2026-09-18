@@ -150,32 +150,32 @@ const Classes = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center space-x-3">
-            <h1 className="text-3xl font-bold text-slate-800 tracking-tight">Data Kelas SMK</h1>
+          <div className="flex flex-wrap items-center gap-2.5">
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-800 tracking-tight">Data Kelas SMK</h1>
             <span className="bg-primary-50 text-primary-700 text-xs font-semibold px-2.5 py-1 rounded-full border border-primary-100">
               Rombongan Belajar
             </span>
           </div>
-          <p className="text-slate-500 mt-1">
+          <p className="text-xs sm:text-sm text-slate-500 mt-1">
             Kelola Tingkat, Jurusan, dan Rombel (Lokal) untuk pemetaan jadwal ujian SMK.
           </p>
         </div>
-        <div className="flex space-x-3">
+        <div className="flex flex-wrap items-center gap-2.5 shrink-0">
           <button 
             onClick={handlePromoteClasses}
             disabled={isLoading}
-            className="flex items-center space-x-2 px-4 py-2 border border-emerald-200 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-xl font-bold transition-colors"
+            className="flex items-center justify-center space-x-2 px-3.5 py-2.5 border border-emerald-200 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-xl text-xs sm:text-sm font-bold transition-colors w-full sm:w-auto"
           >
-            <ArrowUpCircle size={20} />
+            <ArrowUpCircle size={18} />
             <span>Kenaikan Kelas Tahunan</span>
           </button>
           <button 
             onClick={() => setIsModalOpen(true)}
-            className="btn-primary flex items-center space-x-2"
+            className="btn-primary flex items-center justify-center space-x-2 text-xs sm:text-sm py-2.5 px-4 w-full sm:w-auto shadow-xs"
           >
-            <Plus size={20} />
+            <Plus size={18} />
             <span>Tambah Kelas</span>
           </button>
         </div>

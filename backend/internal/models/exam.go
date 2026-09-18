@@ -43,6 +43,7 @@ type Exam struct {
 	CategoryID   *uint      `json:"category_id"`
 	Category    *Category  `gorm:"foreignKey:CategoryID" json:"category,omitempty"`
 	TeacherID   uint       `json:"teacher_id"`
+	Teacher     *User      `gorm:"foreignKey:TeacherID" json:"teacher,omitempty"`
 	Tahun       string     `json:"tahun"`
 	Semester    string     `json:"semester"`
 	Proktor     string     `json:"proktor"`
