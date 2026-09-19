@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../controllers/home_controller.dart';
@@ -10,21 +11,43 @@ class HomeView extends GetView<HomeController> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppTheme.backgroundColor,
-      body: RefreshIndicator(
-        onRefresh: controller.fetchExams,
-        color: AppTheme.primaryColor,
-        child: CustomScrollView(
-          physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-          slivers: [
-            SliverAppBar(
-              automaticallyImplyLeading: false, // Sembunyikan tombol back bawaan
-              expandedHeight: 280.0,
-              floating: false,
-              pinned: true,
-              backgroundColor: AppTheme.primaryColor,
-              elevation: 0,
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.f5): () => controller.fetchExams(),
+        const SingleActivator(LogicalKeyboardKey.keyR, control: true): () => controller.fetchExams(),
+      },
+      child: Focus(
+        autofocus: true,
+        child: Scaffold(
+          backgroundColor: AppTheme.backgroundColor,
+          body: RefreshIndicator(
+            onRefresh: controller.fetchExams,
+            color: AppTheme.primaryColor,
+            child: CustomScrollView(
+              physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+              slivers: [
+                SliverAppBar(
+                  automaticallyImplyLeading: false, // Sembunyikan tombol back bawaan
+                  expandedHeight: MediaQuery.of(context).size.height < 600 ? 220.0 : 280.0,
+                  floating: false,
+                  pinned: true,
+                  backgroundColor: AppTheme.primaryColor,
+                  elevation: 0,
+                  actions: [
+                    IconButton(
+                      tooltip: 'Segarkan Jadwal (F5)',
+                      icon: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(Icons.refresh_rounded, color: Colors.white, size: 20),
+                      ),
+                      onPressed: controller.fetchExams,
+                    ),
+                    const SizedBox(width: 8),
+                  ],
               flexibleSpace: FlexibleSpaceBar(
                 background: Stack(
                   children: [
@@ -64,163 +87,164 @@ class HomeView extends GetView<HomeController> {
                       ),
                     ),
                     // Content
-                    ClipRect(
-                      child: OverflowBox(
-                        minHeight: 280,
-                        maxHeight: 280,
-                        alignment: Alignment.topCenter,
-                        child: SafeArea(
-                          child: Center(
-                            child: ConstrainedBox(
-                              constraints: const BoxConstraints(maxWidth: 960),
-                              child: Padding(
-                                padding: const EdgeInsets.fromLTRB(24, 60, 24, 24),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisAlignment: MainAxisAlignment.end,
-                                  children: [
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Expanded(
+                    LayoutBuilder(
+                      builder: (context, constraints) => ClipRect(
+                        child: SizedBox(
+                          height: constraints.maxHeight,
+                          width: constraints.maxWidth,
+                          child: SafeArea(
+                            child: Center(
+                              child: ConstrainedBox(
+                                constraints: const BoxConstraints(maxWidth: 960),
+                                child: Padding(
+                                  padding: const EdgeInsets.fromLTRB(24, 60, 24, 24),
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
+                                    mainAxisAlignment: MainAxisAlignment.end,
                                     children: [
-                                      Text(
-                                        'Selamat Datang,',
-                                        style: GoogleFonts.inter(
-                                          color: Colors.white.withValues(alpha: 0.8),
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w500,
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Selamat Datang,',
+                                          style: GoogleFonts.inter(
+                                            color: Colors.white.withValues(alpha: 0.8),
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w500,
+                                          ),
                                         ),
+                                        const SizedBox(height: 6),
+                                        Obx(() => Text(
+                                          controller.studentName.value,
+                                          style: GoogleFonts.inter(
+                                            color: Colors.white,
+                                            fontSize: 28,
+                                            fontWeight: FontWeight.bold,
+                                            letterSpacing: -0.5,
+                                          ),
+                                        )),
+                                      ],
+                                    ),
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.all(4),
+                                    decoration: const BoxDecoration(
+                                      color: Colors.white,
+                                      shape: BoxShape.circle,
+                                      boxShadow: [
+                                        BoxShadow(color: Colors.black26, blurRadius: 10, offset: Offset(0, 4))
+                                      ]
+                                    ),
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(40),
+                                      child: Image.asset(
+                                        'assets/images/logo.png',
+                                        width: 60,
+                                        height: 60,
+                                        fit: BoxFit.contain,
+                                        errorBuilder: (context, error, stackTrace) {
+                                          // Fallback if logo fails to load (e.g. before pub get)
+                                          return Container(
+                                            width: 60,
+                                            height: 60,
+                                            color: Colors.grey.shade200,
+                                            child: const Icon(Icons.school_rounded, color: Colors.grey),
+                                          );
+                                        },
                                       ),
-                                      const SizedBox(height: 6),
-                                      Obx(() => Text(
-                                        controller.studentName.value,
-                                        style: GoogleFonts.inter(
-                                          color: Colors.white,
-                                          fontSize: 28,
-                                          fontWeight: FontWeight.bold,
-                                          letterSpacing: -0.5,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const Spacer(),
+                              // Glassmorphic Info Card
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(20),
+                                child: BackdropFilter(
+                                  filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(20),
+                                      border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.all(10),
+                                          decoration: BoxDecoration(
+                                            color: Colors.white.withValues(alpha: 0.2),
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: const Icon(Icons.person_outline, color: Colors.white, size: 24),
                                         ),
-                                      )),
-                                    ],
-                                  ),
-                                ),
-                                Container(
-                                  padding: const EdgeInsets.all(4),
-                                  decoration: const BoxDecoration(
-                                    color: Colors.white,
-                                    shape: BoxShape.circle,
-                                    boxShadow: [
-                                      BoxShadow(color: Colors.black26, blurRadius: 10, offset: Offset(0, 4))
-                                    ]
-                                  ),
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(40),
-                                    child: Image.asset(
-                                      'assets/images/logo.png',
-                                      width: 60,
-                                      height: 60,
-                                      fit: BoxFit.contain,
-                                      errorBuilder: (context, error, stackTrace) {
-                                        // Fallback if logo fails to load (e.g. before pub get)
-                                        return Container(
-                                          width: 60,
-                                          height: 60,
-                                          color: Colors.grey.shade200,
-                                          child: const Icon(Icons.school_rounded, color: Colors.grey),
-                                        );
-                                      },
+                                        const SizedBox(width: 16),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                'NISN / NIS',
+                                                style: GoogleFonts.inter(
+                                                  color: Colors.white.withValues(alpha: 0.7),
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 4),
+                                              Obx(() => Text(
+                                                controller.studentNis.value,
+                                                style: GoogleFonts.inter(
+                                                  color: Colors.white,
+                                                  fontSize: 15,
+                                                  fontWeight: FontWeight.bold,
+                                                  letterSpacing: 0.5,
+                                                ),
+                                              )),
+                                            ],
+                                          ),
+                                        ),
+                                        Obx(() {
+                                          if (controller.className.value.isEmpty || controller.className.value == '-') {
+                                            return const SizedBox.shrink();
+                                          }
+                                          return Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                            decoration: BoxDecoration(
+                                              color: Colors.white.withValues(alpha: 0.2),
+                                              borderRadius: BorderRadius.circular(12),
+                                              border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
+                                            ),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                const Icon(Icons.school_outlined, color: Colors.white, size: 14),
+                                                const SizedBox(width: 6),
+                                                Text(
+                                                  controller.className.value,
+                                                  style: GoogleFonts.inter(
+                                                    color: Colors.white,
+                                                    fontSize: 13,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          );
+                                        }),
+                                      ],
                                     ),
                                   ),
                                 ),
-                              ],
-                            ),
-                            const Spacer(),
-                            // Glassmorphic Info Card
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(20),
-                              child: BackdropFilter(
-                                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withValues(alpha: 0.15),
-                                    borderRadius: BorderRadius.circular(20),
-                                    border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      Container(
-                                        padding: const EdgeInsets.all(10),
-                                        decoration: BoxDecoration(
-                                          color: Colors.white.withValues(alpha: 0.2),
-                                          shape: BoxShape.circle,
-                                        ),
-                                        child: const Icon(Icons.person_outline, color: Colors.white, size: 24),
-                                      ),
-                                      const SizedBox(width: 16),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              'NISN / NIS',
-                                              style: GoogleFonts.inter(
-                                                color: Colors.white.withValues(alpha: 0.7),
-                                                fontSize: 12,
-                                                fontWeight: FontWeight.w500,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 4),
-                                            Obx(() => Text(
-                                              controller.studentNis.value,
-                                              style: GoogleFonts.inter(
-                                                color: Colors.white,
-                                                fontSize: 15,
-                                                fontWeight: FontWeight.bold,
-                                                letterSpacing: 0.5,
-                                              ),
-                                            )),
-                                          ],
-                                        ),
-                                      ),
-                                      Obx(() {
-                                        if (controller.className.value.isEmpty || controller.className.value == '-') {
-                                          return const SizedBox.shrink();
-                                        }
-                                        return Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                          decoration: BoxDecoration(
-                                            color: Colors.white.withValues(alpha: 0.2),
-                                            borderRadius: BorderRadius.circular(12),
-                                            border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
-                                          ),
-                                          child: Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              const Icon(Icons.school_outlined, color: Colors.white, size: 14),
-                                              const SizedBox(width: 6),
-                                              Text(
-                                                controller.className.value,
-                                                style: GoogleFonts.inter(
-                                                  color: Colors.white,
-                                                  fontSize: 13,
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        );
-                                      }),
-                                    ],
-                                  ),
-                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
                     ),
@@ -240,23 +264,55 @@ class HomeView extends GetView<HomeController> {
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(24, 32, 24, 16),
                     child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: AppTheme.primaryColor.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Icon(Icons.assignment_rounded, color: AppTheme.primaryColor, size: 20),
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Icon(Icons.assignment_rounded, color: AppTheme.primaryColor, size: 20),
+                            ),
+                            const SizedBox(width: 12),
+                            Text(
+                              'Ujian Aktif',
+                              style: GoogleFonts.inter(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: AppTheme.textPrimary,
+                                letterSpacing: -0.5,
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 12),
-                        Text(
-                          'Ujian Aktif',
-                          style: GoogleFonts.inter(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: AppTheme.textPrimary,
-                            letterSpacing: -0.5,
+                        InkWell(
+                          onTap: controller.fetchExams,
+                          borderRadius: BorderRadius.circular(12),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: AppTheme.primaryColor.withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.2)),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.refresh_rounded, size: 16, color: AppTheme.primaryColor),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'Segarkan (F5)',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppTheme.primaryColor,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ],
@@ -330,6 +386,7 @@ class HomeView extends GetView<HomeController> {
                   delegate: SliverChildBuilderDelegate(
                     (context, index) {
                       final exam = controller.activeExams[index];
+                      final isLocked = exam['session_status'] == 'LOCKED';
                       final isOngoing = exam['session_status'] == 'ONGOING';
                       final isUpcoming = DateTime.parse(exam['start_time']).toLocal().isAfter(DateTime.now());
                       
@@ -382,25 +439,37 @@ class HomeView extends GetView<HomeController> {
                                       Container(
                                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                                         decoration: BoxDecoration(
-                                          color: isOngoing ? Colors.amber.shade50 : (isUpcoming ? Colors.blue.shade50 : AppTheme.primaryColor.withValues(alpha: 0.1)),
+                                          color: isLocked
+                                              ? Colors.red.shade50
+                                              : (isOngoing ? Colors.amber.shade50 : (isUpcoming ? Colors.blue.shade50 : AppTheme.primaryColor.withValues(alpha: 0.1))),
                                           borderRadius: BorderRadius.circular(20),
                                           border: Border.all(
-                                            color: isOngoing ? Colors.amber.shade200 : (isUpcoming ? Colors.blue.shade200 : AppTheme.primaryColor.withValues(alpha: 0.2)),
+                                            color: isLocked
+                                                ? Colors.red.shade300
+                                                : (isOngoing ? Colors.amber.shade200 : (isUpcoming ? Colors.blue.shade200 : AppTheme.primaryColor.withValues(alpha: 0.2))),
                                           ),
                                         ),
                                         child: Row(
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
                                             Icon(
-                                              isOngoing ? Icons.play_circle_fill_rounded : (isUpcoming ? Icons.schedule_rounded : Icons.check_circle_rounded),
+                                              isLocked
+                                                  ? Icons.lock_rounded
+                                                  : (isOngoing ? Icons.play_circle_fill_rounded : (isUpcoming ? Icons.schedule_rounded : Icons.check_circle_rounded)),
                                               size: 14,
-                                              color: isOngoing ? Colors.amber.shade700 : (isUpcoming ? Colors.blue.shade700 : AppTheme.primaryColor),
+                                              color: isLocked
+                                                  ? Colors.red.shade700
+                                                  : (isOngoing ? Colors.amber.shade700 : (isUpcoming ? Colors.blue.shade700 : AppTheme.primaryColor)),
                                             ),
                                             const SizedBox(width: 4),
                                             Text(
-                                              isOngoing ? 'Lanjut' : (isUpcoming ? 'Segera' : 'Tersedia'),
+                                              isLocked
+                                                  ? 'Terkunci'
+                                                  : (isOngoing ? 'Lanjut' : (isUpcoming ? 'Segera' : 'Tersedia')),
                                               style: GoogleFonts.inter(
-                                                color: isOngoing ? Colors.amber.shade800 : (isUpcoming ? Colors.blue.shade800 : AppTheme.primaryColor),
+                                                color: isLocked
+                                                    ? Colors.red.shade800
+                                                    : (isOngoing ? Colors.amber.shade800 : (isUpcoming ? Colors.blue.shade800 : AppTheme.primaryColor)),
                                                 fontSize: 12,
                                                 fontWeight: FontWeight.bold,
                                               ),
@@ -467,7 +536,7 @@ class HomeView extends GetView<HomeController> {
                         _buildRuleItem("1", "Pastikan koneksi internet Anda stabil sebelum memulai."),
                         _buildRuleItem("2", "Jangan keluar dari aplikasi saat ujian sedang berlangsung."),
                         _buildRuleItem("3", "Hubungi pengawas jika Anda mengalami kendala teknis."),
-                        const SizedBox(height: 100), // padding for bottom nav
+                        const SizedBox(height: 160), // padding for bottom nav
                       ],
                     ),
                   ),
@@ -478,7 +547,9 @@ class HomeView extends GetView<HomeController> {
         ],
       ),
     ),
-  );
+  ),
+),
+);
 }
 
   Widget _buildInfoChip(IconData icon, String label) {
@@ -524,12 +595,18 @@ class HomeView extends GetView<HomeController> {
   }
 
   void _showStartExamDialog(BuildContext context, dynamic exam, bool isOngoing) {
+    final isLocked = exam['session_status'] == 'LOCKED';
     final isUpcoming = DateTime.parse(exam['start_time']).toLocal().isAfter(DateTime.now());
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (context) => Center(
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.65,
+        minChildSize: 0.4,
+        maxChildSize: 0.9,
+        expand: false,
+        builder: (context, scrollController) => Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 580),
           child: Container(
@@ -538,7 +615,9 @@ class HomeView extends GetView<HomeController> {
           color: Colors.white,
           borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
         ),
-        child: Column(
+        child: SingleChildScrollView(
+          controller: scrollController,
+          child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -553,9 +632,19 @@ class HomeView extends GetView<HomeController> {
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(color: AppTheme.primaryColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(16)),
-                  child: const Icon(Icons.assignment_rounded, color: AppTheme.primaryColor, size: 28),
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    color: isLocked ? Colors.red.shade50 : AppTheme.primaryColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Center(
+                    child: Icon(
+                      isLocked ? Icons.lock_rounded : Icons.assignment_rounded,
+                      color: isLocked ? Colors.red.shade700 : AppTheme.primaryColor,
+                      size: 28,
+                    ),
+                  ),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -602,16 +691,53 @@ class HomeView extends GetView<HomeController> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
-                          color: isOngoing ? Colors.amber.shade100 : (isUpcoming ? Colors.blue.shade100 : Colors.green.shade100),
+                          color: isLocked
+                              ? Colors.red.shade100
+                              : (isOngoing ? Colors.amber.shade100 : (isUpcoming ? Colors.blue.shade100 : Colors.green.shade100)),
                           borderRadius: BorderRadius.circular(12)
                         ),
-                        child: Text(isOngoing ? "Sedang Dikerjakan" : (isUpcoming ? "Segera" : "Tersedia"), style: GoogleFonts.inter(color: isOngoing ? Colors.amber.shade800 : (isUpcoming ? Colors.blue.shade800 : Colors.green.shade800), fontSize: 12, fontWeight: FontWeight.bold)),
+                        child: Text(
+                          isLocked
+                              ? "Terkunci (Hubungi Pengawas)"
+                              : (isOngoing ? "Sedang Dikerjakan" : (isUpcoming ? "Segera" : "Tersedia")),
+                          style: GoogleFonts.inter(
+                            color: isLocked
+                                ? Colors.red.shade800
+                                : (isOngoing ? Colors.amber.shade800 : (isUpcoming ? Colors.blue.shade800 : Colors.green.shade800)),
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
                     ],
                   ),
                 ],
               ),
             ),
+            if (isLocked) ...[
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: Colors.red.shade200),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.lock_rounded, color: Colors.red.shade700, size: 22),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        "Ujian ini terkunci karena Anda terdeteksi keluar dari aplikasi. Seluruh jawaban Anda sebelumnya tetap aman tersimpan. Silakan hubungi proktor, pengawas, atau guru di ruangan untuk membuka kunci ujian Anda sebelum melanjutkan.",
+                        style: GoogleFonts.inter(fontSize: 13, color: Colors.red.shade900, height: 1.4, fontWeight: FontWeight.w500),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
             const SizedBox(height: 32),
             Row(
               children: [
@@ -629,19 +755,24 @@ class HomeView extends GetView<HomeController> {
                 const SizedBox(width: 16),
                 Expanded(
                   child: ElevatedButton(
-                    onPressed: isUpcoming ? null : () {
+                    onPressed: (isUpcoming || isLocked) ? null : () {
                       Get.back(); // close modal
                       controller.startExam(exam); // Start exam
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: isUpcoming ? Colors.grey.shade400 : AppTheme.primaryColor,
+                      backgroundColor: (isUpcoming || isLocked) ? Colors.grey.shade400 : AppTheme.primaryColor,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      elevation: 4,
+                      elevation: (isUpcoming || isLocked) ? 0 : 4,
                       shadowColor: AppTheme.primaryColor.withValues(alpha: 0.4)
                     ),
-                    child: Text(isOngoing ? "Lanjutkan" : (isUpcoming ? "Belum Waktunya" : "Mulai Ujian"), style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+                    child: Text(
+                      isLocked
+                          ? "Ujian Terkunci"
+                          : (isOngoing ? "Lanjutkan" : (isUpcoming ? "Belum Waktunya" : "Mulai Ujian")),
+                      style: GoogleFonts.inter(fontWeight: FontWeight.bold),
+                    ),
                   ),
                 )
               ],
@@ -651,6 +782,7 @@ class HomeView extends GetView<HomeController> {
       ),
     ),
   ),
+)),
 );
 }
 }

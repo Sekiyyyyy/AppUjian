@@ -40,6 +40,23 @@ class HomeController extends GetxController {
         return;
       }
 
+      // Detect abnormal termination (Ctrl+Alt+Del, Sign out, Task Manager kill, restart)
+      final ongoingExamId = prefs.getInt('ongoing_exam_id');
+      if (ongoingExamId != null) {
+        await prefs.remove('ongoing_exam_id');
+        try {
+          await _dio.post('/api/v1/student/exams/$ongoingExamId/lock', data: {
+            'reason': 'Aplikasi ditutup atau keluar paksa saat ujian berlangsung',
+          });
+        } catch (_) {}
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          AppToast.error(
+            title: "Ujian Terkunci!",
+            message: "Terdeteksi keluar dari aplikasi saat ujian sedang berlangsung. Sesi ujian Anda telah dikunci. Silakan hubungi proktor/pengawas/guru untuk membuka kembali.",
+          );
+        });
+      }
+
       final response = await _dio.get('/api/v1/student/exams');
 
       if (response.statusCode == 200) {
@@ -60,7 +77,7 @@ class HomeController extends GetxController {
           final isMakeupOpen = exam['is_makeup_open'] == true;
 
           if (exam['status'] == 'ACTIVE' || exam['status'] == 'SCHEDULED') {
-             if (exam['session_status'] == 'ONGOING') {
+             if (exam['session_status'] == 'ONGOING' || exam['session_status'] == 'LOCKED') {
                 isActive = true;
              } else if (exam['session_status'] == 'BELUM MULAI') {
                 if (isMakeupOpen) {

@@ -34,7 +34,8 @@ bool FlutterWindow::OnCreate() {
     return false;
   }
   RegisterPlugins(flutter_controller_->engine());
-  SetChildContent(flutter_controller_->view()->GetNativeWindow());
+  flutter_child_hwnd_ = flutter_controller_->view()->GetNativeWindow();
+  SetChildContent(flutter_child_hwnd_);
 
   // --- Register Kiosk MethodChannel ---
   auto channel = std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
@@ -56,6 +57,8 @@ bool FlutterWindow::OnCreate() {
         } else if (call.method_name() == "isScreenInteractive") {
           // On desktop, always return true (screen is always interactive)
           result->Success(flutter::EncodableValue(true));
+        } else if (call.method_name() == "isWindowForeground") {
+          result->Success(flutter::EncodableValue(self->IsWindowForeground()));
         } else {
           result->NotImplemented();
         }
@@ -87,6 +90,14 @@ void FlutterWindow::OnDestroy() {
 // ============================================================================
 // Kiosk Mode Implementation
 // ============================================================================
+
+bool FlutterWindow::IsWindowForeground() const {
+  HWND hwnd = const_cast<FlutterWindow*>(this)->GetHandle();
+  if (!hwnd) return false;
+  HWND fg = GetForegroundWindow();
+  if (!fg) return false;
+  return (fg == hwnd || fg == flutter_child_hwnd_ || IsChild(hwnd, fg));
+}
 
 void FlutterWindow::EnableKioskMode() {
   if (kiosk_active_) return;
@@ -123,9 +134,16 @@ void FlutterWindow::EnableKioskMode() {
                mi.rcMonitor.bottom - mi.rcMonitor.top,
                SWP_FRAMECHANGED | SWP_SHOWWINDOW);
 
-  // Force to foreground
+  // Force to foreground and focus child view
   SetForegroundWindow(hwnd);
-  SetFocus(hwnd);
+  if (flutter_child_hwnd_ && IsWindow(flutter_child_hwnd_)) {
+    SetFocus(flutter_child_hwnd_);
+  } else {
+    SetFocus(hwnd);
+  }
+
+  // Protect window against screen capture, OBS, AnyDesk, Discord, etc.
+  SetWindowDisplayAffinity(hwnd, WDA_MONITOR);
 
   // 4. Install low-level keyboard hook to block Alt+Tab, Alt+F4, Win key, etc.
   if (keyboard_hook_ == nullptr) {
@@ -155,6 +173,9 @@ void FlutterWindow::DisableKioskMode() {
     return;
   }
 
+  // Remove display protection
+  SetWindowDisplayAffinity(hwnd, WDA_NONE);
+
   // 2. Restore original window styles
   SetWindowLong(hwnd, GWL_STYLE, original_style_);
   SetWindowLong(hwnd, GWL_EXSTYLE, original_ex_style_);
@@ -176,7 +197,7 @@ void FlutterWindow::DisableKioskMode() {
 // ============================================================================
 // Low-Level Keyboard Hook Callback
 // ============================================================================
-// Blocks: Alt+Tab, Alt+F4, Alt+Esc, Win key (L/R), Ctrl+Esc
+// Blocks: Alt+Tab, Alt+F4, Alt+Esc, Win key (L/R), Ctrl+Esc, App keys, etc.
 // Cannot block Ctrl+Alt+Del (handled by Windows kernel SAS)
 // ============================================================================
 
@@ -192,6 +213,22 @@ LRESULT CALLBACK FlutterWindow::LowLevelKeyboardProc(
 
     // Block Application / Context Menu key
     if (pKb->vkCode == VK_APPS) {
+      return 1;
+    }
+
+    // Block Application Launch Keys (Calc, Mail, etc.)
+    if (pKb->vkCode == VK_LAUNCH_APP1 || pKb->vkCode == VK_LAUNCH_APP2 ||
+        pKb->vkCode == VK_LAUNCH_MAIL || pKb->vkCode == VK_LAUNCH_MEDIA_SELECT) {
+      return 1;
+    }
+
+    // Block Browser Navigation Keys
+    if (pKb->vkCode >= VK_BROWSER_BACK && pKb->vkCode <= VK_BROWSER_HOME) {
+      return 1;
+    }
+
+    // Block Sleep Key
+    if (pKb->vkCode == VK_SLEEP) {
       return 1;
     }
 
@@ -277,19 +314,31 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
         }
         break;
 
-      case WM_KILLFOCUS:
-        // When window loses focus during kiosk, force it back to foreground
+      case WM_KILLFOCUS: {
+        HWND fg = GetForegroundWindow();
+        HWND nextFocus = reinterpret_cast<HWND>(wparam);
+        // If focus is still within our top-level window or child content, DO NOT treat as loss of focus!
+        if (fg == hwnd || fg == flutter_child_hwnd_ || IsChild(hwnd, fg) ||
+            nextFocus == flutter_child_hwnd_ || IsChild(hwnd, nextFocus)) {
+          break;
+        }
+
+        // Truly lost focus to an external window:
         SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0,
                      SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
-        // Use a small delay approach to re-grab focus
         SetTimer(hwnd, 9999, 100, nullptr);
         return 0;
+      }
 
       case WM_TIMER:
         if (wparam == 9999) {
           KillTimer(hwnd, 9999);
           SetForegroundWindow(hwnd);
-          SetFocus(hwnd);
+          if (flutter_child_hwnd_ && IsWindow(flutter_child_hwnd_)) {
+            SetFocus(flutter_child_hwnd_);
+          } else {
+            SetFocus(hwnd);
+          }
           return 0;
         }
         break;

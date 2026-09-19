@@ -16,7 +16,7 @@ class ProfileView extends GetView<ProfileController> {
         slivers: [
           SliverAppBar(
             automaticallyImplyLeading: false,
-            expandedHeight: 280.0,
+            expandedHeight: MediaQuery.of(context).size.height < 600 ? 220.0 : 280.0,
             floating: false,
             pinned: true,
             backgroundColor: AppTheme.primaryColor,
@@ -45,49 +45,50 @@ class ProfileView extends GetView<ProfileController> {
                       ),
                     ),
                   ),
-                  ClipRect(
-                    child: OverflowBox(
-                      minHeight: 280,
-                      maxHeight: 280,
-                      alignment: Alignment.topCenter,
-                      child: SafeArea(
-                        child: Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(4),
-                                decoration: const BoxDecoration(
-                                  color: Colors.white,
-                                  shape: BoxShape.circle,
-                                  boxShadow: [
-                                    BoxShadow(color: Colors.black26, blurRadius: 10, offset: Offset(0, 4))
-                                  ],
+                  LayoutBuilder(
+                    builder: (context, constraints) => ClipRect(
+                      child: SizedBox(
+                        height: constraints.maxHeight,
+                        width: constraints.maxWidth,
+                        child: SafeArea(
+                          child: Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: const BoxDecoration(
+                                    color: Colors.white,
+                                    shape: BoxShape.circle,
+                                    boxShadow: [
+                                      BoxShadow(color: Colors.black26, blurRadius: 10, offset: Offset(0, 4))
+                                    ],
+                                  ),
+                                  child: const CircleAvatar(
+                                    radius: 40,
+                                    backgroundColor: Colors.white,
+                                    backgroundImage: AssetImage('assets/images/logo.png'),
+                                  ),
                                 ),
-                                child: const CircleAvatar(
-                                  radius: 40,
-                                  backgroundColor: Colors.white,
-                                  backgroundImage: AssetImage('assets/images/logo.png'),
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-                              Obx(() => Text(
-                                controller.studentName.value,
-                                style: GoogleFonts.inter(
-                                  color: Colors.white,
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              )),
-                              const SizedBox(height: 4),
-                              Obx(() => Text(
-                                controller.studentNis.value,
-                                style: GoogleFonts.inter(
-                                  color: Colors.white.withValues(alpha: 0.8),
-                                  fontSize: 16,
-                                ),
-                              )),
-                            ],
+                                const SizedBox(height: 16),
+                                Obx(() => Text(
+                                  controller.studentName.value,
+                                  style: GoogleFonts.inter(
+                                    color: Colors.white,
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                )),
+                                const SizedBox(height: 4),
+                                Obx(() => Text(
+                                  controller.studentNis.value,
+                                  style: GoogleFonts.inter(
+                                    color: Colors.white.withValues(alpha: 0.8),
+                                    fontSize: 16,
+                                  ),
+                                )),
+                              ],
+                            ),
                           ),
                         ),
                       ),
@@ -167,7 +168,7 @@ class ProfileView extends GetView<ProfileController> {
                 ),
               ),
             ),
-            const SizedBox(height: 100), // padding for bottom nav
+            const SizedBox(height: 160), // padding for bottom nav
               ]),
             ),
           ),

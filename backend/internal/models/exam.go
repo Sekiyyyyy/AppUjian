@@ -59,8 +59,10 @@ type ExamSession struct {
 	ExamID             uint      `gorm:"index:idx_student_exam" json:"exam_id"`
 	StartTime          time.Time `json:"start_time"`
 	EndTime            time.Time `json:"end_time,omitempty"`
-	Status             string    `json:"status"` // ONGOING, FINISHED, SUBMITTED, TIMEOUT
+	Status             string    `json:"status"` // ONGOING, FINISHED, SUBMITTED, TIMEOUT, LOCKED
 	Score              float64   `json:"score"`
+	LockReason         string    `json:"lock_reason,omitempty"` // Reason why exam was locked (e.g., left app)
+	IsUnlocked         bool      `json:"is_unlocked"`          // Proctor unlock flag to permit resume
 	DeviceID           string    `json:"device_id"`           // Security: Zero Trust
 	IPAddress          string    `json:"ip_address"`          // Security
 	BrowserFingerprint string    `json:"browser_fingerprint"` // Security: Detect multiple browsers

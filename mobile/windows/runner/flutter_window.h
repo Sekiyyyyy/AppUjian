@@ -21,6 +21,7 @@ class FlutterWindow : public Win32Window {
   void EnableKioskMode();
   void DisableKioskMode();
   bool IsKioskActive() const { return kiosk_active_; }
+  bool IsWindowForeground() const;
 
  protected:
   // Win32Window:
@@ -35,6 +36,7 @@ class FlutterWindow : public Win32Window {
 
   // The Flutter instance hosted by this window.
   std::unique_ptr<flutter::FlutterViewController> flutter_controller_;
+  HWND flutter_child_hwnd_ = nullptr;
 
   // --- Kiosk Mode State ---
   bool kiosk_active_ = false;

@@ -417,6 +417,33 @@ func ResetStudentExam(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Ujian siswa berhasil direset. Siswa dapat memulai kembali dari awal."})
 }
 
+// UnlockStudentExam allows a proctor/admin to unlock a student's locked exam session without losing answers
+func UnlockStudentExam(c *gin.Context) {
+	examID := c.Param("id")
+	studentID := c.Param("student_id")
+
+	var session models.ExamSession
+	if err := config.DB.Where("exam_id = ? AND student_id = ?", examID, studentID).First(&session).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Sesi ujian siswa tidak ditemukan"})
+		return
+	}
+
+	if session.Status != "LOCKED" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Ujian siswa tidak dalam status terkunci (status: " + session.Status + ")"})
+		return
+	}
+
+	session.Status = "ONGOING"
+	session.LockReason = ""
+	session.IsUnlocked = true
+	if err := config.DB.Save(&session).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal membuka kunci ujian siswa"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Kunci ujian siswa berhasil dibuka. Siswa dapat melanjutkan ujian."})
+}
+
 // ExportExamGradesExcel exports the exam grades for a specific class or all classes in .xlsx format
 func ExportExamGradesExcel(c *gin.Context) {
 	examID := c.Param("id")

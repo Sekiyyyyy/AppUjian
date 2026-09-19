@@ -40,12 +40,13 @@ class ExamController extends GetxController with WidgetsBindingObserver {
   Timer? _timer;
   final timeRemaining = 0.obs; // in seconds
 
-  // Anti-Cheating Violation Tracking
+  // Anti-Cheating & Lock Tracking
+  final isExamLocked = false.obs;
+  final lockReason = ''.obs;
   final violationCount = 0.obs;
-  static const int maxViolations = 3;
-  bool _isShowingWarning = false;
   bool _isExamFinished = false;
   bool _wasInBackground = false;
+  bool _isHandlingInAppAction = false;
 
   /// Whether we're running on a desktop platform (Windows/macOS/Linux)
   bool get _isDesktop =>
@@ -95,11 +96,6 @@ class ExamController extends GetxController with WidgetsBindingObserver {
     } catch (_) {}
   }
 
-  Future<void> _startAlarm() async {
-    try {
-      await _kioskChannel.invokeMethod('startAlarm');
-    } catch (_) {}
-  }
 
   Future<void> _stopAlarm() async {
     try {
@@ -109,201 +105,88 @@ class ExamController extends GetxController with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) async {
-    if (_isExamFinished || isLoading.value || questions.isEmpty) return;
+    if (_isExamFinished || isLoading.value || questions.isEmpty || isExamLocked.value || _isHandlingInAppAction) {
+      return;
+    }
 
     if (state == AppLifecycleState.paused || 
         state == AppLifecycleState.inactive || 
         state == AppLifecycleState.hidden) {
-      // Siswa keluar atau meminimalkan aplikasi
-      if (!_wasInBackground) {
-        _wasInBackground = true;
+      
+      if (_isDesktop) {
+        // Verify with native runner if window is truly not foreground
+        bool isFg = true;
+        try {
+          isFg = await _kioskChannel.invokeMethod<bool>('isWindowForeground') ?? true;
+        } catch (_) {}
 
-        if (_isDesktop) {
-          // Desktop: kiosk mode sudah memblokir Alt+Tab, tapi jika siswa
-          // berhasil keluar (misal Ctrl+Alt+Del), catat pelanggaran
-          violationCount.value++;
-        } else {
-          // Mobile: Cek apakah layar masih aktif (siswa lolos keluar ke Home / aplikasi lain)
-          // atau layar mati (siswa hanya menekan tombol power)
+        if (isFg) {
+          // Window/child view is still in foreground! (False-positive from in-app interaction)
+          return;
+        }
+
+        // Window genuinely lost focus or was minimized/switched away!
+        if (!_wasInBackground) {
+          _wasInBackground = true;
+          _lockExamSession("Terdeteksi keluar dari aplikasi ujian (Desktop)");
+        }
+      } else {
+        // Mobile
+        if (!_wasInBackground) {
+          _wasInBackground = true;
           bool isScreenInteractive = false;
           try {
             isScreenInteractive = await _kioskChannel.invokeMethod<bool>('isScreenInteractive') ?? false;
           } catch (_) {}
 
           if (isScreenInteractive) {
-            // Siswa benar-benar lolos keluar dari aplikasi saat layar masih hidup (Kecurangan nyata!)
-            violationCount.value++;
-            _startAlarm();
-          } else {
-            // Layar mati (hanya tombol power) -> Bukan kecurangan
+            // Student genuinely left app to home screen or another app while screen is on
+            _lockExamSession("Terdeteksi keluar dari aplikasi ke beranda/aplikasi lain");
           }
         }
       }
     } else if (state == AppLifecycleState.resumed) {
-      // Siswa kembali ke aplikasi ujian
-      if (_wasInBackground) {
-        _wasInBackground = false;
-        if (violationCount.value >= maxViolations) {
-          _handleMaxViolationsReached();
-        } else if (violationCount.value > 0 && !_isShowingWarning) {
-          // Hanya tampilkan dialog peringatan jika memang ada pelanggaran nyata yang terjadi
-          _showViolationWarningDialog();
-        }
-      }
+      _wasInBackground = false;
     }
   }
 
-  Future<void> _handleMaxViolationsReached() async {
-    _isShowingWarning = true;
+  Future<void> _lockExamSession(String reason) async {
+    if (isExamLocked.value || _isExamFinished) return;
+    isExamLocked.value = true;
     _isExamFinished = true;
+    lockReason.value = reason;
+    violationCount.value++;
     _timer?.cancel();
-    if (!_isDesktop) _startAlarm();
-
-    if (Get.isDialogOpen ?? false) {
-      Get.back();
-    }
-
-    await Get.dialog(
-      PopScope(
-        canPop: false,
-        child: Dialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(18),
-                  decoration: BoxDecoration(color: Colors.red.shade100, shape: BoxShape.circle),
-                  child: Icon(Icons.block_rounded, color: Colors.red.shade700, size: 48),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  "Ujian Dibatalkan!",
-                  style: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.red.shade700),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  "Anda telah keluar dari aplikasi sebanyak $maxViolations kali.\n\nSesi ujian Anda dihentikan secara permanen dan jawaban Anda saat ini sedang dikumpulkan ke server.",
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.inter(fontSize: 13, color: AppTheme.textPrimary, height: 1.5),
-                ),
-                const SizedBox(height: 20),
-                const CircularProgressIndicator(color: Colors.red),
-              ],
-            ),
-          ),
-        ),
-      ),
-      barrierDismissible: false,
-    );
-
-    await _submitExam();
     if (!_isDesktop) _stopAlarm();
-    _disableKioskMode();
-  }
 
-  void _showViolationWarningDialog() {
-    _isShowingWarning = true;
-    if (!_isDesktop) {
-      _startAlarm(); // Bunyikan sirine darurat & getaran keras (hanya mobile)
+    // Clear ongoing exam tracking
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('ongoing_exam_id');
+    } catch (_) {}
+
+    // 1. Notify backend immediately
+    try {
+      await _dio.post('/api/v1/student/exams/$examId/lock', data: {
+        'reason': reason,
+      });
+    } catch (e) {
+      debugPrint("Gagal mengunci sesi di server: $e");
     }
 
-    if (Get.isDialogOpen ?? false) {
-      Get.back();
-    }
+    // 2. Disable kiosk mode so device returns to normal
+    await _disableKioskMode();
 
-    final warningTitle = _isDesktop
-        ? "⚠️ PELANGGARAN TERDETEKSI! ⚠️"
-        : "🚨 ALARM KECURANGAN AKTIF! 🚨";
-    final warningBody = _isDesktop
-        ? "Anda terdeteksi mencoba keluar dari aplikasi ujian!\n\nAktivitas Anda tercatat dan dilaporkan ke pengawas.\n\nJika Anda mencoba keluar lagi hingga $maxViolations kali, ujian akan OTOMATIS DIBATALKAN!"
-        : "HP Anda berbunyi sirine keras dan bergetar karena terdeteksi keluar dari aplikasi ujian!\n\nPengawas dan seisi ruangan dapat mendengar alarm ini.\n\nJika Anda mencoba keluar lagi hingga $maxViolations kali, ujian akan OTOMATIS DIBATALKAN!";
-    final buttonText = _isDesktop
-        ? "MENGERTI, KEMBALI KE UJIAN"
-        : "HENTIKAN ALARM & KEMBALI UJIAN";
+    // 3. Immediately redirect to Beranda (Home)
+    Get.offAllNamed(Routes.MAIN);
 
-    Get.dialog(
-      PopScope(
-        canPop: false,
-        child: Dialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(18),
-                  decoration: BoxDecoration(
-                    color: Colors.red.shade100,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.red.withValues(alpha: 0.4),
-                        blurRadius: 16,
-                        spreadRadius: 2,
-                      )
-                    ],
-                  ),
-                  child: Icon(Icons.campaign_rounded, color: Colors.red.shade700, size: 48),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  warningTitle,
-                  style: GoogleFonts.inter(fontSize: 17, fontWeight: FontWeight.bold, color: Colors.red.shade800),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 12),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.red.shade50,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.red.shade300),
-                  ),
-                  child: Text(
-                    "Pelanggaran ke-${violationCount.value} dari $maxViolations",
-                    style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: Colors.red.shade700, fontSize: 13),
-                  ),
-                ),
-                const SizedBox(height: 14),
-                Text(
-                  warningBody,
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.inter(fontSize: 13, color: AppTheme.textPrimary, height: 1.4),
-                ),
-                const SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red.shade700,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      elevation: 4,
-                      shadowColor: Colors.red.withValues(alpha: 0.5),
-                    ),
-                    onPressed: () {
-                      if (!_isDesktop) _stopAlarm();
-                      _isShowingWarning = false;
-                      Get.back();
-                    },
-                    child: Text(
-                      buttonText,
-                      style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13, letterSpacing: 0.5),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-      barrierDismissible: false,
-    );
+    // 4. Show alert on Home screen
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      AppToast.error(
+        title: "Ujian Terkunci!",
+        message: "Anda terdeteksi keluar dari aplikasi ujian. Sesi ujian Anda telah dikunci. Silakan hubungi proktor/pengawas/guru untuk membuka kunci ujian Anda.",
+      );
+    });
   }
 
   Future<void> _startExamProcess() async {
@@ -323,6 +206,19 @@ class ExamController extends GetxController with WidgetsBindingObserver {
       if (startRes.statusCode == 201 || startRes.statusCode == 200) {
         final session = startRes.data;
         
+        if (session['status'] == 'LOCKED') {
+          _isExamFinished = true;
+          await _disableKioskMode();
+          Get.offAllNamed(Routes.MAIN);
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            AppToast.error(
+              title: "Ujian Terkunci!",
+              message: "Ujian ini masih terkunci. Silakan hubungi proktor/pengawas/guru untuk membuka kunci ujian Anda.",
+            );
+          });
+          return;
+        }
+
         // Calculate remaining time
         final startTime = DateTime.parse(session['start_time']).toLocal();
         final endTime = startTime.add(Duration(minutes: duration));
@@ -337,11 +233,26 @@ class ExamController extends GetxController with WidgetsBindingObserver {
         timeRemaining.value = endTime.difference(now).inSeconds;
         _startTimer();
         
+        // Save ongoing exam id to detect abrupt termination (Ctrl+Alt+Del, taskkill)
+        await prefs.setInt('ongoing_exam_id', examId);
+
         // 2. Fetch Questions
         await _fetchQuestions();
       }
     } on DioException catch (e) {
-      errorMessage.value = e.response?.data['error'] ?? "Gagal memulai ujian.";
+      if (e.response?.data?['error'] == 'LOCKED') {
+        _isExamFinished = true;
+        await _disableKioskMode();
+        Get.offAllNamed(Routes.MAIN);
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          AppToast.error(
+            title: "Ujian Terkunci!",
+            message: e.response?.data?['message'] ?? "Ujian ini masih terkunci. Silakan hubungi proktor/pengawas/guru untuk membuka kunci ujian Anda.",
+          );
+        });
+        return;
+      }
+      errorMessage.value = e.response?.data?['error'] ?? "Gagal memulai ujian.";
     } catch (e) {
       errorMessage.value = "Error: $e";
     } finally {
@@ -434,6 +345,7 @@ class ExamController extends GetxController with WidgetsBindingObserver {
   }
 
   void finishExamPrompt() {
+    _isHandlingInAppAction = true;
     int answeredCount = answers.length;
     int totalCount = questions.length;
     int unansweredCount = totalCount - answeredCount;
@@ -624,7 +536,10 @@ class ExamController extends GetxController with WidgetsBindingObserver {
                           side: BorderSide(color: Colors.grey.shade300, width: 1.5),
                           foregroundColor: AppTheme.textPrimary,
                         ),
-                        onPressed: () => Get.back(),
+                        onPressed: () {
+                          _isHandlingInAppAction = false;
+                          Get.back();
+                        },
                         child: Text(
                           "Periksa Lagi",
                           style: GoogleFonts.inter(
@@ -646,6 +561,7 @@ class ExamController extends GetxController with WidgetsBindingObserver {
                           shadowColor: const Color(0xFF1A9E4E).withValues(alpha: 0.4),
                         ),
                         onPressed: () {
+                          _isHandlingInAppAction = true;
                           Get.back();
                           _submitExam();
                         },
@@ -673,10 +589,15 @@ class ExamController extends GetxController with WidgetsBindingObserver {
         ),
       ),
       barrierDismissible: true,
-    );
+    ).then((_) {
+      _isHandlingInAppAction = false;
+    });
   }
 
   Future<void> _submitExam() async {
+    _isHandlingInAppAction = true;
+    _isExamFinished = true;
+
     Get.dialog(
       Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -706,6 +627,10 @@ class ExamController extends GetxController with WidgetsBindingObserver {
       Get.back(); // close loading
       
       if (res.statusCode == 200) {
+        try {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.remove('ongoing_exam_id');
+        } catch (_) {}
         _isExamFinished = true;
         _disableKioskMode();
         _timer?.cancel();
@@ -719,9 +644,71 @@ class ExamController extends GetxController with WidgetsBindingObserver {
       }
     } catch (e) {
       Get.back();
-      AppToast.error(
-        title: "Gagal Mengumpulkan",
-        message: "Terjadi kesalahan saat menyimpan jawaban. Periksa koneksi internet Anda.",
+      // Provide retry or exit option so the student is never trapped in kiosk mode
+      Get.dialog(
+        Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.wifi_off_rounded, color: Colors.amber.shade700, size: 44),
+                const SizedBox(height: 12),
+                Text(
+                  "Gagal Terhubung ke Server",
+                  style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  "Tidak dapat mengirim data ujian ke server. Periksa koneksi internet Anda.",
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.inter(fontSize: 13, color: AppTheme.textSecondary),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () async {
+                          _isExamFinished = true;
+                          _timer?.cancel();
+                          await _disableKioskMode();
+                          Get.back();
+                          Get.offAllNamed(Routes.MAIN);
+                        },
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          side: BorderSide(color: Colors.grey.shade300),
+                          foregroundColor: AppTheme.textPrimary,
+                        ),
+                        child: Text("Keluar Saja", style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Get.back();
+                          _submitExam();
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.primaryColor,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child: Text("Coba Lagi", style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+        barrierDismissible: false,
       );
     }
   }

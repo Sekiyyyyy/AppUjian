@@ -48,15 +48,51 @@ func StartExam(c *gin.Context) {
 	var session models.ExamSession
 	err := config.DB.Where("student_id = ? AND exam_id = ?", student.ID, exam.ID).First(&session).Error
 	if err == nil {
+		if session.Status == "LOCKED" {
+			c.JSON(http.StatusForbidden, gin.H{
+				"error":       "LOCKED",
+				"message":     "Ujian Anda terkunci karena terdeteksi keluar dari aplikasi. Silakan hubungi proktor/pengawas untuk membuka kunci ujian Anda.",
+				"lock_reason": session.LockReason,
+				"session":     session,
+			})
+			return
+		}
+
+		if session.Status == "ONGOING" {
+			if !session.IsUnlocked {
+				// Resuming without proctor unlock is forbidden! Auto-lock session
+				session.Status = "LOCKED"
+				session.LockReason = "Terdeteksi keluar dari aplikasi ujian"
+				config.DB.Model(&session).Updates(map[string]interface{}{
+					"status":      "LOCKED",
+					"lock_reason": session.LockReason,
+				})
+				c.JSON(http.StatusForbidden, gin.H{
+					"error":       "LOCKED",
+					"message":     "Ujian Anda terkunci karena terdeteksi keluar dari aplikasi. Silakan hubungi proktor/pengawas untuk membuka kunci ujian Anda.",
+					"lock_reason": session.LockReason,
+					"session":     session,
+				})
+				return
+			}
+
+			// Proctor unlocked it! Consume the unlock permission for this resume session
+			session.IsUnlocked = false
+			config.DB.Model(&session).Update("is_unlocked", false)
+			c.JSON(http.StatusOK, session)
+			return
+		}
+
 		c.JSON(http.StatusOK, session)
 		return
 	}
 
 	session = models.ExamSession{
-		StudentID: student.ID,
-		ExamID:    exam.ID,
-		StartTime: time.Now(),
-		Status:    "ONGOING",
+		StudentID:  student.ID,
+		ExamID:     exam.ID,
+		StartTime:  time.Now(),
+		Status:     "ONGOING",
+		IsUnlocked: false,
 	}
 
 	if err := config.DB.Create(&session).Error; err != nil {
@@ -78,6 +114,16 @@ func GetExamQuestions(c *gin.Context) {
 	var session models.ExamSession
 	if err := config.DB.Where("student_id = ? AND exam_id = ?", student.ID, examID).First(&session).Error; err != nil {
 		c.JSON(http.StatusForbidden, gin.H{"error": "Exam session not found or not started"})
+		return
+	}
+
+	if session.Status == "LOCKED" {
+		c.JSON(http.StatusForbidden, gin.H{
+			"error":       "LOCKED",
+			"message":     "Ujian Anda terkunci karena terdeteksi keluar dari aplikasi. Silakan hubungi proktor/pengawas untuk membuka kunci ujian Anda.",
+			"lock_reason": session.LockReason,
+			"session":     session,
+		})
 		return
 	}
 
@@ -145,12 +191,19 @@ func SubmitAnswer(c *gin.Context) {
 	config.DB.Select("id").Where("user_id = ?", userID).First(&student)
 
 	var session models.ExamSession
-	if err := config.DB.Select("id, status").Where("student_id = ? AND exam_id = ?", student.ID, examID).First(&session).Error; err != nil {
+	if err := config.DB.Select("id, status, lock_reason").Where("student_id = ? AND exam_id = ?", student.ID, examID).First(&session).Error; err != nil {
 		c.JSON(http.StatusForbidden, gin.H{"error": "Session not found"})
 		return
 	}
 
 	if session.Status != "ONGOING" {
+		if session.Status == "LOCKED" {
+			c.JSON(http.StatusForbidden, gin.H{
+				"error":   "LOCKED",
+				"message": "Ujian terkunci. Silakan hubungi proktor/pengawas untuk membuka kembali ujian Anda.",
+			})
+			return
+		}
 		c.JSON(http.StatusForbidden, gin.H{"error": "Exam already submitted or timeout"})
 		return
 	}
@@ -259,3 +312,79 @@ func FinishExam(c *gin.Context) {
 		"message": "Exam finished successfully",
 	})
 }
+
+// LockExam locks the student's exam session when leaving the app
+func LockExam(c *gin.Context) {
+	examID := c.Param("id")
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	var student models.Student
+	if err := config.DB.Where("user_id = ?", userID).First(&student).Error; err != nil {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Not a student"})
+		return
+	}
+
+	var req struct {
+		Reason string `json:"reason"`
+	}
+	c.ShouldBindJSON(&req)
+	if req.Reason == "" {
+		req.Reason = "Terdeteksi keluar dari aplikasi"
+	}
+
+	var session models.ExamSession
+	if err := config.DB.Where("student_id = ? AND exam_id = ?", student.ID, examID).First(&session).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Sesi ujian tidak ditemukan"})
+		return
+	}
+
+	// Only lock if session is currently ONGOING
+	if session.Status == "ONGOING" {
+		session.Status = "LOCKED"
+		session.LockReason = req.Reason
+		if err := config.DB.Save(&session).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengunci sesi ujian"})
+			return
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Ujian berhasil dikunci",
+		"status":  session.Status,
+		"reason":  session.LockReason,
+	})
+}
+
+// GetExamSessionStatus returns the current status of the student's exam session
+func GetExamSessionStatus(c *gin.Context) {
+	examID := c.Param("id")
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	var student models.Student
+	if err := config.DB.Where("user_id = ?", userID).First(&student).Error; err != nil {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Not a student"})
+		return
+	}
+
+	var session models.ExamSession
+	if err := config.DB.Where("student_id = ? AND exam_id = ?", student.ID, examID).First(&session).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Sesi ujian tidak ditemukan"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"status":      session.Status,
+		"lock_reason": session.LockReason,
+		"start_time":  session.StartTime,
+		"session_id":  session.ID,
+	})
+}
+

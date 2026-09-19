@@ -111,6 +111,7 @@ func main() {
 			adminRoutes.GET("/exams/:id/participants", controllers.GetExamParticipants)
 			adminRoutes.GET("/exams/:id/export-grades", controllers.ExportExamGradesExcel)
 			adminRoutes.DELETE("/exams/:id/reset/:student_id", controllers.ResetStudentExam)
+			adminRoutes.POST("/exams/:id/unlock/:student_id", controllers.UnlockStudentExam)
 			adminRoutes.DELETE("/exams/:id", controllers.DeleteExam)
 
 			// User Management
@@ -136,6 +137,8 @@ func main() {
 			studentRoutes.GET("/exams", controllers.GetStudentExams)
 			studentRoutes.POST("/exams/:id/start", controllers.StartExam)
 			studentRoutes.GET("/exams/:id/questions", controllers.GetExamQuestions)
+			studentRoutes.GET("/exams/:id/session", controllers.GetExamSessionStatus)
+			studentRoutes.POST("/exams/:id/lock", controllers.LockExam)
 			studentRoutes.POST("/exams/:id/answer", controllers.SubmitAnswer)
 			studentRoutes.POST("/exams/:id/finish", controllers.FinishExam)
 		}

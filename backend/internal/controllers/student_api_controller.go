@@ -36,7 +36,19 @@ func GetStudentExams(c *gin.Context) {
 	var sessions []models.ExamSession
 	config.DB.Where("student_id = ?", student.ID).Find(&sessions)
 	sessionMap := make(map[uint]string)
-	for _, s := range sessions {
+	for i := range sessions {
+		s := &sessions[i]
+		// Zero-Trust: If a session is ONGOING and not unlocked by proctor,
+		// but the student is fetching exams (on Home screen/dashboard),
+		// it means the student left/exited the exam! Automatically lock it.
+		if s.Status == "ONGOING" && !s.IsUnlocked {
+			s.Status = "LOCKED"
+			s.LockReason = "Terdeteksi keluar dari aplikasi ujian"
+			config.DB.Model(&models.ExamSession{}).Where("id = ?", s.ID).Updates(map[string]interface{}{
+				"status":      "LOCKED",
+				"lock_reason": s.LockReason,
+			})
+		}
 		sessionMap[s.ExamID] = s.Status
 	}
 

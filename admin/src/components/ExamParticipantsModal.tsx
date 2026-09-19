@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { X, RefreshCw, AlertCircle, Filter, Trash2, CheckCircle, Clock, Download, Search, FileSpreadsheet } from 'lucide-react';
+import { X, RefreshCw, AlertCircle, Filter, Trash2, CheckCircle, Clock, Download, Search, FileSpreadsheet, Lock, Unlock } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { confirmAction, showSuccessToast, showErrorToast } from '../utils/alert';
 
@@ -72,6 +72,25 @@ const ExamParticipantsModal: React.FC<ExamParticipantsModalProps> = ({ isOpen, o
         fetchParticipants(); // refresh
       } catch (error: any) {
         showErrorToast(error.response?.data?.error || "Gagal mereset ujian");
+      }
+    }
+  };
+
+  const handleUnlock = async (studentId: number, studentName: string) => {
+    const isConfirmed = await confirmAction(
+      "Buka Kunci Ujian",
+      `Buka kembali kunci ujian untuk ${studentName}? Siswa akan dapat melanjutkan pengerjaan ujian dengan seluruh jawaban sebelumnya tetap tersimpan.`
+    );
+
+    if (isConfirmed) {
+      try {
+        await axios.post(`http://localhost:8080/api/v1/admin/exams/${examId}/unlock/${studentId}`, {}, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        showSuccessToast(`Berhasil membuka kunci ujian untuk ${studentName}`);
+        fetchParticipants(); // refresh
+      } catch (error: any) {
+        showErrorToast(error.response?.data?.error || "Gagal membuka kunci ujian");
       }
     }
   };
@@ -295,12 +314,19 @@ const ExamParticipantsModal: React.FC<ExamParticipantsModalProps> = ({ isOpen, o
                     let statusColor = "bg-gray-100 text-gray-700 border-gray-200";
                     let statusText = p.session_status;
                     let canReset = false;
+                    let canUnlock = false;
 
                     if (p.session_status === "ONGOING") {
                       StatusIcon = Clock;
                       statusColor = "bg-yellow-50 text-yellow-700 border-yellow-200";
                       statusText = "Sedang Mengerjakan";
                       canReset = true;
+                    } else if (p.session_status === "LOCKED") {
+                      StatusIcon = Lock;
+                      statusColor = "bg-red-50 text-red-700 border-red-200";
+                      statusText = "Terkunci (Keluar Aplikasi)";
+                      canReset = true;
+                      canUnlock = true;
                     } else if (p.session_status === "FINISHED" || p.session_status === "SUBMITTED") {
                       StatusIcon = CheckCircle;
                       statusColor = "bg-green-50 text-green-700 border-green-200";
@@ -338,16 +364,28 @@ const ExamParticipantsModal: React.FC<ExamParticipantsModalProps> = ({ isOpen, o
                           ) : '-'}
                         </td>
                         <td className="px-6 py-4 text-right">
-                          {canReset && (
-                            <button
-                              onClick={() => handleReset(p.id, p.name)}
-                              className="inline-flex items-center space-x-1.5 px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
-                              title="Reset Ujian"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                              <span>Reset</span>
-                            </button>
-                          )}
+                          <div className="flex items-center justify-end space-x-2">
+                            {canUnlock && (
+                              <button
+                                onClick={() => handleUnlock(p.id, p.name)}
+                                className="inline-flex items-center space-x-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors shadow-sm"
+                                title="Buka Kunci Ujian Siswa"
+                              >
+                                <Unlock className="w-3.5 h-3.5" />
+                                <span>Buka Kunci</span>
+                              </button>
+                            )}
+                            {canReset && (
+                              <button
+                                onClick={() => handleReset(p.id, p.name)}
+                                className="inline-flex items-center space-x-1.5 px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
+                                title="Reset Ujian"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                                <span>Reset</span>
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     );
