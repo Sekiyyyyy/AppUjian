@@ -210,25 +210,6 @@ const Users = () => {
     setIsModalOpen(true);
   };
 
-  const handleGenerateTeacherPasswords = async () => {
-    if (!(await confirmAction('Generate Password Guru', 'Apakah Anda yakin ingin mengacak ulang password semua guru menjadi 7 digit angka baru? Akun login guru akan terupdate.'))) {
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const res = await axios.post('http://localhost:8080/api/v1/admin/users/generate-tokens', {}, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      showSuccessToast(res.data?.message || 'Berhasil membuat password 7 digit baru untuk semua guru');
-      fetchUsers();
-    } catch (err: any) {
-      showErrorToast(err.response?.data?.error || 'Gagal generate password guru');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const handleSaveTeacher = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -437,18 +418,9 @@ const Users = () => {
         </div>
         <div className="flex flex-wrap items-center gap-2 shrink-0">
           {activeTab === 'teachers' ? (
-            <>
-              <button 
-                onClick={handleGenerateTeacherPasswords} 
-                className="bg-amber-500 hover:bg-amber-600 text-white px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center space-x-1.5 shadow-xs transition-colors w-full sm:w-auto"
-                title="Generate ulang password 7 digit acak untuk seluruh guru"
-              >
-                <Key size={16} /><span>Generate Password Guru</span>
-              </button>
-              <button onClick={openCreateTeacher} className="btn-primary flex items-center justify-center space-x-2 text-xs sm:text-sm py-2 px-3.5 w-full sm:w-auto shadow-xs">
-                <Plus size={18} /><span>Tambah Guru</span>
-              </button>
-            </>
+            <button onClick={openCreateTeacher} className="btn-primary flex items-center justify-center space-x-2 text-xs sm:text-sm py-2.5 px-4 w-full sm:w-auto shadow-xs">
+              <Plus size={18} /><span>Tambah Guru</span>
+            </button>
           ) : (
             <>
               <button onClick={handleExportTokens} className="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center space-x-1.5 shadow-xs transition-colors w-full sm:w-auto">
@@ -714,7 +686,7 @@ const Users = () => {
               <tbody className="divide-y divide-slate-100">
                 {filteredStudents.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="py-12 text-center text-slate-500">
+                    <td colSpan={5} className="py-12 text-center text-slate-500">
                       <GraduationCap className="mx-auto text-slate-300 mb-3" size={32} />
                       Belum ada data siswa.
                     </td>

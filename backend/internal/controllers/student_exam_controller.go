@@ -64,7 +64,7 @@ func StartExam(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, session)
+	c.JSON(http.StatusCreated, session)
 }
 
 // GetExamQuestions returns questions for the exam without the correct answers

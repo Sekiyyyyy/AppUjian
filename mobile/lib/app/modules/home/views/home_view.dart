@@ -162,29 +162,59 @@ class HomeView extends GetView<HomeController> {
                                         child: const Icon(Icons.person_outline, color: Colors.white, size: 24),
                                       ),
                                       const SizedBox(width: 16),
-                                      Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            'NISN / NIS',
-                                            style: GoogleFonts.inter(
-                                              color: Colors.white.withValues(alpha: 0.7),
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w500,
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              'NISN / NIS',
+                                              style: GoogleFonts.inter(
+                                                color: Colors.white.withValues(alpha: 0.7),
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w500,
+                                              ),
                                             ),
-                                          ),
-                                          const SizedBox(height: 4),
-                                          Obx(() => Text(
-                                            controller.studentNis.value,
-                                            style: GoogleFonts.inter(
-                                              color: Colors.white,
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.bold,
-                                              letterSpacing: 1,
-                                            ),
-                                          )),
-                                        ],
+                                            const SizedBox(height: 4),
+                                            Obx(() => Text(
+                                              controller.studentNis.value,
+                                              style: GoogleFonts.inter(
+                                                color: Colors.white,
+                                                fontSize: 15,
+                                                fontWeight: FontWeight.bold,
+                                                letterSpacing: 0.5,
+                                              ),
+                                            )),
+                                          ],
+                                        ),
                                       ),
+                                      Obx(() {
+                                        if (controller.className.value.isEmpty || controller.className.value == '-') {
+                                          return const SizedBox.shrink();
+                                        }
+                                        return Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                          decoration: BoxDecoration(
+                                            color: Colors.white.withValues(alpha: 0.2),
+                                            borderRadius: BorderRadius.circular(12),
+                                            border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              const Icon(Icons.school_outlined, color: Colors.white, size: 14),
+                                              const SizedBox(width: 6),
+                                              Text(
+                                                controller.className.value,
+                                                style: GoogleFonts.inter(
+                                                  color: Colors.white,
+                                                  fontSize: 13,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                      }),
                                     ],
                                   ),
                                 ),

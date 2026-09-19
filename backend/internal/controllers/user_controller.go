@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"crypto/rand"
-	"fmt"
 	"math/big"
 	"net/http"
 	"time"
@@ -158,54 +157,6 @@ func CreateTeacher(c *gin.Context) {
 	})
 }
 
-// GenerateTeacherTokens generates new random 7-digit passwords for all teachers
-func GenerateTeacherTokens(c *gin.Context) {
-	var teachers []models.Teacher
-	if err := config.DB.Preload("User").Find(&teachers).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengambil data guru"})
-		return
-	}
-
-	tx := config.DB.Begin()
-	successCount := 0
-
-	for _, t := range teachers {
-		if t.User.ID == 0 {
-			continue
-		}
-
-		newPassword := GenerateRandomDigits(7)
-		hashedPassword, _ := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.MinCost)
-
-		t.User.Password = string(hashedPassword)
-		t.TokenPassword = newPassword
-
-		if err := tx.Save(&t.User).Error; err != nil {
-			tx.Rollback()
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal update kredensial user guru"})
-			return
-		}
-
-		if err := tx.Save(&t).Error; err != nil {
-			tx.Rollback()
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal update password guru"})
-			return
-		}
-
-		successCount++
-	}
-
-	if err := tx.Commit().Error; err != nil {
-		tx.Rollback()
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menyimpan perubahan"})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"message": fmt.Sprintf("Berhasil membuat password 7 digit baru untuk %d guru", successCount),
-	})
-}
-
 // DeleteUser deletes a user by ID and cascades to Teacher/Student records
 func DeleteUser(c *gin.Context) {
 	id := c.Param("id")
@@ -293,8 +244,12 @@ func UpdateUser(c *gin.Context) {
 	if user.Role == models.RoleTeacher {
 		var teacher models.Teacher
 		if err := tx.Where("user_id = ?", user.ID).First(&teacher).Error; err == nil {
-			teacher.NIP = req.NIP
-			teacher.NUPTK = req.NUPTK
+			if req.NIP != "" {
+				teacher.NIP = req.NIP
+			}
+			if req.NUPTK != "" {
+				teacher.NUPTK = req.NUPTK
+			}
 			if req.Jabatan != "" {
 				teacher.Jabatan = req.Jabatan
 			}

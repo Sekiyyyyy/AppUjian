@@ -45,7 +45,7 @@ func GetStudentExams(c *gin.Context) {
 		SessionStatus string `json:"session_status"`
 	}
 
-	var response []ExamResponse
+	var response []ExamResponse = make([]ExamResponse, 0)
 	for _, exam := range exams {
 		status := sessionMap[exam.ID]
 		if status == "" {

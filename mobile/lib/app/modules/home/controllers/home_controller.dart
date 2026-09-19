@@ -27,6 +27,7 @@ class HomeController extends GetxController {
     final prefs = await SharedPreferences.getInstance();
     studentName.value = prefs.getString('name') ?? 'Siswa';
     studentNis.value = prefs.getString('nis') ?? '-';
+    className.value = prefs.getString('class_name') ?? '-';
   }
 
   Future<void> fetchExams() async {

@@ -373,7 +373,7 @@ func GetExamParticipants(c *gin.Context) {
 		Score         float64 `json:"score"`
 	}
 
-	var responses []ParticipantResponse
+	var responses []ParticipantResponse = make([]ParticipantResponse, 0)
 	for _, student := range students {
 		status := "BELUM MULAI"
 		var score float64

@@ -116,7 +116,6 @@ func main() {
 			// User Management
 			adminRoutes.GET("/users", controllers.GetUsers)
 			adminRoutes.POST("/users", controllers.CreateTeacher)
-			adminRoutes.POST("/users/generate-tokens", controllers.GenerateTeacherTokens)
 			adminRoutes.PUT("/users/:id", controllers.UpdateUser)
 			adminRoutes.DELETE("/users/:id", controllers.DeleteUser)
 

@@ -56,7 +56,7 @@ func LoginHandler(cfg *config.Config) gin.HandlerFunc {
 		var studentPtr *models.Student
 		if user.Role == models.RoleStudent {
 			var student models.Student
-			if err := config.DB.Where("user_id = ?", user.ID).First(&student).Error; err == nil {
+			if err := config.DB.Preload("Class").Where("user_id = ?", user.ID).First(&student).Error; err == nil {
 				studentPtr = &student
 			}
 		}

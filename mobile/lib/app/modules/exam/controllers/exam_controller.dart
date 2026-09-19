@@ -1,10 +1,12 @@
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import '../../../routes/app_pages.dart';
 import '../../../theme/app_theme.dart';
 import '../../../utils/app_toast.dart';
 import '../../../data/api_client.dart';
 import 'dart:async';
+import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:dio/dio.dart';
@@ -44,6 +46,10 @@ class ExamController extends GetxController with WidgetsBindingObserver {
   bool _isShowingWarning = false;
   bool _isExamFinished = false;
   bool _wasInBackground = false;
+
+  /// Whether we're running on a desktop platform (Windows/macOS/Linux)
+  bool get _isDesktop =>
+      !kIsWeb && (Platform.isWindows || Platform.isMacOS || Platform.isLinux);
   
   @override
   void onInit() {
@@ -112,19 +118,25 @@ class ExamController extends GetxController with WidgetsBindingObserver {
       if (!_wasInBackground) {
         _wasInBackground = true;
 
-        // Cek apakah layar masih aktif (siswa lolos keluar ke Home / aplikasi lain)
-        // atau layar mati (siswa hanya menekan tombol power)
-        bool isScreenInteractive = false;
-        try {
-          isScreenInteractive = await _kioskChannel.invokeMethod<bool>('isScreenInteractive') ?? false;
-        } catch (_) {}
-
-        if (isScreenInteractive) {
-          // Siswa benar-benar lolos keluar dari aplikasi saat layar masih hidup (Kecurangan nyata!)
+        if (_isDesktop) {
+          // Desktop: kiosk mode sudah memblokir Alt+Tab, tapi jika siswa
+          // berhasil keluar (misal Ctrl+Alt+Del), catat pelanggaran
           violationCount.value++;
-          _startAlarm();
         } else {
-          // Layar mati (hanya tombol power) -> Bukan kecurangan, kunci Kiosk tetap aman saat dinyalakan, tidak perlu sirine
+          // Mobile: Cek apakah layar masih aktif (siswa lolos keluar ke Home / aplikasi lain)
+          // atau layar mati (siswa hanya menekan tombol power)
+          bool isScreenInteractive = false;
+          try {
+            isScreenInteractive = await _kioskChannel.invokeMethod<bool>('isScreenInteractive') ?? false;
+          } catch (_) {}
+
+          if (isScreenInteractive) {
+            // Siswa benar-benar lolos keluar dari aplikasi saat layar masih hidup (Kecurangan nyata!)
+            violationCount.value++;
+            _startAlarm();
+          } else {
+            // Layar mati (hanya tombol power) -> Bukan kecurangan
+          }
         }
       }
     } else if (state == AppLifecycleState.resumed) {
@@ -145,7 +157,7 @@ class ExamController extends GetxController with WidgetsBindingObserver {
     _isShowingWarning = true;
     _isExamFinished = true;
     _timer?.cancel();
-    _startAlarm();
+    if (!_isDesktop) _startAlarm();
 
     if (Get.isDialogOpen ?? false) {
       Get.back();
@@ -188,17 +200,29 @@ class ExamController extends GetxController with WidgetsBindingObserver {
     );
 
     await _submitExam();
-    _stopAlarm();
+    if (!_isDesktop) _stopAlarm();
     _disableKioskMode();
   }
 
   void _showViolationWarningDialog() {
     _isShowingWarning = true;
-    _startAlarm(); // Bunyikan sirine darurat & getaran keras 100% volume (bypass mute)
+    if (!_isDesktop) {
+      _startAlarm(); // Bunyikan sirine darurat & getaran keras (hanya mobile)
+    }
 
     if (Get.isDialogOpen ?? false) {
       Get.back();
     }
+
+    final warningTitle = _isDesktop
+        ? "⚠️ PELANGGARAN TERDETEKSI! ⚠️"
+        : "🚨 ALARM KECURANGAN AKTIF! 🚨";
+    final warningBody = _isDesktop
+        ? "Anda terdeteksi mencoba keluar dari aplikasi ujian!\n\nAktivitas Anda tercatat dan dilaporkan ke pengawas.\n\nJika Anda mencoba keluar lagi hingga $maxViolations kali, ujian akan OTOMATIS DIBATALKAN!"
+        : "HP Anda berbunyi sirine keras dan bergetar karena terdeteksi keluar dari aplikasi ujian!\n\nPengawas dan seisi ruangan dapat mendengar alarm ini.\n\nJika Anda mencoba keluar lagi hingga $maxViolations kali, ujian akan OTOMATIS DIBATALKAN!";
+    final buttonText = _isDesktop
+        ? "MENGERTI, KEMBALI KE UJIAN"
+        : "HENTIKAN ALARM & KEMBALI UJIAN";
 
     Get.dialog(
       PopScope(
@@ -227,7 +251,7 @@ class ExamController extends GetxController with WidgetsBindingObserver {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  "🚨 ALARM KECURANGAN AKTIF! 🚨",
+                  warningTitle,
                   style: GoogleFonts.inter(fontSize: 17, fontWeight: FontWeight.bold, color: Colors.red.shade800),
                   textAlign: TextAlign.center,
                 ),
@@ -246,7 +270,7 @@ class ExamController extends GetxController with WidgetsBindingObserver {
                 ),
                 const SizedBox(height: 14),
                 Text(
-                  "HP Anda berbunyi sirine keras dan bergetar karena terdeteksi keluar dari aplikasi ujian!\n\nPengawas dan seisi ruangan dapat mendengar alarm ini.\n\nJika Anda mencoba keluar lagi hingga $maxViolations kali, ujian akan OTOMATIS DIBATALKAN!",
+                  warningBody,
                   textAlign: TextAlign.center,
                   style: GoogleFonts.inter(fontSize: 13, color: AppTheme.textPrimary, height: 1.4),
                 ),
@@ -263,12 +287,12 @@ class ExamController extends GetxController with WidgetsBindingObserver {
                       shadowColor: Colors.red.withValues(alpha: 0.5),
                     ),
                     onPressed: () {
-                      _stopAlarm(); // Hentikan sirine & getaran
+                      if (!_isDesktop) _stopAlarm();
                       _isShowingWarning = false;
                       Get.back();
                     },
                     child: Text(
-                      "HENTIKAN ALARM & KEMBALI UJIAN",
+                      buttonText,
                       style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13, letterSpacing: 0.5),
                     ),
                   ),

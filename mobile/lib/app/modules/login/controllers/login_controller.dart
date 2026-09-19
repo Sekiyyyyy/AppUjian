@@ -61,6 +61,8 @@ class LoginController extends GetxController {
             combinedNis = "$nisn/-";
           }
           await prefs.setString('nis', combinedNis);
+          final className = data['student']['class']?['name']?.toString() ?? '';
+          await prefs.setString('class_name', className);
         }
 
         Get.offAllNamed(Routes.MAIN);
