@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { 
@@ -21,6 +21,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { confirmAction, showSuccessToast, showErrorToast } from '../utils/alert';
 import ClassBadgesList from '../components/ClassBadgesList';
+import { useDebounce } from '../hooks/useDebounce';
 
 interface Category {
   ID: number;
@@ -67,6 +68,7 @@ const Categories = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [exams, setExams] = useState<ExamItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
   
   // Category Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -83,10 +85,10 @@ const Categories = () => {
   const fetchData = async () => {
     try {
       const [catRes, examRes] = await Promise.all([
-        axios.get('http://localhost:8080/api/v1/admin/categories', {
+        axios.get('/api/v1/admin/categories', {
           headers: { Authorization: `Bearer ${token}` }
         }),
-        axios.get('http://localhost:8080/api/v1/admin/exams', {
+        axios.get('/api/v1/admin/exams', {
           headers: { Authorization: `Bearer ${token}` }
         })
       ]);
@@ -124,14 +126,14 @@ const Categories = () => {
 
     try {
       if (isEditMode && editingId) {
-        await axios.put(`http://localhost:8080/api/v1/admin/categories/${editingId}`, {
+        await axios.put(`/api/v1/admin/categories/${editingId}`, {
           name,
         }, {
           headers: { Authorization: `Bearer ${token}` }
         });
         showSuccessToast('Kategori berhasil diperbarui');
       } else {
-        await axios.post('http://localhost:8080/api/v1/admin/categories', {
+        await axios.post('/api/v1/admin/categories', {
           name,
         }, {
           headers: { Authorization: `Bearer ${token}` }
@@ -154,7 +156,7 @@ const Categories = () => {
     if (!(await confirmAction(`Hapus Kategori`, `Yakin ingin menghapus kategori "${catName}"?`))) return;
 
     try {
-      await axios.delete(`http://localhost:8080/api/v1/admin/categories/${id}`, {
+      await axios.delete(`/api/v1/admin/categories/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setCategories(categories.filter(c => c.ID !== id));
@@ -170,14 +172,18 @@ const Categories = () => {
   };
 
   // Filter categories by search
-  const filteredCategories = categories.filter(c => 
-    c.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredCategories = useMemo(() => {
+    return categories.filter(c => 
+      c.name.toLowerCase().includes(debouncedSearchQuery.toLowerCase())
+    );
+  }, [categories, debouncedSearchQuery]);
 
   // Get exams for selected category
-  const selectedCategoryExams = selectedCategory 
-    ? exams.filter(e => e.category_id === selectedCategory.ID || e.category?.ID === selectedCategory.ID)
-    : [];
+  const selectedCategoryExams = useMemo(() => {
+    return selectedCategory 
+      ? exams.filter(e => e.category_id === selectedCategory.ID || e.category?.ID === selectedCategory.ID)
+      : [];
+  }, [exams, selectedCategory]);
 
   // Helper for status badge
   const getStatusBadge = (status: string) => {

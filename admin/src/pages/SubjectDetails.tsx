@@ -103,16 +103,16 @@ const SubjectDetails: React.FC = () => {
     setIsLoading(true);
     try {
       const [subjectRes, examsRes, classesRes, examCatRes] = await Promise.allSettled([
-        axios.get('http://localhost:8080/api/v1/admin/subjects/categories', {
+        axios.get('/api/v1/admin/subjects/categories', {
           headers: { Authorization: `Bearer ${token}` }
         }),
-        axios.get(`http://localhost:8080/api/v1/admin/exams?subject_id=${id}`, {
+        axios.get(`/api/v1/admin/exams?subject_id=${id}`, {
           headers: { Authorization: `Bearer ${token}` }
         }),
-        axios.get('http://localhost:8080/api/v1/admin/classes', {
+        axios.get('/api/v1/admin/classes', {
           headers: { Authorization: `Bearer ${token}` }
         }),
-        axios.get('http://localhost:8080/api/v1/admin/categories', {
+        axios.get('/api/v1/admin/categories', {
           headers: { Authorization: `Bearer ${token}` }
         })
       ]);
@@ -221,7 +221,7 @@ const SubjectDetails: React.FC = () => {
         class_ids: newSelectedClasses
       };
 
-      const res = await axios.post('http://localhost:8080/api/v1/admin/exams', payload, {
+      const res = await axios.post('/api/v1/admin/exams', payload, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -267,7 +267,7 @@ const SubjectDetails: React.FC = () => {
         class_ids: editSelectedClasses
       };
 
-      await axios.put(`http://localhost:8080/api/v1/admin/exams/${editingExamId}`, payload, {
+      await axios.put(`/api/v1/admin/exams/${editingExamId}`, payload, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -293,7 +293,7 @@ const SubjectDetails: React.FC = () => {
     }
 
     try {
-      await axios.delete(`http://localhost:8080/api/v1/admin/exams/${exam.ID}`, {
+      await axios.delete(`/api/v1/admin/exams/${exam.ID}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       showSuccessToast('Ujian berhasil dihapus');

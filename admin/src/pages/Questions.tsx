@@ -11,6 +11,12 @@ import { useAuth } from '../context/AuthContext';
 import { confirmAction, showSuccessToast, showErrorToast } from '../utils/alert';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
+import katex from 'katex';
+import 'katex/dist/katex.min.css';
+
+if (typeof window !== 'undefined') {
+  (window as any).katex = katex;
+}
 
 interface Subject {
   ID: number;
@@ -277,10 +283,10 @@ const Questions: React.FC = () => {
     const fetchInitial = async () => {
       try {
         const [subRes, classRes] = await Promise.allSettled([
-          axios.get('http://localhost:8080/api/v1/admin/subjects', {
+          axios.get('/api/v1/admin/subjects', {
             headers: { Authorization: `Bearer ${token}` }
           }),
-          axios.get('http://localhost:8080/api/v1/admin/classes', {
+          axios.get('/api/v1/admin/classes', {
             headers: { Authorization: `Bearer ${token}` }
           })
         ]);
@@ -313,7 +319,7 @@ const Questions: React.FC = () => {
   const fetchExamsForSubject = async (subId: number) => {
     setIsLoadingExams(true);
     try {
-      const res = await axios.get(`http://localhost:8080/api/v1/admin/exams?subject_id=${subId}`, {
+      const res = await axios.get(`/api/v1/admin/exams?subject_id=${subId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       const examList: ExamItem[] = res.data || [];
@@ -350,9 +356,9 @@ const Questions: React.FC = () => {
 
     setIsLoadingQuestions(true);
     try {
-      let url = `http://localhost:8080/api/v1/admin/questions?subject_id=${selectedSubjectId}`;
+      let url = `/api/v1/admin/questions?subject_id=${selectedSubjectId}`;
       if (selectedExamId) {
-        url = `http://localhost:8080/api/v1/admin/questions?exam_id=${selectedExamId}`;
+        url = `/api/v1/admin/questions?exam_id=${selectedExamId}`;
       }
 
       const res = await axios.get(url, {
@@ -401,7 +407,7 @@ const Questions: React.FC = () => {
     const optionsJSON = { A: optionA, B: optionB, C: optionC, D: optionD, E: optionE };
 
     try {
-      await axios.post('http://localhost:8080/api/v1/admin/questions', {
+      await axios.post('/api/v1/admin/questions', {
         subject_id: selectedSubjectId,
         exam_id: selectedExamId,
         type: 'MULTIPLE_CHOICE',
@@ -443,7 +449,7 @@ const Questions: React.FC = () => {
     if (!(await confirmAction('Hapus Soal', 'Yakin ingin menghapus soal ini dari ujian?'))) return;
 
     try {
-      await axios.delete(`http://localhost:8080/api/v1/admin/questions/${id}`, {
+      await axios.delete(`/api/v1/admin/questions/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setQuestions(prev => prev.filter(q => q.ID !== id));
@@ -460,7 +466,7 @@ const Questions: React.FC = () => {
   const handleDownloadTemplate = async (count: number) => {
     setIsDownloading(count);
     try {
-      const response = await axios.get(`http://localhost:8080/api/v1/admin/questions/template?count=${count}`, {
+      const response = await axios.get(`/api/v1/admin/questions/template?count=${count}`, {
         headers: { Authorization: `Bearer ${token}` },
         responseType: 'blob'
       });
@@ -515,7 +521,7 @@ const Questions: React.FC = () => {
       formData.append('exam_id', String(uploadExamId));
       formData.append('file', selectedFile);
 
-      const res = await axios.post('http://localhost:8080/api/v1/admin/questions/import-excel', formData, {
+      const res = await axios.post('/api/v1/admin/questions/import-excel', formData, {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'multipart/form-data'
@@ -585,7 +591,7 @@ const Questions: React.FC = () => {
     setCreateExamError('');
 
     try {
-      const res = await axios.post('http://localhost:8080/api/v1/admin/exams', {
+      const res = await axios.post('/api/v1/admin/exams', {
         title: newExamTitle.trim(),
         subject_id: selectedSubjectId,
         tahun: newExamTahun,

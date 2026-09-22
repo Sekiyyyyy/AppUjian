@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
 import { 
   Plus, 
@@ -16,6 +16,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { confirmAction, showSuccessToast, showErrorToast } from '../utils/alert';
 import { useNavigate } from 'react-router-dom';
+import { useDebounce } from '../hooks/useDebounce';
 
 interface ClassItem {
   ID: number;
@@ -44,6 +45,7 @@ const Classes = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
   const [filterLevel, setFilterLevel] = useState('ALL');
 
   // Form State
@@ -54,7 +56,7 @@ const Classes = () => {
 
   const fetchClasses = async () => {
     try {
-      const res = await axios.get('http://localhost:8080/api/v1/admin/classes', {
+      const res = await axios.get('/api/v1/admin/classes', {
         headers: { Authorization: `Bearer ${token}` }
       });
       setClasses(res.data || []);
@@ -81,7 +83,7 @@ const Classes = () => {
     }
 
     try {
-      await axios.post('http://localhost:8080/api/v1/admin/classes', {
+      await axios.post('/api/v1/admin/classes', {
         level,
         department: finalDept,
         number: number.trim()
@@ -104,7 +106,7 @@ const Classes = () => {
     if (!(await confirmAction(`Hapus Kelas`, `Yakin ingin menghapus kelas ${name}?`))) return;
 
     try {
-      await axios.delete(`http://localhost:8080/api/v1/admin/classes/${id}`, {
+      await axios.delete(`/api/v1/admin/classes/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setClasses(classes.filter(c => c.ID !== id));
@@ -123,7 +125,7 @@ const Classes = () => {
     if (isConfirmed) {
       try {
         setIsLoading(true);
-        await axios.post('http://localhost:8080/api/v1/admin/classes/promote', {}, {
+        await axios.post('/api/v1/admin/classes/promote', {}, {
           headers: { Authorization: `Bearer ${token}` }
         });
         showSuccessToast('Proses Kenaikan Kelas berhasil diselesaikan!');
@@ -137,15 +139,18 @@ const Classes = () => {
   };
 
   // Filtered classes
-  const filteredClasses = classes.filter(c => {
-    const matchesSearch = c.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          c.department?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesLevel = filterLevel === 'ALL' || c.level === filterLevel;
-    return matchesSearch && matchesLevel;
-  });
+  const filteredClasses = useMemo(() => {
+    return classes.filter(c => {
+      const q = debouncedSearchTerm.toLowerCase();
+      const matchesSearch = c.name?.toLowerCase().includes(q) ||
+                            c.department?.toLowerCase().includes(q);
+      const matchesLevel = filterLevel === 'ALL' || c.level === filterLevel;
+      return matchesSearch && matchesLevel;
+    });
+  }, [classes, debouncedSearchTerm, filterLevel]);
 
   // Calculate unique departments
-  const uniqueDepts = Array.from(new Set(classes.map(c => c.department))).length;
+  const uniqueDepts = useMemo(() => Array.from(new Set(classes.map(c => c.department))).length, [classes]);
 
   return (
     <div className="space-y-6">

@@ -9,6 +9,7 @@ import {
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { confirmAction, showSuccessToast, showErrorToast } from '../utils/alert';
+import { useDebounce } from '../hooks/useDebounce';
 
 interface ClassItem {
   ID: number;
@@ -61,6 +62,7 @@ const Subjects: React.FC = () => {
 
   // Search & Filter State
   const [searchQuery, setSearchQuery] = useState('');
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
   const [filterType, setFilterType] = useState('ALL');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 15; // Clean table view allows more items per page
@@ -92,13 +94,13 @@ const Subjects: React.FC = () => {
     setIsLoading(true);
     try {
       const [catRes, classRes, examCatRes] = await Promise.allSettled([
-        axios.get('http://localhost:8080/api/v1/admin/subjects/categories', {
+        axios.get('/api/v1/admin/subjects/categories', {
           headers: { Authorization: `Bearer ${token}` }
         }),
-        axios.get('http://localhost:8080/api/v1/admin/classes', {
+        axios.get('/api/v1/admin/classes', {
           headers: { Authorization: `Bearer ${token}` }
         }),
-        axios.get('http://localhost:8080/api/v1/admin/categories', {
+        axios.get('/api/v1/admin/categories', {
           headers: { Authorization: `Bearer ${token}` }
         })
       ]);
@@ -131,7 +133,7 @@ const Subjects: React.FC = () => {
   // Filtered categories
   const filteredCategories = useMemo(() => {
     return categories.filter(cat => {
-      const q = searchQuery.toLowerCase();
+      const q = debouncedSearchQuery.toLowerCase();
       const matchesSearch = 
         cat.name.toLowerCase().includes(q) ||
         (cat.code && cat.code.toLowerCase().includes(q)) ||
@@ -142,7 +144,7 @@ const Subjects: React.FC = () => {
       const matchesType = filterType === 'ALL' || (cat.type || 'AKADEMIK') === filterType;
       return matchesSearch && matchesType;
     });
-  }, [categories, searchQuery, filterType]);
+  }, [categories, debouncedSearchQuery, filterType]);
 
   const totalPages = Math.max(1, Math.ceil(filteredCategories.length / itemsPerPage));
   const paginatedCategories = useMemo(() => {
@@ -154,7 +156,7 @@ const Subjects: React.FC = () => {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, filterType]);
+  }, [debouncedSearchQuery, filterType]);
 
   // Overall Statistics
   const stats = useMemo(() => {
@@ -208,7 +210,7 @@ const Subjects: React.FC = () => {
         duration: 90
       };
 
-      const res = await axios.post('http://localhost:8080/api/v1/admin/exams', payload, {
+      const res = await axios.post('/api/v1/admin/exams', payload, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -280,7 +282,7 @@ const Subjects: React.FC = () => {
 
     try {
       if (isEditCategory && editingCategoryId) {
-        await axios.put(`http://localhost:8080/api/v1/admin/subjects/${editingCategoryId}`, {
+        await axios.put(`/api/v1/admin/subjects/${editingCategoryId}`, {
           name: catName,
           type: catType,
           class: catClass
@@ -289,7 +291,7 @@ const Subjects: React.FC = () => {
         });
         showSuccessToast('Mata pelajaran berhasil diperbarui');
       } else {
-        await axios.post('http://localhost:8080/api/v1/admin/subjects', {
+        await axios.post('/api/v1/admin/subjects', {
           name: catName,
           type: catType,
           class: catClass
@@ -320,7 +322,7 @@ const Subjects: React.FC = () => {
     }
 
     try {
-      await axios.delete(`http://localhost:8080/api/v1/admin/subjects/${cat.ID}`, {
+      await axios.delete(`/api/v1/admin/subjects/${cat.ID}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       showSuccessToast('Mata pelajaran berhasil dihapus');

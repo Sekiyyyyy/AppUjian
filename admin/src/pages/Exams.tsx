@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
 import { useSearchParams, Link } from 'react-router-dom';
 import {
@@ -23,6 +23,7 @@ import { useAuth } from '../context/AuthContext';
 import { confirmAction, showSuccessToast, showErrorToast } from '../utils/alert';
 import ExamParticipantsModal from '../components/ExamParticipantsModal';
 import ClassBadgesList from '../components/ClassBadgesList';
+import { useDebounce } from '../hooks/useDebounce';
 
 interface CategoryItem {
   ID: number;
@@ -104,7 +105,7 @@ const Exams = () => {
   const handleDownloadExcel = async (examId: number, examTitle: string, classId: number | 'ALL') => {
     try {
       setIsDownloadingExcel(true);
-      const url = `http://localhost:8080/api/v1/admin/exams/${examId}/export-grades${
+      const url = `/api/v1/admin/exams/${examId}/export-grades${
         classId !== 'ALL' ? `?class_id=${classId}` : ''
       }`;
       const response = await axios.get(url, {
@@ -146,6 +147,7 @@ const Exams = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
   // Form State
   const [title, setTitle] = useState('');
@@ -168,11 +170,11 @@ const Exams = () => {
   const fetchData = async () => {
     try {
       const [examsRes, subjectsRes, classesRes, questionsRes, categoriesRes] = await Promise.all([
-        axios.get('http://localhost:8080/api/v1/admin/exams', { headers: { Authorization: `Bearer ${token}` } }),
-        axios.get('http://localhost:8080/api/v1/admin/subjects', { headers: { Authorization: `Bearer ${token}` } }),
-        axios.get('http://localhost:8080/api/v1/admin/classes', { headers: { Authorization: `Bearer ${token}` } }),
-        axios.get('http://localhost:8080/api/v1/admin/questions', { headers: { Authorization: `Bearer ${token}` } }),
-        axios.get('http://localhost:8080/api/v1/admin/categories', { headers: { Authorization: `Bearer ${token}` } })
+        axios.get('/api/v1/admin/exams', { headers: { Authorization: `Bearer ${token}` } }),
+        axios.get('/api/v1/admin/subjects', { headers: { Authorization: `Bearer ${token}` } }),
+        axios.get('/api/v1/admin/classes', { headers: { Authorization: `Bearer ${token}` } }),
+        axios.get('/api/v1/admin/questions', { headers: { Authorization: `Bearer ${token}` } }),
+        axios.get('/api/v1/admin/categories', { headers: { Authorization: `Bearer ${token}` } })
       ]);
 
       setExams(examsRes.data || []);
@@ -353,12 +355,12 @@ const Exams = () => {
       }
 
       if (editingId) {
-        await axios.put(`http://localhost:8080/api/v1/admin/exams/${editingId}`, payload, {
+        await axios.put(`/api/v1/admin/exams/${editingId}`, payload, {
           headers: { Authorization: `Bearer ${token}` }
         });
         showSuccessToast('Jadwal ujian berhasil diperbarui');
       } else {
-        await axios.post('http://localhost:8080/api/v1/admin/exams', payload, {
+        await axios.post('/api/v1/admin/exams', payload, {
           headers: { Authorization: `Bearer ${token}` }
         });
         showSuccessToast('Jadwal ujian berhasil dibuat');
@@ -378,7 +380,7 @@ const Exams = () => {
     if (!(await confirmAction('Hapus Jadwal Ujian', `Yakin ingin menghapus jadwal ujian "${examTitle}"?`))) return;
 
     try {
-      await axios.delete(`http://localhost:8080/api/v1/admin/exams/${id}`, {
+      await axios.delete(`/api/v1/admin/exams/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setExams(exams.filter(e => e.ID !== id));
@@ -392,7 +394,7 @@ const Exams = () => {
     const actionName = currentStatus ? "menutup" : "membuka";
     if (!(await confirmAction('Akses Ujian Susulan', `Yakin ingin ${actionName} akses ujian susulan?`))) return;
     try {
-      await axios.post(`http://localhost:8080/api/v1/admin/exams/${id}/toggle-makeup`, {}, {
+      await axios.post(`/api/v1/admin/exams/${id}/toggle-makeup`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
       fetchData();
@@ -424,10 +426,12 @@ const Exams = () => {
     }
   };
 
-  const filteredExams = exams.filter(e =>
-    e.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    e.subject?.name?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredExams = useMemo(() => {
+    return exams.filter(e =>
+      e.title?.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+      e.subject?.name?.toLowerCase().includes(debouncedSearchTerm.toLowerCase())
+    );
+  }, [exams, debouncedSearchTerm]);
 
   return (
     <div className="space-y-6">

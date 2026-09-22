@@ -32,12 +32,12 @@ const Dashboard = () => {
       try {
         const headers = { Authorization: `Bearer ${token}` };
         const [classesRes, subjectsRes, questionsRes, examsRes, usersRes, studentsRes] = await Promise.allSettled([
-          axios.get('http://localhost:8080/api/v1/admin/classes', { headers }),
-          axios.get('http://localhost:8080/api/v1/admin/subjects', { headers }),
-          axios.get('http://localhost:8080/api/v1/admin/questions', { headers }),
-          axios.get('http://localhost:8080/api/v1/admin/exams', { headers }),
-          axios.get('http://localhost:8080/api/v1/admin/users', { headers }),
-          axios.get('http://localhost:8080/api/v1/admin/students', { headers }),
+          axios.get('/api/v1/admin/classes', { headers }),
+          axios.get('/api/v1/admin/subjects', { headers }),
+          axios.get('/api/v1/admin/questions', { headers }),
+          axios.get('/api/v1/admin/exams', { headers }),
+          axios.get('/api/v1/admin/users', { headers }),
+          axios.get('/api/v1/admin/students', { headers }),
         ]);
 
         const classes = classesRes.status === 'fulfilled' ? classesRes.value.data || [] : [];

@@ -1,0 +1,14 @@
+[Unit]
+Description=AppUjian Go Backend Service
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/home/server/AppUjian/backend
+ExecStart=/home/server/AppUjian/backend/appujian_backend
+Restart=on-failure
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target

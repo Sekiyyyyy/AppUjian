@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
 import { Plus, Users as UsersIcon, Search, ChevronLeft, ChevronRight, Shield, Trash2, AlertCircle, Edit2, Key, GraduationCap, School, Eye, Award, Copy, RefreshCw } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { confirmAction, showSuccessToast, showErrorToast, showWarningToast } from '../utils/alert';
+import { useDebounce } from '../hooks/useDebounce';
 
 interface UserItem {
   id: number;
@@ -58,6 +59,7 @@ const Users = () => {
 
   // Pagination & Search State
   const [searchQuery, setSearchQuery] = useState('');
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
   const [filterClassId, setFilterClassId] = useState('ALL');
   const [filterTeacherJabatan, setFilterTeacherJabatan] = useState('ALL');
   const [sortOption, setSortOption] = useState('name_asc');
@@ -66,50 +68,60 @@ const Users = () => {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, activeTab, filterClassId, sortOption, filterTeacherJabatan]);
+  }, [debouncedSearchQuery, activeTab, filterClassId, sortOption, filterTeacherJabatan]);
 
-  const filteredUsers = users.filter(u => {
-    const q = searchQuery.toLowerCase();
-    const matchesSearch = 
-      u.name.toLowerCase().includes(q) || 
-      u.username.toLowerCase().includes(q) ||
-      (u.nip && u.nip.toLowerCase().includes(q)) ||
-      (u.nuptk && u.nuptk.toLowerCase().includes(q)) ||
-      (u.jabatan && u.jabatan.toLowerCase().includes(q));
+  const filteredUsers = useMemo(() => {
+    return users.filter(u => {
+      const q = debouncedSearchQuery.toLowerCase();
+      const matchesSearch = 
+        u.name.toLowerCase().includes(q) || 
+        u.username.toLowerCase().includes(q) ||
+        (u.nip && u.nip.toLowerCase().includes(q)) ||
+        (u.nuptk && u.nuptk.toLowerCase().includes(q)) ||
+        (u.jabatan && u.jabatan.toLowerCase().includes(q));
 
-    const matchesJabatan = filterTeacherJabatan === 'ALL' || (u.jabatan || 'Guru') === filterTeacherJabatan;
+      const matchesJabatan = filterTeacherJabatan === 'ALL' || (u.jabatan || 'Guru') === filterTeacherJabatan;
 
-    return matchesSearch && matchesJabatan;
-  });
-  const paginatedUsers = filteredUsers.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+      return matchesSearch && matchesJabatan;
+    });
+  }, [users, debouncedSearchQuery, filterTeacherJabatan]);
+
   const totalUserPages = Math.ceil(filteredUsers.length / itemsPerPage);
+  const paginatedUsers = useMemo(() => {
+    return filteredUsers.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  }, [filteredUsers, currentPage, itemsPerPage]);
 
-  const filteredStudents = students.filter(s => {
-    const studentClass = classes.find(c => c.ID === s.class_id);
-    const className = studentClass ? studentClass.name.toLowerCase() : '';
-    const q = searchQuery.toLowerCase();
-    
-    // Class Filter
-    if (filterClassId !== 'ALL' && s.class_id.toString() !== filterClassId) {
-      return false;
-    }
-    
-    // Search query
-    return s.user.name.toLowerCase().includes(q) || 
-           s.nisn.toLowerCase().includes(q) || 
-           s.user.username.toLowerCase().includes(q) ||
-           className.includes(q);
-  }).sort((a, b) => {
-    if (sortOption === 'name_asc') return a.user.name.localeCompare(b.user.name);
-    if (sortOption === 'name_desc') return b.user.name.localeCompare(a.user.name);
-    if (sortOption === 'nisn_asc') return a.nisn.localeCompare(b.nisn);
-    if (sortOption === 'nisn_desc') return b.nisn.localeCompare(a.nisn);
-    if (sortOption === 'class_asc') return a.class_id - b.class_id;
-    if (sortOption === 'class_desc') return b.class_id - a.class_id;
-    return 0;
-  });
-  const paginatedStudents = filteredStudents.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const filteredStudents = useMemo(() => {
+    return students.filter(s => {
+      const studentClass = classes.find(c => c.ID === s.class_id);
+      const className = studentClass ? studentClass.name.toLowerCase() : '';
+      const q = debouncedSearchQuery.toLowerCase();
+      
+      // Class Filter
+      if (filterClassId !== 'ALL' && s.class_id.toString() !== filterClassId) {
+        return false;
+      }
+      
+      // Search query
+      return s.user.name.toLowerCase().includes(q) || 
+             s.nisn.toLowerCase().includes(q) || 
+             s.user.username.toLowerCase().includes(q) ||
+             className.includes(q);
+    }).sort((a, b) => {
+      if (sortOption === 'name_asc') return a.user.name.localeCompare(b.user.name);
+      if (sortOption === 'name_desc') return b.user.name.localeCompare(a.user.name);
+      if (sortOption === 'nisn_asc') return a.nisn.localeCompare(b.nisn);
+      if (sortOption === 'nisn_desc') return b.nisn.localeCompare(a.nisn);
+      if (sortOption === 'class_asc') return a.class_id - b.class_id;
+      if (sortOption === 'class_desc') return b.class_id - a.class_id;
+      return 0;
+    });
+  }, [students, classes, debouncedSearchQuery, filterClassId, sortOption]);
+
   const totalStudentPages = Math.ceil(filteredStudents.length / itemsPerPage);
+  const paginatedStudents = useMemo(() => {
+    return filteredStudents.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  }, [filteredStudents, currentPage, itemsPerPage]);
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -141,7 +153,7 @@ const Users = () => {
 
   const fetchUsers = async () => {
     try {
-      const res = await axios.get('http://localhost:8080/api/v1/admin/users', {
+      const res = await axios.get('/api/v1/admin/users', {
         headers: { Authorization: `Bearer ${token}` }
       });
       setUsers(res.data || []);
@@ -152,7 +164,7 @@ const Users = () => {
 
   const fetchStudents = async () => {
     try {
-      const res = await axios.get('http://localhost:8080/api/v1/admin/students', {
+      const res = await axios.get('/api/v1/admin/students', {
         headers: { Authorization: `Bearer ${token}` }
       });
       setStudents(res.data || []);
@@ -163,7 +175,7 @@ const Users = () => {
 
   const fetchClasses = async () => {
     try {
-      const res = await axios.get('http://localhost:8080/api/v1/admin/classes', {
+      const res = await axios.get('/api/v1/admin/classes', {
         headers: { Authorization: `Bearer ${token}` }
       });
       setClasses(res.data || []);
@@ -217,12 +229,12 @@ const Users = () => {
 
     try {
       if (isEditMode && editingUserId) {
-        await axios.put(`http://localhost:8080/api/v1/admin/users/${editingUserId}`, {
+        await axios.put(`/api/v1/admin/users/${editingUserId}`, {
           name, nip, nuptk, jabatan, username, password
         }, { headers: { Authorization: `Bearer ${token}` } });
         showSuccessToast('Data guru berhasil diperbarui');
       } else {
-        await axios.post('http://localhost:8080/api/v1/admin/users', {
+        await axios.post('/api/v1/admin/users', {
           name, nip, nuptk, jabatan, username, password
         }, { headers: { Authorization: `Bearer ${token}` } });
         showSuccessToast('Data guru berhasil ditambahkan');
@@ -246,7 +258,7 @@ const Users = () => {
     if (!(await confirmAction(`Hapus Pengguna`, `Yakin ingin menghapus pengguna ${uname}?`))) return;
 
     try {
-      await axios.delete(`http://localhost:8080/api/v1/admin/users/${id}`, {
+      await axios.delete(`/api/v1/admin/users/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setUsers(users.filter(u => u.id !== id));
@@ -307,13 +319,13 @@ const Users = () => {
       };
 
       if (isStudentEditMode && editingStudentId) {
-        await axios.put(`http://localhost:8080/api/v1/admin/students/${editingStudentId}`, 
+        await axios.put(`/api/v1/admin/students/${editingStudentId}`, 
           payload, { headers: { Authorization: `Bearer ${token}` } });
       } else {
         const genNum = () => Math.floor(1000000 + Math.random() * 9000000).toString();
         payload.username = genNum();
         payload.password = genNum();
-        await axios.post('http://localhost:8080/api/v1/admin/students', 
+        await axios.post('/api/v1/admin/students', 
           payload, { headers: { Authorization: `Bearer ${token}` } });
       }
       
@@ -330,7 +342,7 @@ const Users = () => {
     if (!(await confirmAction(`Hapus Siswa`, `Yakin ingin menghapus siswa ${uname}?`))) return;
 
     try {
-      await axios.delete(`http://localhost:8080/api/v1/admin/students/${id}`, {
+      await axios.delete(`/api/v1/admin/students/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setStudents(students.filter(s => s.id !== id));
@@ -345,7 +357,7 @@ const Users = () => {
 
     setIsLoading(true);
     try {
-      const response = await axios.post('http://localhost:8080/api/v1/admin/students/generate-tokens', {}, {
+      const response = await axios.post('/api/v1/admin/students/generate-tokens', {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -367,7 +379,7 @@ const Users = () => {
 
   const handleExportTokens = async () => {
     try {
-      const response = await axios.get('http://localhost:8080/api/v1/admin/students/export-tokens', {
+      const response = await axios.get('/api/v1/admin/students/export-tokens', {
         headers: { Authorization: `Bearer ${token}` }
       });
 

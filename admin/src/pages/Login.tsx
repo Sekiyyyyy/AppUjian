@@ -18,7 +18,7 @@ const Login = () => {
     setIsLoading(true);
 
     try {
-      const response = await axios.post('http://localhost:8080/api/v1/auth/login', {
+      const response = await axios.post('/api/v1/auth/login', {
         username,
         password,
         device_id: 'web-admin-portal'
@@ -50,50 +50,70 @@ const Login = () => {
       <div className="glass-panel w-full max-w-md p-8 relative z-10">
         <div className="text-center mb-8">
           <div className="mx-auto flex items-center justify-center mb-4 transform hover:scale-105 transition-transform">
-            <img src="/logo.png" alt="Logo SMK Negeri 1 Beringin" className="w-24 h-24 object-contain drop-shadow-md" />
+            <img 
+              src="/logo.png" 
+              alt="Logo SMK Negeri 1 Beringin" 
+              width="96" 
+              height="96" 
+              loading="eager" 
+              decoding="async" 
+              className="w-24 h-24 object-contain drop-shadow-md" 
+            />
           </div>
           <h1 className="text-2xl font-bold text-slate-800 tracking-tight">SMK Negeri 1 Beringin</h1>
-          <p className="text-slate-500 mt-1 text-sm">Portal Manajemen Ujian Sekolah</p>
+          <p className="text-slate-600 mt-1 text-sm font-medium">Portal Manajemen Ujian Sekolah</p>
         </div>
 
         {error && (
-          <div className="bg-red-50 text-red-600 p-3 rounded-lg flex items-center space-x-2 mb-6 text-sm">
-            <AlertCircle size={18} />
+          <div role="alert" className="bg-red-50 text-red-700 p-3 rounded-lg flex items-center space-x-2 mb-6 text-sm">
+            <AlertCircle size={18} aria-hidden="true" />
             <span>{error}</span>
           </div>
         )}
 
-        <form onSubmit={handleLogin} className="space-y-5">
+        <form onSubmit={handleLogin} className="space-y-5" aria-label="Form Login Portal Ujian">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Username</label>
+            <label htmlFor="username" className="block text-sm font-medium text-slate-700 mb-1">
+              Username
+            </label>
             <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none" aria-hidden="true">
                 <User className="text-slate-400" size={18} />
               </div>
               <input
+                id="username"
+                name="username"
                 type="text"
+                autoComplete="username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 className="block w-full pl-10 pr-3 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm bg-white/50 backdrop-blur-sm transition-all"
                 placeholder="Masukkan username"
                 required
+                aria-required="true"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Password</label>
+            <label htmlFor="password" className="block text-sm font-medium text-slate-700 mb-1">
+              Password
+            </label>
             <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none" aria-hidden="true">
                 <Lock className="text-slate-400" size={18} />
               </div>
               <input
+                id="password"
+                name="password"
                 type="password"
+                autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="block w-full pl-10 pr-3 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm bg-white/50 backdrop-blur-sm transition-all"
                 placeholder="Masukkan password"
                 required
+                aria-required="true"
               />
             </div>
           </div>
@@ -102,13 +122,17 @@ const Login = () => {
             <button
               type="submit"
               disabled={isLoading}
-              className="btn-primary w-full flex justify-center items-center h-11"
+              aria-label={isLoading ? "Sedang memproses masuk..." : "Masuk ke Portal Ujian"}
+              className="btn-primary w-full flex justify-center items-center h-11 transition-all duration-200"
             >
               {isLoading ? (
-                <svg className="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
+                <span className="flex items-center space-x-2">
+                  <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  <span>Memproses...</span>
+                </span>
               ) : (
                 'Masuk'
               )}

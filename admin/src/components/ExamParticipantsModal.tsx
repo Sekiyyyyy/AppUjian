@@ -37,7 +37,7 @@ const ExamParticipantsModal: React.FC<ExamParticipantsModalProps> = ({ isOpen, o
     if (!examId) return;
     setIsLoading(true);
     try {
-      const response = await axios.get(`http://localhost:8080/api/v1/admin/exams/${examId}/participants`, {
+      const response = await axios.get(`/api/v1/admin/exams/${examId}/participants`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setParticipants(response.data || []);
@@ -65,7 +65,7 @@ const ExamParticipantsModal: React.FC<ExamParticipantsModalProps> = ({ isOpen, o
 
     if (isConfirmed) {
       try {
-        await axios.delete(`http://localhost:8080/api/v1/admin/exams/${examId}/reset/${studentId}`, {
+        await axios.delete(`/api/v1/admin/exams/${examId}/reset/${studentId}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         showSuccessToast(`Berhasil mereset ujian untuk ${studentName}`);
@@ -84,7 +84,7 @@ const ExamParticipantsModal: React.FC<ExamParticipantsModalProps> = ({ isOpen, o
 
     if (isConfirmed) {
       try {
-        await axios.post(`http://localhost:8080/api/v1/admin/exams/${examId}/unlock/${studentId}`, {}, {
+        await axios.post(`/api/v1/admin/exams/${examId}/unlock/${studentId}`, {}, {
           headers: { Authorization: `Bearer ${token}` }
         });
         showSuccessToast(`Berhasil membuka kunci ujian untuk ${studentName}`);
@@ -105,7 +105,7 @@ const ExamParticipantsModal: React.FC<ExamParticipantsModalProps> = ({ isOpen, o
 
     try {
       setIsExporting(true);
-      const url = `http://localhost:8080/api/v1/admin/exams/${examId}/export-grades${
+      const url = `/api/v1/admin/exams/${examId}/export-grades${
         selectedClassId !== 'ALL' ? `?class_id=${selectedClassId}` : ''
       }`;
       const response = await axios.get(url, {

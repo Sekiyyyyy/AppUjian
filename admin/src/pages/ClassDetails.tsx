@@ -43,7 +43,7 @@ const ClassDetails = () => {
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      const classRes = await axios.get('http://localhost:8080/api/v1/admin/classes', {
+      const classRes = await axios.get('/api/v1/admin/classes', {
         headers: { Authorization: `Bearer ${token}` }
       });
       const cls = classRes.data.find((c: any) => c.ID === Number(id));
@@ -53,7 +53,7 @@ const ClassDetails = () => {
         setClassName('Kelas Tidak Ditemukan');
       }
 
-      const stdRes = await axios.get(`http://localhost:8080/api/v1/admin/students?class_id=${id}`, {
+      const stdRes = await axios.get(`/api/v1/admin/students?class_id=${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setStudents(stdRes.data || []);
@@ -72,7 +72,7 @@ const ClassDetails = () => {
   const handleDelete = async (studentId: number, name: string) => {
     if (!(await confirmAction("Hapus Siswa", `Yakin ingin menghapus ${name} permanen?`))) return;
     try {
-      await axios.delete(`http://localhost:8080/api/v1/admin/students/${studentId}`, {
+      await axios.delete(`/api/v1/admin/students/${studentId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       showSuccessToast("Siswa berhasil dihapus");
@@ -89,7 +89,7 @@ const ClassDetails = () => {
 
   const saveEdit = async (studentId: number) => {
     try {
-      await axios.put(`http://localhost:8080/api/v1/admin/students/${studentId}`, editForm, {
+      await axios.put(`/api/v1/admin/students/${studentId}`, editForm, {
         headers: { Authorization: `Bearer ${token}` }
       });
       showSuccessToast("Data siswa diperbarui");
@@ -115,7 +115,7 @@ const ClassDetails = () => {
 
     try {
       setIsLoading(true);
-      await axios.post('http://localhost:8080/api/v1/admin/students/import', formData, {
+      await axios.post('/api/v1/admin/students/import', formData, {
         headers: { 
           Authorization: `Bearer ${token}`,
           'Content-Type': 'multipart/form-data'
