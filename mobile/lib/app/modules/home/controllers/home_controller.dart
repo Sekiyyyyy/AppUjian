@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../utils/app_toast.dart';
 import '../../../data/api_client.dart';
@@ -28,6 +29,31 @@ class HomeController extends GetxController {
     studentName.value = prefs.getString('name') ?? 'Siswa';
     studentNis.value = prefs.getString('nis') ?? '-';
     className.value = prefs.getString('class_name') ?? '-';
+
+    try {
+      final response = await _dio.get('/api/v1/auth/me');
+      if (response.statusCode == 200) {
+        final data = response.data;
+        await prefs.setString('username', data['user']['username'] ?? '');
+        await prefs.setString('name', data['user']['name'] ?? 'Siswa');
+
+        if (data['student'] != null) {
+          final nisn = data['student']['nisn']?.toString() ?? '';
+          final nis = data['student']['nis']?.toString() ?? '';
+          String combinedNis = nis.isNotEmpty ? "$nisn/$nis" : "$nisn/-";
+          await prefs.setString('nis', combinedNis);
+          
+          final cName = data['student']['class']?['name']?.toString() ?? '';
+          await prefs.setString('class_name', cName);
+        }
+
+        studentName.value = prefs.getString('name') ?? 'Siswa';
+        studentNis.value = prefs.getString('nis') ?? '-';
+        className.value = prefs.getString('class_name') ?? '-';
+      }
+    } catch (e) {
+      debugPrint("Gagal sync profile: $e");
+    }
   }
 
   Future<void> fetchExams() async {
@@ -98,12 +124,22 @@ class HomeController extends GetxController {
         }
       }
     } catch (e) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        AppToast.error(
-          title: "Gagal Memuat Jadwal",
-          message: "Tidak dapat menyinkronkan data ujian. Periksa koneksi internet Anda.",
-        );
-      });
+      if (e is DioException && (e.response?.statusCode == 401 || e.response?.statusCode == 403)) {
+        logout();
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          AppToast.error(
+            title: "Sesi Berakhir",
+            message: "Sesi Anda telah berakhir atau tidak valid. Silakan login kembali.",
+          );
+        });
+      } else {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          AppToast.error(
+            title: "Gagal Memuat Jadwal",
+            message: "Tidak dapat menyinkronkan data ujian. Periksa koneksi internet Anda.",
+          );
+        });
+      }
     } finally {
       isLoading(false);
     }

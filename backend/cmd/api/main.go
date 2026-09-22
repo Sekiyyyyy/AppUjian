@@ -68,6 +68,7 @@ func main() {
 		authRoutes := api.Group("/auth")
 		{
 			authRoutes.POST("/login", auth.LoginHandler(cfg))
+			authRoutes.GET("/me", auth.AuthMiddleware(cfg), auth.MeHandler())
 		}
 
 		// Protected Admin / Teacher Routes

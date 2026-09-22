@@ -68,3 +68,32 @@ func LoginHandler(cfg *config.Config) gin.HandlerFunc {
 		})
 	}
 }
+
+func MeHandler() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userID, exists := c.Get("userID")
+		if !exists {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+			return
+		}
+
+		var user models.User
+		if err := config.DB.First(&user, userID).Error; err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+			return
+		}
+
+		var studentPtr *models.Student
+		if user.Role == models.RoleStudent {
+			var student models.Student
+			if err := config.DB.Preload("Class").Where("user_id = ?", user.ID).First(&student).Error; err == nil {
+				studentPtr = &student
+			}
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"user":    user,
+			"student": studentPtr,
+		})
+	}
+}
