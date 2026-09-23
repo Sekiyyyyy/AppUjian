@@ -17,7 +17,8 @@ import {
   Target,
   FileSpreadsheet,
   Download,
-  Sparkles
+  Sparkles,
+  Tag
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { confirmAction, showSuccessToast, showErrorToast } from '../utils/alert';
@@ -605,7 +606,8 @@ const Exams = () => {
                   {/* Timing Details */}
                   <div className="space-y-1.5 text-xs text-slate-600 mb-4 bg-slate-50 p-3 rounded-xl border border-slate-100">
                     <div className="flex items-center space-x-2 font-semibold text-primary-700">
-                      <span>🏷️ Kategori: {exam.category?.name || 'Umum'}</span>
+                      <Tag size={13} className="text-primary-600" />
+                      <span>Kategori: {exam.category?.name || 'Umum'}</span>
                     </div>
                     <div className="flex items-center space-x-2">
                       <Clock size={14} className="text-slate-400" />
