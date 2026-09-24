@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
-import { Lock, User, AlertCircle } from 'lucide-react';
+import { Lock, User, AlertCircle, Download } from 'lucide-react';
 
 const Login = () => {
   const [username, setUsername] = useState('');
@@ -139,6 +139,17 @@ const Login = () => {
             </button>
           </div>
         </form>
+
+        <div className="mt-6 pt-6 border-t border-slate-200/80 text-center">
+          <p className="text-xs text-slate-500 mb-2">Siswa ingin mengikuti ujian?</p>
+          <Link
+            to="/download"
+            className="inline-flex items-center justify-center space-x-2 text-xs font-semibold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100/80 border border-emerald-200/80 px-4 py-2 rounded-xl transition-all"
+          >
+            <Download size={14} />
+            <span>Unduh Aplikasi Siswa (APK & EXE)</span>
+          </Link>
+        </div>
       </div>
     </div>
   );

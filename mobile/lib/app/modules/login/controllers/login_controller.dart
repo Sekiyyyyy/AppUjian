@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../routes/app_pages.dart';
 import '../../../data/api_client.dart';
+import '../../../data/services/update_service.dart';
 
 class LoginController extends GetxController {
   final nisnController = TextEditingController();
@@ -13,6 +14,15 @@ class LoginController extends GetxController {
   final errorMessage = ''.obs;
 
   final _dio = ApiClient().dio;
+
+  @override
+  void onReady() {
+    super.onReady();
+    // Otomatis cek apakah ada pembaruan aplikasi saat layar login siap
+    Future.delayed(const Duration(milliseconds: 500), () {
+      UpdateService.checkForUpdate();
+    });
+  }
 
   @override
   void onClose() {

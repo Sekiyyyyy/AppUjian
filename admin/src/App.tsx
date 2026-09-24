@@ -7,6 +7,7 @@ import { Loader2 } from 'lucide-react';
 
 // Lazy-loaded pages for high-performance code splitting
 const Login = lazy(() => import('./pages/Login'));
+const Download = lazy(() => import('./pages/Download'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Questions = lazy(() => import('./pages/Questions'));
 const Subjects = lazy(() => import('./pages/Subjects'));
@@ -35,6 +36,7 @@ function App() {
         <Suspense fallback={<PageLoader />}>
           <Routes>
             <Route path="/login" element={<Login />} />
+            <Route path="/download" element={<Download />} />
             
             <Route path="/dashboard" element={<AdminLayout />}>
               <Route index element={<Dashboard />} />

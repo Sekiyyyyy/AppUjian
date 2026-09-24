@@ -1,0 +1,237 @@
+import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import axios from 'axios';
+import { 
+  Download, 
+  Monitor, 
+  Smartphone, 
+  Apple, 
+  CheckCircle2, 
+  ShieldCheck, 
+  Sparkles, 
+  ArrowLeft, 
+  ExternalLink,
+  Info,
+  Clock
+} from 'lucide-react';
+
+interface VersionInfo {
+  latest_version: string;
+  build_number: number;
+  min_version: string;
+  title: string;
+  changelog: string[];
+  download_url: string;
+}
+
+const DownloadPage: React.FC = () => {
+  const [versionInfo, setVersionInfo] = useState<VersionInfo | null>(null);
+
+  useEffect(() => {
+    axios.get('/api/v1/app/version')
+      .then(res => setVersionInfo(res.data))
+      .catch(() => {
+        // Fallback default
+        setVersionInfo({
+          latest_version: '1.0.0',
+          build_number: 1,
+          min_version: '1.0.0',
+          title: 'Pembaruan Aplikasi CBT',
+          changelog: [
+            'Rilis resmi aplikasi CBT SMK Negeri 1 Beringin.',
+            'Fitur keamanan anti-curang dan kunci layar otomatis.',
+            'Tersambung langsung ke cloud server resmi.'
+          ],
+          download_url: '/download'
+        });
+      });
+  }, []);
+
+  const version = versionInfo?.latest_version || '1.0.0';
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 text-white flex flex-col justify-between selection:bg-emerald-500 selection:text-white">
+      {/* Background Glow */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
+        <div className="absolute -top-40 -left-40 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl" />
+        <div className="absolute top-1/3 -right-40 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl" />
+        <div className="absolute -bottom-40 left-1/3 w-96 h-96 bg-sky-500/10 rounded-full blur-3xl" />
+      </div>
+
+      {/* Header */}
+      <header className="relative z-10 border-b border-slate-700/60 bg-slate-900/40 backdrop-blur-md">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <img 
+              src="/logo.png" 
+              alt="Logo SMKN 1 Beringin" 
+              className="w-10 h-10 object-contain drop-shadow"
+              onError={(e) => {
+                // If logo.png fails, fallback gracefully
+                (e.target as HTMLElement).style.display = 'none';
+              }}
+            />
+            <div>
+              <h1 className="font-bold text-lg tracking-tight">CBT SMK Negeri 1 Beringin</h1>
+              <p className="text-xs text-slate-400">Portal Unduh Aplikasi Resmi Siswa</p>
+            </div>
+          </div>
+          <Link 
+            to="/login"
+            className="flex items-center space-x-2 text-sm text-slate-300 hover:text-white bg-slate-800/80 hover:bg-slate-700 border border-slate-700 px-3.5 py-1.5 rounded-lg transition-all"
+          >
+            <ArrowLeft size={16} />
+            <span className="hidden sm:inline">Kembali ke</span>
+            <span>Login Web</span>
+          </Link>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 py-12 flex-1 flex flex-col justify-center">
+        {/* Hero Section */}
+        <div className="text-center max-w-2xl mx-auto mb-12">
+          <div className="inline-flex items-center space-x-2 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-semibold px-3 py-1.5 rounded-full mb-4">
+            <Sparkles size={14} />
+            <span>Versi Terbaru v{version} Tersedia</span>
+          </div>
+          <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight mb-4">
+            Unduh Aplikasi Ujian Berbasis Komputer
+          </h2>
+          <p className="text-slate-300 text-sm sm:text-base leading-relaxed">
+            Dapatkan aplikasi ujian resmi untuk perangkat Anda. Dilengkapi proteksi anti-curang, kunci layar otomatis, dan performa ujian yang stabil.
+          </p>
+        </div>
+
+        {/* Download Cards Grid */}
+        <div className="grid md:grid-cols-2 gap-6 lg:gap-8 mb-10">
+          {/* Windows Desktop Card */}
+          <div className="bg-slate-800/60 border border-slate-700/80 rounded-2xl p-6 sm:p-8 flex flex-col justify-between backdrop-blur-sm hover:border-emerald-500/50 transition-all shadow-xl group">
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 group-hover:scale-105 transition-transform">
+                  <Monitor size={26} />
+                </div>
+                <span className="text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2.5 py-1 rounded-full">
+                  Lab Komputer / Laptop
+                </span>
+              </div>
+              <h3 className="text-xl font-bold mb-2">Windows Desktop (.exe)</h3>
+              <p className="text-slate-400 text-sm mb-5">
+                Paket instalasi 1 file tunggal. Otomatis membuat ikon di Desktop komputer lab atau laptop siswa.
+              </p>
+
+              <div className="space-y-2.5 mb-6 text-xs sm:text-sm text-slate-300">
+                <div className="flex items-center space-x-2">
+                  <CheckCircle2 size={16} className="text-emerald-400 flex-shrink-0" />
+                  <span>1 File Installer Setup (Langsung Install)</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <CheckCircle2 size={16} className="text-emerald-400 flex-shrink-0" />
+                  <span>Kiosk Mode & Layar Penuh Otomatis</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <CheckCircle2 size={16} className="text-emerald-400 flex-shrink-0" />
+                  <span>Mendukung Windows 10 & 11 (64-bit)</span>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <a
+                href="/downloads/AppUjian_Setup.exe"
+                download="AppUjian_Setup_v1.0.0.exe"
+                className="w-full flex items-center justify-center space-x-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-3 px-4 rounded-xl transition-all shadow-lg shadow-emerald-900/30 active:scale-[0.98]"
+              >
+                <Download size={18} />
+                <span>Unduh Installer Windows (.exe)</span>
+              </a>
+              <p className="text-center text-[11px] text-slate-400 mt-2">
+                Ukuran: ~25 MB • Versi {version}
+              </p>
+            </div>
+          </div>
+
+          {/* Android Mobile Card */}
+          <div className="bg-slate-800/60 border border-slate-700/80 rounded-2xl p-6 sm:p-8 flex flex-col justify-between backdrop-blur-sm hover:border-sky-500/50 transition-all shadow-xl group">
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-12 h-12 rounded-xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400 group-hover:scale-105 transition-transform">
+                  <Smartphone size={26} />
+                </div>
+                <span className="text-xs font-semibold bg-sky-500/20 text-sky-300 border border-sky-500/30 px-2.5 py-1 rounded-full">
+                  HP / Tablet Siswa
+                </span>
+              </div>
+              <h3 className="text-xl font-bold mb-2">Android Mobile (.apk)</h3>
+              <p className="text-slate-400 text-sm mb-5">
+                Aplikasi ujian ringan untuk smartphone Android. Dilengkapi deteksi kecurangan dan kunci aplikasi.
+              </p>
+
+              <div className="space-y-2.5 mb-6 text-xs sm:text-sm text-slate-300">
+                <div className="flex items-center space-x-2">
+                  <CheckCircle2 size={16} className="text-sky-400 flex-shrink-0" />
+                  <span>Kunci Aplikasi & Anti-Split Screen</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <CheckCircle2 size={16} className="text-sky-400 flex-shrink-0" />
+                  <span>Deteksi Keluar / Pindah Aplikasi</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <CheckCircle2 size={16} className="text-sky-400 flex-shrink-0" />
+                  <span>Mendukung Android 8.0 Oreo hingga Android 14+</span>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <a
+                href="/downloads/AppUjian.apk"
+                download="AppUjian_v1.0.0.apk"
+                className="w-full flex items-center justify-center space-x-2.5 bg-sky-600 hover:bg-sky-500 text-white font-semibold py-3 px-4 rounded-xl transition-all shadow-lg shadow-sky-900/30 active:scale-[0.98]"
+              >
+                <Download size={18} />
+                <span>Unduh Aplikasi Android (.apk)</span>
+              </a>
+              <p className="text-center text-[11px] text-slate-400 mt-2">
+                Ukuran: ~28 MB • Versi {version}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* iOS Notice & Changelog Banner */}
+        <div className="grid sm:grid-cols-2 gap-4 text-xs text-slate-300">
+          <div className="bg-slate-800/40 border border-slate-700/60 rounded-xl p-4 flex items-start space-x-3">
+            <Apple size={20} className="text-slate-400 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold text-white mb-0.5">Pengguna Apple iOS (iPhone/iPad)</p>
+              <p className="text-slate-400 leading-relaxed">
+                Sesuai kebijakan keamanan Apple, aplikasi iOS tidak dapat diunduh langsung dari web. Siswa dengan iPhone diarahkan mengikuti ujian melalui lab komputer sekolah atau izin panitia.
+              </p>
+            </div>
+          </div>
+
+          <div className="bg-slate-800/40 border border-slate-700/60 rounded-xl p-4 flex items-start space-x-3">
+            <Info size={20} className="text-emerald-400 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold text-white mb-0.5">Catatan Pembaruan v{version}</p>
+              <ul className="list-disc list-inside text-slate-400 space-y-0.5">
+                {versionInfo?.changelog?.map((log, idx) => (
+                  <li key={idx}>{log}</li>
+                )) || <li>Rilis aplikasi CBT terbaru</li>}
+              </ul>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      {/* Footer */}
+      <footer className="relative z-10 border-t border-slate-800 py-6 text-center text-xs text-slate-500">
+        <p>© {new Date().getFullYear()} SMK Negeri 1 Beringin. Hak Cipta Dilindungi.</p>
+      </footer>
+    </div>
+  );
+};
+
+export default DownloadPage;

@@ -71,6 +71,12 @@ func main() {
 			authRoutes.GET("/me", auth.AuthMiddleware(cfg), auth.MeHandler())
 		}
 
+		// Public App Client Updates & Version Info
+		appRoutes := api.Group("/app")
+		{
+			appRoutes.GET("/version", controllers.GetAppVersion)
+		}
+
 		// Protected Admin / Teacher Routes
 		adminRoutes := api.Group("/admin")
 		adminRoutes.Use(auth.AuthMiddleware(cfg), auth.RoleMiddleware(string(models.RoleAdmin), string(models.RoleTeacher)))
