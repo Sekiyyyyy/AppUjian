@@ -49,16 +49,7 @@ class ApiClient {
   static String? _customBaseUrl;
 
   static String get defaultBaseUrl {
-    if (kIsWeb) {
-      return 'http://localhost:8080';
-    }
-    try {
-      if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) {
-        return 'http://localhost:8080';
-      }
-    } catch (_) {}
-    // IP Wi-Fi lokal laptop untuk HP Android fisik
-    return 'http://192.168.1.8:8080';
+    return 'https://ujian.tiksmkn1beringin.my.id';
   }
 
   static String get baseUrl {
@@ -68,7 +59,11 @@ class ApiClient {
   static Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
     final savedUrl = prefs.getString('server_base_url');
-    if (savedUrl != null && savedUrl.isNotEmpty && !savedUrl.contains('192.168.0.116')) {
+    if (savedUrl != null && 
+        savedUrl.isNotEmpty && 
+        !savedUrl.contains('192.168.') && 
+        !savedUrl.contains('localhost') && 
+        !savedUrl.contains('127.0.0.1')) {
       _customBaseUrl = savedUrl;
       _instance.dio.options.baseUrl = savedUrl;
     } else {
