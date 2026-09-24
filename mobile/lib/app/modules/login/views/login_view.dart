@@ -283,9 +283,10 @@ class LoginView extends GetView<LoginController> {
             ),
           ),
         ),
-        ],
       ),
-    );
+    ],
+  ),
+);
   }
 
   Widget _buildTextField({
