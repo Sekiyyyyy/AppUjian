@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { 
   Download, 
@@ -9,10 +8,7 @@ import {
   CheckCircle2, 
   ShieldCheck, 
   Sparkles, 
-  ArrowLeft, 
-  ExternalLink,
-  Info,
-  Clock
+  Info
 } from 'lucide-react';
 
 interface VersionInfo {
@@ -58,8 +54,8 @@ const DownloadPage: React.FC = () => {
         <div className="absolute -bottom-40 left-1/3 w-96 h-96 bg-sky-500/10 rounded-full blur-3xl" />
       </div>
 
-      {/* Header */}
-      <header className="relative z-10 border-b border-slate-700/60 bg-slate-900/40 backdrop-blur-md">
+      {/* Header (Sticky / Fixed Top) */}
+      <header className="sticky top-0 z-50 border-b border-slate-700/80 bg-slate-900/85 backdrop-blur-md shadow-lg transition-all">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <img 
@@ -76,14 +72,13 @@ const DownloadPage: React.FC = () => {
               <p className="text-xs text-slate-400">Portal Unduh Aplikasi Resmi Siswa</p>
             </div>
           </div>
-          <Link 
-            to="/login"
-            className="flex items-center space-x-2 text-sm text-slate-300 hover:text-white bg-slate-800/80 hover:bg-slate-700 border border-slate-700 px-3.5 py-1.5 rounded-lg transition-all"
-          >
-            <ArrowLeft size={16} />
-            <span className="hidden sm:inline">Kembali ke</span>
-            <span>Login Web</span>
-          </Link>
+
+          {/* Server Status Badge (Tanpa Tombol Login Rahasia) */}
+          <div className="flex items-center space-x-2 bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 text-xs font-medium px-3.5 py-1.5 rounded-full shadow-inner">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="hidden sm:inline font-semibold">Server CBT:</span>
+            <span>Online</span>
+          </div>
         </div>
       </header>
 

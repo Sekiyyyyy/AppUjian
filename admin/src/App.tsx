@@ -35,8 +35,9 @@ function App() {
       <BrowserRouter>
         <Suspense fallback={<PageLoader />}>
           <Routes>
-            <Route path="/login" element={<Login />} />
+            <Route path="/" element={<Navigate to="/download" replace />} />
             <Route path="/download" element={<Download />} />
+            <Route path="/login" element={<Login />} />
             
             <Route path="/dashboard" element={<AdminLayout />}>
               <Route index element={<Dashboard />} />
