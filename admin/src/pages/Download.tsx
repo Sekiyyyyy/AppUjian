@@ -135,7 +135,7 @@ const DownloadPage: React.FC = () => {
             <div>
               <a
                 href="/downloads/AppUjian_Setup.exe"
-                download="AppUjian_Setup_v1.0.0.exe"
+                download={`AppUjian_Setup_v${version}.exe`}
                 className="w-full flex items-center justify-center space-x-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-3 px-4 rounded-xl transition-all shadow-lg shadow-emerald-900/30 active:scale-[0.98]"
               >
                 <Download size={18} />
@@ -182,7 +182,7 @@ const DownloadPage: React.FC = () => {
             <div>
               <a
                 href="/downloads/AppUjian.apk"
-                download="AppUjian_v1.0.0.apk"
+                download={`AppUjian_v${version}.apk`}
                 className="w-full flex items-center justify-center space-x-2.5 bg-sky-600 hover:bg-sky-500 text-white font-semibold py-3 px-4 rounded-xl transition-all shadow-lg shadow-sky-900/30 active:scale-[0.98]"
               >
                 <Download size={18} />
