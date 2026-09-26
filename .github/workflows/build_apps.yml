@@ -1,4 +1,4 @@
-name: Build Android APK and Windows EXE
+name: Build Android APK, Windows EXE, and iOS IPA
 
 on:
   workflow_dispatch: # Memungkinkan tombol 'Run workflow' manual di GitHub
@@ -80,4 +80,51 @@ jobs:
         with:
           name: AppUjian-Windows-Installer
           path: mobile/build/installer/*.exe
+          if-no-files-found: error
+
+  build-ios:
+    name: Build Apple iOS IPA
+    runs-on: macos-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Enable iOS Platform & Generate Config
+        working-directory: mobile
+        run: |
+          flutter config --enable-ios
+          if [ ! -d "ios" ]; then
+            echo "Generating iOS project files..."
+            flutter create --platforms=ios --org com.smkn1beringin .
+          fi
+
+      - name: Get Dependencies
+        working-directory: mobile
+        run: flutter pub get
+
+      - name: Build iOS Release (Unsigned)
+        working-directory: mobile
+        run: |
+          flutter build ios --release --no-codesign
+
+      - name: Package Payload into .ipa
+        working-directory: mobile
+        run: |
+          mkdir -p build/ios/ipa/Payload
+          cp -r build/ios/iphoneos/Runner.app build/ios/ipa/Payload/
+          cd build/ios/ipa
+          zip -r AppUjian.ipa Payload
+          echo "IPA packaged successfully."
+
+      - name: Upload iOS IPA Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AppUjian-iOS-IPA
+          path: mobile/build/ios/ipa/AppUjian.ipa
           if-no-files-found: error

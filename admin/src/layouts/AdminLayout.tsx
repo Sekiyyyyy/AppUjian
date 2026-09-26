@@ -16,6 +16,7 @@ import {
   Menu,
   X,
   Clock,
+  UserCheck,
   User as UserIcon
 } from 'lucide-react';
 
@@ -79,6 +80,7 @@ const AdminLayout = () => {
         { path: '/dashboard/subjects', icon: <BookOpen size={19} />, label: 'Mata Pelajaran' },
         { path: '/dashboard/questions', icon: <Database size={19} />, label: 'Bank Soal' },
         { path: '/dashboard/exams', icon: <Calendar size={19} />, label: 'Jadwal Ujian' },
+        { path: '/dashboard/supervisors', icon: <UserCheck size={19} />, label: 'Jadwal Pengawas' },
       ]
     },
     {

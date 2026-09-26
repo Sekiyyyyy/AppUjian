@@ -99,9 +99,9 @@ const DownloadPage: React.FC = () => {
         </div>
 
         {/* Download Cards Grid */}
-        <div className="grid md:grid-cols-2 gap-6 lg:gap-8 mb-10">
+        <div className="grid md:grid-cols-3 gap-6 mb-10">
           {/* Windows Desktop Card */}
-          <div className="bg-slate-800/60 border border-slate-700/80 rounded-2xl p-6 sm:p-8 flex flex-col justify-between backdrop-blur-sm hover:border-emerald-500/50 transition-all shadow-xl group">
+          <div className="bg-slate-800/60 border border-slate-700/80 rounded-2xl p-6 flex flex-col justify-between backdrop-blur-sm hover:border-emerald-500/50 transition-all shadow-xl group">
             <div>
               <div className="flex items-center justify-between mb-4">
                 <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 group-hover:scale-105 transition-transform">
@@ -136,10 +136,10 @@ const DownloadPage: React.FC = () => {
               <a
                 href="/downloads/AppUjian_Setup.exe"
                 download={`AppUjian_Setup_v${version}.exe`}
-                className="w-full flex items-center justify-center space-x-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-3 px-4 rounded-xl transition-all shadow-lg shadow-emerald-900/30 active:scale-[0.98]"
+                className="w-full flex items-center justify-center space-x-2 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-3 px-4 rounded-xl transition-all shadow-lg shadow-emerald-900/30 active:scale-[0.98] text-sm"
               >
                 <Download size={18} />
-                <span>Unduh Installer Windows (.exe)</span>
+                <span>Unduh Windows (.exe)</span>
               </a>
               <p className="text-center text-[11px] text-slate-400 mt-2">
                 Ukuran: ~25 MB • Versi {version}
@@ -148,14 +148,14 @@ const DownloadPage: React.FC = () => {
           </div>
 
           {/* Android Mobile Card */}
-          <div className="bg-slate-800/60 border border-slate-700/80 rounded-2xl p-6 sm:p-8 flex flex-col justify-between backdrop-blur-sm hover:border-sky-500/50 transition-all shadow-xl group">
+          <div className="bg-slate-800/60 border border-slate-700/80 rounded-2xl p-6 flex flex-col justify-between backdrop-blur-sm hover:border-sky-500/50 transition-all shadow-xl group">
             <div>
               <div className="flex items-center justify-between mb-4">
                 <div className="w-12 h-12 rounded-xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400 group-hover:scale-105 transition-transform">
                   <Smartphone size={26} />
                 </div>
                 <span className="text-xs font-semibold bg-sky-500/20 text-sky-300 border border-sky-500/30 px-2.5 py-1 rounded-full">
-                  HP / Tablet Siswa
+                  HP / Tablet Android
                 </span>
               </div>
               <h3 className="text-xl font-bold mb-2">Android Mobile (.apk)</h3>
@@ -174,7 +174,7 @@ const DownloadPage: React.FC = () => {
                 </div>
                 <div className="flex items-center space-x-2">
                   <CheckCircle2 size={16} className="text-sky-400 flex-shrink-0" />
-                  <span>Mendukung Android 8.0 Oreo hingga Android 14+</span>
+                  <span>Mendukung Android 8.0 hingga 14+</span>
                 </div>
               </div>
             </div>
@@ -183,26 +183,73 @@ const DownloadPage: React.FC = () => {
               <a
                 href="/downloads/AppUjian.apk"
                 download={`AppUjian_v${version}.apk`}
-                className="w-full flex items-center justify-center space-x-2.5 bg-sky-600 hover:bg-sky-500 text-white font-semibold py-3 px-4 rounded-xl transition-all shadow-lg shadow-sky-900/30 active:scale-[0.98]"
+                className="w-full flex items-center justify-center space-x-2 bg-sky-600 hover:bg-sky-500 text-white font-semibold py-3 px-4 rounded-xl transition-all shadow-lg shadow-sky-900/30 active:scale-[0.98] text-sm"
               >
                 <Download size={18} />
-                <span>Unduh Aplikasi Android (.apk)</span>
+                <span>Unduh Android (.apk)</span>
               </a>
               <p className="text-center text-[11px] text-slate-400 mt-2">
                 Ukuran: ~28 MB • Versi {version}
               </p>
             </div>
           </div>
+
+          {/* Apple iOS Card */}
+          <div className="bg-slate-800/60 border border-slate-700/80 rounded-2xl p-6 flex flex-col justify-between backdrop-blur-sm hover:border-violet-500/50 transition-all shadow-xl group">
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-12 h-12 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center text-violet-400 group-hover:scale-105 transition-transform">
+                  <Apple size={26} />
+                </div>
+                <span className="text-xs font-semibold bg-violet-500/20 text-violet-300 border border-violet-500/30 px-2.5 py-1 rounded-full">
+                  iPhone / iPad
+                </span>
+              </div>
+              <h3 className="text-xl font-bold mb-2">Apple iOS (.ipa)</h3>
+              <p className="text-slate-400 text-sm mb-5">
+                Paket instalasi ujian untuk perangkat Apple iOS (iPhone & iPad). Dapat diinstal via Sideloadly, AltStore, atau MDM.
+              </p>
+
+              <div className="space-y-2.5 mb-6 text-xs sm:text-sm text-slate-300">
+                <div className="flex items-center space-x-2">
+                  <CheckCircle2 size={16} className="text-violet-400 flex-shrink-0" />
+                  <span>Kunci Fokus & Mode Ujian Layar Penuh</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <CheckCircle2 size={16} className="text-violet-400 flex-shrink-0" />
+                  <span>Deteksi Pindah Aplikasi & Multi-Window</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <CheckCircle2 size={16} className="text-violet-400 flex-shrink-0" />
+                  <span>Mendukung iOS / iPadOS 14 hingga 18+</span>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <a
+                href="/downloads/AppUjian.ipa"
+                download={`AppUjian_v${version}.ipa`}
+                className="w-full flex items-center justify-center space-x-2 bg-violet-600 hover:bg-violet-500 text-white font-semibold py-3 px-4 rounded-xl transition-all shadow-lg shadow-violet-900/30 active:scale-[0.98] text-sm"
+              >
+                <Download size={18} />
+                <span>Unduh Apple iOS (.ipa)</span>
+              </a>
+              <p className="text-center text-[11px] text-slate-400 mt-2">
+                Format: .ipa • Versi {version}
+              </p>
+            </div>
+          </div>
         </div>
 
-        {/* iOS Notice & Changelog Banner */}
+        {/* Info & Changelog Banner */}
         <div className="grid sm:grid-cols-2 gap-4 text-xs text-slate-300">
           <div className="bg-slate-800/40 border border-slate-700/60 rounded-xl p-4 flex items-start space-x-3">
-            <Apple size={20} className="text-slate-400 flex-shrink-0 mt-0.5" />
+            <Apple size={20} className="text-violet-400 flex-shrink-0 mt-0.5" />
             <div>
-              <p className="font-semibold text-white mb-0.5">Pengguna Apple iOS (iPhone/iPad)</p>
+              <p className="font-semibold text-white mb-0.5">Panduan Instalasi iOS (.ipa)</p>
               <p className="text-slate-400 leading-relaxed">
-                Sesuai kebijakan keamanan Apple, aplikasi iOS tidak dapat diunduh langsung dari web. Siswa dengan iPhone diarahkan mengikuti ujian melalui lab komputer sekolah atau izin panitia.
+                Untuk memasang file .ipa di iPhone/iPad, siswa atau proktor dapat menggunakan alat sideload seperti <b>Sideloadly</b> (Windows/Mac), <b>AltStore</b>, <b>TrollStore</b>, <b>Scarlet</b>, atau melalui konfigurasi MDM sekolah.
               </p>
             </div>
           </div>

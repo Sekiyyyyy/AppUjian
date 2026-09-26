@@ -216,6 +216,13 @@ func DeleteExam(c *gin.Context) {
 		return
 	}
 
+	// Delete supervisor assignments
+	if err := tx.Where("exam_id = ?", id).Delete(&models.ExamSupervisor{}).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menghapus jadwal pengawas ujian"})
+		return
+	}
+
 	// Delete exam itself
 	if err := tx.Delete(&exam).Error; err != nil {
 		tx.Rollback()
@@ -366,11 +373,40 @@ func GetExamParticipants(c *gin.Context) {
 		sessionMap[s.StudentID] = s
 	}
 
+	// Determine supervisor permissions for current caller
+	role, _ := c.Get("role")
+	roleStr, _ := role.(string)
+	isAdmin := roleStr == string(models.RoleAdmin) || roleStr == string(models.RoleSuperAdmin)
+
+	supervisedClassMap := make(map[uint]bool)
+	if !isAdmin {
+		userID, exists := c.Get("userID")
+		if exists && userID != nil {
+			var teacherID uint
+			if idFloat, ok := userID.(float64); ok {
+				teacherID = uint(idFloat)
+			} else if idUint, ok := userID.(uint); ok {
+				teacherID = idUint
+			}
+
+			var supervisedClassIDs []uint
+			config.DB.Model(&models.ExamSupervisor{}).
+				Where("exam_id = ? AND teacher_id = ?", examID, teacherID).
+				Pluck("class_id", &supervisedClassIDs)
+
+			for _, cid := range supervisedClassIDs {
+				supervisedClassMap[cid] = true
+			}
+		}
+	}
+
 	type ParticipantResponse struct {
 		models.Student
 		Name          string  `json:"name"`
 		SessionStatus string  `json:"session_status"`
 		Score         float64 `json:"score"`
+		CanUnlock     bool    `json:"can_unlock"`
+		IsSupervisor  bool    `json:"is_supervisor"`
 	}
 
 	var responses []ParticipantResponse = make([]ParticipantResponse, 0)
@@ -382,11 +418,16 @@ func GetExamParticipants(c *gin.Context) {
 			score = session.Score
 		}
 
+		isSupervisor := isAdmin || supervisedClassMap[student.ClassID]
+		canUnlock := (status == "LOCKED") && isSupervisor
+
 		responses = append(responses, ParticipantResponse{
 			Student:       student,
 			Name:          student.User.Name,
 			SessionStatus: status,
 			Score:         score,
+			CanUnlock:     canUnlock,
+			IsSupervisor:  isSupervisor,
 		})
 	}
 
@@ -404,6 +445,38 @@ func ResetStudentExam(c *gin.Context) {
 		return
 	}
 
+	// Permission boundary: If caller is a TEACHER, verify they are supervising this class or authored the exam
+	role, exists := c.Get("role")
+	if exists && role == string(models.RoleTeacher) {
+		userID, idExists := c.Get("userID")
+		if idExists {
+			var teacherID uint
+			if idFloat, ok := userID.(float64); ok {
+				teacherID = uint(idFloat)
+			} else if idUint, ok := userID.(uint); ok {
+				teacherID = idUint
+			}
+
+			var student models.Student
+			if err := config.DB.First(&student, session.StudentID).Error; err == nil {
+				var supervisorCount int64
+				config.DB.Model(&models.ExamSupervisor{}).
+					Where("exam_id = ? AND class_id = ? AND teacher_id = ?", session.ExamID, student.ClassID, teacherID).
+					Count(&supervisorCount)
+
+				var exam models.Exam
+				config.DB.Select("teacher_id").First(&exam, session.ExamID)
+
+				if supervisorCount == 0 && exam.TeacherID != teacherID {
+					c.JSON(http.StatusForbidden, gin.H{
+						"error": "Akses Ditolak: Anda hanya memiliki izin mereset ujian untuk siswa di kelas yang sedang Anda awasi.",
+					})
+					return
+				}
+			}
+		}
+	}
+
 	if err := config.DB.Unscoped().Where("session_id = ?", session.ID).Delete(&models.StudentAnswer{}).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menghapus jawaban siswa"})
 		return
@@ -417,7 +490,7 @@ func ResetStudentExam(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Ujian siswa berhasil direset. Siswa dapat memulai kembali dari awal."})
 }
 
-// UnlockStudentExam allows a proctor/admin to unlock a student's locked exam session without losing answers
+// UnlockStudentExam allows an authorized proctor or admin to unlock a student's locked exam session
 func UnlockStudentExam(c *gin.Context) {
 	examID := c.Param("id")
 	studentID := c.Param("student_id")
@@ -426,6 +499,41 @@ func UnlockStudentExam(c *gin.Context) {
 	if err := config.DB.Where("exam_id = ? AND student_id = ?", examID, studentID).First(&session).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Sesi ujian siswa tidak ditemukan"})
 		return
+	}
+
+	// Permission boundary: If caller is a TEACHER, verify they are assigned as supervisor for this exam and class
+	role, exists := c.Get("role")
+	if exists && role == string(models.RoleTeacher) {
+		userID, idExists := c.Get("userID")
+		if !idExists {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+			return
+		}
+
+		var teacherID uint
+		if idFloat, ok := userID.(float64); ok {
+			teacherID = uint(idFloat)
+		} else if idUint, ok := userID.(uint); ok {
+			teacherID = idUint
+		}
+
+		var student models.Student
+		if err := config.DB.First(&student, session.StudentID).Error; err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Data siswa tidak ditemukan"})
+			return
+		}
+
+		var supervisorCount int64
+		config.DB.Model(&models.ExamSupervisor{}).
+			Where("exam_id = ? AND class_id = ? AND teacher_id = ?", session.ExamID, student.ClassID, teacherID).
+			Count(&supervisorCount)
+
+		if supervisorCount == 0 {
+			c.JSON(http.StatusForbidden, gin.H{
+				"error": "Akses Ditolak: Anda hanya memiliki izin membuka kunci ujian untuk siswa di kelas yang sedang Anda awasi.",
+			})
+			return
+		}
 	}
 
 	if session.Status != "LOCKED" {

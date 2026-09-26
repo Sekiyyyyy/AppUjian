@@ -3,8 +3,12 @@ build/
 dist/
 admin/dist/
 *.exe
+*.apk
+*.ipa
+downloads/
 appujian_backend
 backend/appujian_backend
 .env
 *.log
-
+sync_artifacts.sh
+sync_artifacts.py

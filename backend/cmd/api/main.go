@@ -35,6 +35,7 @@ func main() {
 		&models.Exam{},
 		&models.ExamSession{},
 		&models.StudentAnswer{},
+		&models.ExamSupervisor{},
 	)
 	if err != nil {
 		log.Fatalf("Failed to auto migrate database: %v", err)
@@ -120,6 +121,15 @@ func main() {
 			adminRoutes.DELETE("/exams/:id/reset/:student_id", controllers.ResetStudentExam)
 			adminRoutes.POST("/exams/:id/unlock/:student_id", controllers.UnlockStudentExam)
 			adminRoutes.DELETE("/exams/:id", controllers.DeleteExam)
+
+			// Supervisor Management
+			adminRoutes.GET("/supervisors", controllers.GetSupervisors)
+			adminRoutes.GET("/supervisors/my-schedules", controllers.GetMySupervisionSchedules)
+			adminRoutes.GET("/supervisors/template", controllers.DownloadSupervisorTemplateExcel)
+			adminRoutes.POST("/supervisors/import-excel", controllers.ImportSupervisorsExcel)
+			adminRoutes.POST("/supervisors", controllers.CreateSupervisor)
+			adminRoutes.PUT("/supervisors/:id", controllers.UpdateSupervisor)
+			adminRoutes.DELETE("/supervisors/:id", controllers.DeleteSupervisor)
 
 			// User Management
 			adminRoutes.GET("/users", controllers.GetUsers)

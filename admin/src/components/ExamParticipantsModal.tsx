@@ -9,6 +9,7 @@ interface ExamParticipantsModalProps {
   onClose: () => void;
   examId: number;
   examTitle: string;
+  initialClassId?: number | 'ALL';
 }
 
 interface Participant {
@@ -22,12 +23,20 @@ interface Participant {
     department: string;
     number: string;
   };
-  session_status: string; // "BELUM MULAI", "ONGOING", "FINISHED", "SUBMITTED", "TIMEOUT"
+  session_status: string; // "BELUM MULAI", "ONGOING", "FINISHED", "SUBMITTED", "TIMEOUT", "LOCKED"
   score?: number;
+  can_unlock?: boolean;
+  is_supervisor?: boolean;
 }
 
-const ExamParticipantsModal: React.FC<ExamParticipantsModalProps> = ({ isOpen, onClose, examId, examTitle }) => {
-  const { token } = useAuth();
+const ExamParticipantsModal: React.FC<ExamParticipantsModalProps> = ({ 
+  isOpen, 
+  onClose, 
+  examId, 
+  examTitle,
+  initialClassId 
+}) => {
+  const { token, user: currentUser } = useAuth();
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedClassId, setSelectedClassId] = useState<number | 'ALL'>('ALL');
@@ -52,10 +61,14 @@ const ExamParticipantsModal: React.FC<ExamParticipantsModalProps> = ({ isOpen, o
   useEffect(() => {
     if (isOpen) {
       fetchParticipants();
-      setSelectedClassId('ALL');
+      if (initialClassId !== undefined) {
+        setSelectedClassId(initialClassId);
+      } else {
+        setSelectedClassId('ALL');
+      }
       setSearchTerm('');
     }
-  }, [isOpen, examId]);
+  }, [isOpen, examId, initialClassId]);
 
   const handleReset = async (studentId: number, studentName: string) => {
     const isConfirmed = await confirmAction(
@@ -315,28 +328,33 @@ const ExamParticipantsModal: React.FC<ExamParticipantsModalProps> = ({ isOpen, o
                     let statusText = p.session_status;
                     let canReset = false;
                     let canUnlock = false;
+                    let isLockedWithoutPermission = false;
 
                     if (p.session_status === "ONGOING") {
                       StatusIcon = Clock;
                       statusColor = "bg-yellow-50 text-yellow-700 border-yellow-200";
                       statusText = "Sedang Mengerjakan";
-                      canReset = true;
+                      canReset = currentUser?.role !== 'TEACHER' || (p.is_supervisor ?? true);
                     } else if (p.session_status === "LOCKED") {
                       StatusIcon = Lock;
                       statusColor = "bg-red-50 text-red-700 border-red-200";
                       statusText = "Terkunci (Keluar Aplikasi)";
-                      canReset = true;
-                      canUnlock = true;
+                      canReset = currentUser?.role !== 'TEACHER' || (p.is_supervisor ?? true);
+                      if (p.can_unlock !== false && (currentUser?.role !== 'TEACHER' || p.is_supervisor)) {
+                        canUnlock = true;
+                      } else {
+                        isLockedWithoutPermission = true;
+                      }
                     } else if (p.session_status === "FINISHED" || p.session_status === "SUBMITTED") {
                       StatusIcon = CheckCircle;
                       statusColor = "bg-green-50 text-green-700 border-green-200";
                       statusText = "Selesai";
-                      canReset = true;
+                      canReset = currentUser?.role !== 'TEACHER' || (p.is_supervisor ?? true);
                     } else if (p.session_status === "TIMEOUT") {
                       StatusIcon = AlertCircle;
                       statusColor = "bg-orange-50 text-orange-700 border-orange-200";
                       statusText = "Waktu Habis";
-                      canReset = true;
+                      canReset = currentUser?.role !== 'TEACHER' || (p.is_supervisor ?? true);
                     } else {
                       statusText = "Belum Mulai";
                     }
@@ -348,7 +366,14 @@ const ExamParticipantsModal: React.FC<ExamParticipantsModalProps> = ({ isOpen, o
                         <td className="px-6 py-4 font-medium text-gray-900">{p.name || 'Tanpa Nama'}</td>
                         <td className="px-6 py-4 text-gray-600">{p.nis || '-'}</td>
                         <td className="px-6 py-4 text-gray-600">
-                          {p.class ? `${p.class.level} ${p.class.department} ${p.class.number}` : '-'}
+                          <div className="flex items-center space-x-1.5">
+                            <span>{p.class ? `${p.class.level} ${p.class.department} ${p.class.number}` : '-'}</span>
+                            {currentUser?.role === 'TEACHER' && p.is_supervisor && (
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-xs">
+                                Tugas Anda
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="px-6 py-4">
                           <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${statusColor}`}>
@@ -374,6 +399,15 @@ const ExamParticipantsModal: React.FC<ExamParticipantsModalProps> = ({ isOpen, o
                                 <Unlock className="w-3.5 h-3.5" />
                                 <span>Buka Kunci</span>
                               </button>
+                            )}
+                            {isLockedWithoutPermission && (
+                              <span
+                                className="inline-flex items-center space-x-1.5 px-2.5 py-1 text-xs font-medium text-slate-400 bg-slate-100 border border-slate-200 rounded-lg cursor-not-allowed"
+                                title="Hanya guru pengawas yang ditugaskan di kelas ini yang dapat membuka kunci"
+                              >
+                                <Lock className="w-3.5 h-3.5 text-slate-400" />
+                                <span>Bukan Pengawas</span>
+                              </span>
                             )}
                             {canReset && (
                               <button
