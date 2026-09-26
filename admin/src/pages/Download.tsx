@@ -142,7 +142,7 @@ const DownloadPage: React.FC = () => {
                 <span>Unduh Windows (.exe)</span>
               </a>
               <p className="text-center text-[11px] text-slate-400 mt-2">
-                Ukuran: ~25 MB • Versi {version}
+                Ukuran: ~10.7 MB • Versi {version}
               </p>
             </div>
           </div>
@@ -189,7 +189,7 @@ const DownloadPage: React.FC = () => {
                 <span>Unduh Android (.apk)</span>
               </a>
               <p className="text-center text-[11px] text-slate-400 mt-2">
-                Ukuran: ~28 MB • Versi {version}
+                Ukuran: ~25.3 MB • Versi {version}
               </p>
             </div>
           </div>
@@ -236,7 +236,7 @@ const DownloadPage: React.FC = () => {
                 <span>Unduh Apple iOS (.ipa)</span>
               </a>
               <p className="text-center text-[11px] text-slate-400 mt-2">
-                Format: .ipa • Versi {version}
+                Ukuran: ~7.8 MB • Versi {version}
               </p>
             </div>
           </div>
