@@ -11,7 +11,8 @@ import {
   Search,
   Building2,
   GraduationCap,
-  ArrowUpCircle
+  ArrowUpCircle,
+  Users
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { confirmAction, showSuccessToast, showErrorToast } from '../utils/alert';
@@ -255,9 +256,9 @@ const Classes = () => {
         </div>
       </div>
 
-      {/* Classes Grid */}
+      {/* Classes Table */}
       {filteredClasses.length === 0 ? (
-        <div className="glass-panel p-12 text-center flex flex-col items-center justify-center">
+        <div className="glass-panel p-12 text-center flex flex-col items-center justify-center bg-white rounded-2xl border border-slate-200/80 shadow-xs">
           <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-3">
             <School className="text-slate-400" size={26} />
           </div>
@@ -274,48 +275,113 @@ const Classes = () => {
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {filteredClasses.map((item) => (
-            <div 
-              key={item.ID} 
-              onClick={() => navigate(`/dashboard/classes/${item.ID}`)}
-              className="glass-panel p-5 group hover:border-primary-200 hover:shadow-md transition-all duration-200 relative overflow-hidden cursor-pointer"
-            >
-              <div className="flex justify-between items-start mb-3">
-                <span className={`px-2.5 py-1 rounded-lg text-xs font-bold ${
-                  item.level === 'X' ? 'bg-blue-50 text-blue-700 border border-blue-100' :
-                  item.level === 'XI' ? 'bg-amber-50 text-amber-700 border border-amber-100' :
-                  'bg-emerald-50 text-emerald-700 border border-emerald-100'
-                }`}>
-                  Tingkat {item.level}
-                </span>
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm text-slate-600">
+              <thead className="bg-slate-50/80 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200">
+                <tr>
+                  <th className="px-6 py-4 w-16 text-center">No</th>
+                  <th className="px-6 py-4">Nama Kelas / Rombel</th>
+                  <th className="px-6 py-4">Tingkat</th>
+                  <th className="px-6 py-4">Jurusan / Konsentrasi Keahlian</th>
+                  <th className="px-6 py-4">Lokal</th>
+                  <th className="px-6 py-4">Status</th>
+                  <th className="px-6 py-4 text-right">Aksi</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filteredClasses.map((item, idx) => {
+                  const className = item.name || `${item.level} ${item.department} ${item.number}`;
+                  return (
+                    <tr 
+                      key={item.ID}
+                      onClick={() => navigate(`/dashboard/classes/${item.ID}`)}
+                      className="hover:bg-indigo-50/40 transition-colors cursor-pointer group"
+                    >
+                      {/* No */}
+                      <td className="px-6 py-4 text-center font-medium text-slate-400 text-xs">
+                        {idx + 1}
+                      </td>
 
-                <button
-                  onClick={(e) => handleDeleteClass(e, item.ID, item.name || `${item.level} ${item.department} ${item.number}`)}
-                  className="text-slate-300 hover:text-red-600 hover:bg-red-50 p-1.5 rounded-lg transition-colors"
-                  title="Hapus Kelas"
-                >
-                  <Trash2 size={16} />
-                </button>
-              </div>
+                      {/* Nama Kelas */}
+                      <td className="px-6 py-4">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-xs shrink-0 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                            <School size={17} />
+                          </div>
+                          <div>
+                            <span className="font-bold text-slate-900 group-hover:text-indigo-600 transition-colors text-base tracking-tight">
+                              {className}
+                            </span>
+                            <p className="text-[11px] text-slate-400">SMK N 1 Beringin</p>
+                          </div>
+                        </div>
+                      </td>
 
-              <div className="mb-2">
-                <h3 className="text-xl font-extrabold text-slate-800 tracking-tight">
-                  {item.name || `${item.level} ${item.department} ${item.number}`}
-                </h3>
-                <p className="text-xs text-slate-500 font-medium mt-0.5">
-                  Jurusan {item.department} • Lokal {item.number}
-                </p>
-              </div>
+                      {/* Tingkat */}
+                      <td className="px-6 py-4">
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold ${
+                          item.level === 'X' ? 'bg-blue-50 text-blue-700 border border-blue-200' :
+                          item.level === 'XI' ? 'bg-amber-50 text-amber-700 border border-amber-200' :
+                          'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                        }`}>
+                          Tingkat {item.level}
+                        </span>
+                      </td>
 
-              <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400">
-                <span>SMK N 1 Beringin</span>
-                <span className="flex items-center text-emerald-600 font-semibold">
-                  <CheckCircle2 size={12} className="mr-1" /> Aktif
-                </span>
-              </div>
-            </div>
-          ))}
+                      {/* Jurusan */}
+                      <td className="px-6 py-4 font-semibold text-slate-700">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 text-xs font-medium">
+                          {item.department}
+                        </span>
+                      </td>
+
+                      {/* Lokal */}
+                      <td className="px-6 py-4 text-slate-600 font-medium">
+                        Lokal {item.number}
+                      </td>
+
+                      {/* Status */}
+                      <td className="px-6 py-4">
+                        <span className="inline-flex items-center text-xs font-semibold text-emerald-600">
+                          <CheckCircle2 size={13} className="mr-1.5 text-emerald-500" />
+                          Aktif
+                        </span>
+                      </td>
+
+                      {/* Aksi */}
+                      <td className="px-6 py-4 text-right">
+                        <div className="flex items-center justify-end space-x-2" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            onClick={() => navigate(`/dashboard/classes/${item.ID}`)}
+                            className="inline-flex items-center space-x-1.5 px-3 py-1.5 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-lg border border-indigo-200 transition-colors shadow-xs"
+                            title="Lihat Data Siswa Kelas"
+                          >
+                            <Users size={13} />
+                            <span>Detail Siswa</span>
+                          </button>
+
+                          <button
+                            onClick={(e) => handleDeleteClass(e, item.ID, className)}
+                            className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Hapus Kelas"
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Table Footer info */}
+          <div className="px-6 py-3.5 bg-slate-50/70 border-t border-slate-200/80 flex items-center justify-between text-xs text-slate-500">
+            <span>Menampilkan <b>{filteredClasses.length}</b> dari total <b>{classes.length}</b> rombel kelas</span>
+            <span>SMK Negeri 1 Beringin</span>
+          </div>
         </div>
       )}
 
