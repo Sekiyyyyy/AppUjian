@@ -284,7 +284,6 @@ const Classes = () => {
                   <th className="px-6 py-4">Nama Kelas / Rombel</th>
                   <th className="px-6 py-4">Tingkat</th>
                   <th className="px-6 py-4">Jurusan / Konsentrasi Keahlian</th>
-                  <th className="px-6 py-4">Lokal</th>
                   <th className="px-6 py-4">Status</th>
                   <th className="px-6 py-4 text-right">Aksi</th>
                 </tr>
@@ -334,11 +333,6 @@ const Classes = () => {
                         <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 text-xs font-medium">
                           {item.department}
                         </span>
-                      </td>
-
-                      {/* Lokal */}
-                      <td className="px-6 py-4 text-slate-600 font-medium">
-                        Lokal {item.number}
                       </td>
 
                       {/* Status */}
