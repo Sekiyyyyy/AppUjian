@@ -22,6 +22,11 @@ func GetStudentExams(c *gin.Context) {
 		return
 	}
 
+	if student.ClassID == 0 {
+		c.JSON(http.StatusOK, []gin.H{})
+		return
+	}
+
 	var exams []models.Exam
 	if err := config.DB.
 		Preload("Subject").

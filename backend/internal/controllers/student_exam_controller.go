@@ -109,7 +109,10 @@ func GetExamQuestions(c *gin.Context) {
 	userID, _ := c.Get("userID")
 
 	var student models.Student
-	config.DB.Where("user_id = ?", userID).First(&student)
+	if err := config.DB.Where("user_id = ?", userID).First(&student).Error; err != nil {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Profil siswa tidak ditemukan"})
+		return
+	}
 
 	var session models.ExamSession
 	if err := config.DB.Where("student_id = ? AND exam_id = ?", student.ID, examID).First(&session).Error; err != nil {
@@ -188,7 +191,10 @@ func SubmitAnswer(c *gin.Context) {
 	}
 
 	var student models.Student
-	config.DB.Select("id").Where("user_id = ?", userID).First(&student)
+	if err := config.DB.Select("id").Where("user_id = ?", userID).First(&student).Error; err != nil {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Profil siswa tidak ditemukan"})
+		return
+	}
 
 	var session models.ExamSession
 	if err := config.DB.Select("id, status, lock_reason").Where("student_id = ? AND exam_id = ?", student.ID, examID).First(&session).Error; err != nil {
@@ -239,7 +245,10 @@ func FinishExam(c *gin.Context) {
 	userID, _ := c.Get("userID")
 
 	var student models.Student
-	config.DB.Where("user_id = ?", userID).First(&student)
+	if err := config.DB.Where("user_id = ?", userID).First(&student).Error; err != nil {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Profil siswa tidak ditemukan"})
+		return
+	}
 
 	var session models.ExamSession
 	if err := config.DB.Where("student_id = ? AND exam_id = ?", student.ID, examID).First(&session).Error; err != nil {

@@ -189,7 +189,7 @@ const DownloadPage: React.FC = () => {
                 <span>Unduh Android (.apk)</span>
               </a>
               <p className="text-center text-[11px] text-slate-400 mt-2">
-                Ukuran: ~25.3 MB • Versi {version}
+                Ukuran: ~54.4 MB (APK) • Versi {version}
               </p>
             </div>
           </div>
@@ -202,12 +202,12 @@ const DownloadPage: React.FC = () => {
                   <Apple size={26} />
                 </div>
                 <span className="text-xs font-semibold bg-violet-500/20 text-violet-300 border border-violet-500/30 px-2.5 py-1 rounded-full">
-                  iPhone / iPad
+                  iPhone / iPad / Mac M-Series
                 </span>
               </div>
               <h3 className="text-xl font-bold mb-2">Apple iOS (.ipa)</h3>
               <p className="text-slate-400 text-sm mb-5">
-                Paket instalasi ujian untuk perangkat Apple iOS (iPhone & iPad). Dapat diinstal via Sideloadly, AltStore, atau MDM.
+                Paket instalasi ujian untuk perangkat Apple iOS (iPhone & iPad) serta MacBook Apple Silicon (M1/M2/M3/M4).
               </p>
 
               <div className="space-y-2.5 mb-6 text-xs sm:text-sm text-slate-300">
@@ -221,7 +221,7 @@ const DownloadPage: React.FC = () => {
                 </div>
                 <div className="flex items-center space-x-2">
                   <CheckCircle2 size={16} className="text-violet-400 flex-shrink-0" />
-                  <span>Mendukung iOS / iPadOS 14 hingga 18+</span>
+                  <span>iPhone, iPad & Mac M1/M2/M3/M4 (PlayCover)</span>
                 </div>
               </div>
             </div>
@@ -247,9 +247,9 @@ const DownloadPage: React.FC = () => {
           <div className="bg-slate-800/40 border border-slate-700/60 rounded-xl p-4 flex items-start space-x-3">
             <Apple size={20} className="text-violet-400 flex-shrink-0 mt-0.5" />
             <div>
-              <p className="font-semibold text-white mb-0.5">Panduan Instalasi iOS (.ipa)</p>
+              <p className="font-semibold text-white mb-0.5">Panduan Instalasi iOS (.ipa) & MacBook</p>
               <p className="text-slate-400 leading-relaxed">
-                Untuk memasang file .ipa di iPhone/iPad, siswa atau proktor dapat menggunakan alat sideload seperti <b>Sideloadly</b> (Windows/Mac), <b>AltStore</b>, <b>TrollStore</b>, <b>Scarlet</b>, atau melalui konfigurasi MDM sekolah.
+                Untuk memasang di iPhone/iPad, gunakan alat sideload seperti <b>Sideloadly</b>, <b>AltStore</b>, atau profil MDM sekolah. Untuk <b>MacBook Apple Silicon (M1/M2/M3/M4)</b>, file .ipa ini dapat dijalankan langsung menggunakan <b>PlayCover</b> atau Sideloadly.
               </p>
             </div>
           </div>

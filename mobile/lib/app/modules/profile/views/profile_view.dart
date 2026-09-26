@@ -106,11 +106,21 @@ class ProfileView extends GetView<ProfileController> {
                 Center(
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 600),
-                    child: _buildMenuCard(
-                      icon: Icons.logout_rounded,
-                      title: 'Keluar',
-                      color: Colors.red.shade600,
-                      onTap: () {
+                    child: Column(
+                      children: [
+                        _buildMenuCard(
+                          icon: Icons.system_update_rounded,
+                          title: 'Periksa Pembaruan Aplikasi',
+                          subtitle: 'Versi v1.0.2 (Build 3)',
+                          color: AppTheme.primaryColor,
+                          onTap: () => controller.checkForUpdates(),
+                        ),
+                        const SizedBox(height: 12),
+                        _buildMenuCard(
+                          icon: Icons.logout_rounded,
+                          title: 'Keluar',
+                          color: Colors.red.shade600,
+                          onTap: () {
                     Get.dialog(
                       Dialog(
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -165,10 +175,12 @@ class ProfileView extends GetView<ProfileController> {
                       ),
                     );
                   },
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
-              ),
-            ),
-            const SizedBox(height: 160), // padding for bottom nav
+                const SizedBox(height: 160), // padding for bottom nav
               ]),
             ),
           ),
@@ -177,7 +189,13 @@ class ProfileView extends GetView<ProfileController> {
     );
   }
 
-  Widget _buildMenuCard({required IconData icon, required String title, required Color color, required VoidCallback onTap}) {
+  Widget _buildMenuCard({
+    required IconData icon, 
+    required String title, 
+    String? subtitle,
+    required Color color, 
+    required VoidCallback onTap
+  }) {
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(
@@ -201,13 +219,28 @@ class ProfileView extends GetView<ProfileController> {
               ),
               const SizedBox(width: 16),
               Expanded(
-                child: Text(
-                  title,
-                  style: GoogleFonts.inter(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: AppTheme.textPrimary,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: GoogleFonts.inter(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.textPrimary,
+                      ),
+                    ),
+                    if (subtitle != null) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        subtitle,
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          color: AppTheme.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ),
               Icon(Icons.arrow_forward_ios_rounded, color: Colors.grey.shade400, size: 16),
