@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../controllers/profile_controller.dart';
 import '../../../theme/app_theme.dart';
+import '../../../data/services/update_service.dart';
 
 class ProfileView extends GetView<ProfileController> {
   const ProfileView({super.key});
@@ -121,7 +122,7 @@ class ProfileView extends GetView<ProfileController> {
                         _buildMenuCard(
                           icon: Icons.system_update_rounded,
                           title: 'Periksa Pembaruan Aplikasi',
-                          subtitle: 'Versi v1.0.3 (Build 4)',
+                          subtitle: 'Versi v${UpdateService.currentVersion} (Build ${UpdateService.currentBuildNumber})',
                           color: AppTheme.primaryColor,
                           onTap: () => controller.checkForUpdates(),
                         ),

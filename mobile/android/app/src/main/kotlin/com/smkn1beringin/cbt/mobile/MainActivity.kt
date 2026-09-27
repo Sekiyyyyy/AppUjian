@@ -1,5 +1,6 @@
 package com.smkn1beringin.cbt.mobile
 
+import android.app.KeyguardManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -21,6 +22,7 @@ class MainActivity : FlutterActivity() {
     private val CHANNEL = "com.smkn1beringin.cbt/kiosk"
     private var mediaPlayer: MediaPlayer? = null
     private var isScreenOff = false
+    private var isActivityResumed = false
 
     private val screenReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -29,6 +31,8 @@ class MainActivity : FlutterActivity() {
                 // Jika layar dimatikan (tombol power), pastikan sirine TIDAK bunyi
                 stopEmergencySiren()
             } else if (intent?.action == Intent.ACTION_SCREEN_ON) {
+                isScreenOff = false
+            } else if (intent?.action == Intent.ACTION_USER_PRESENT) {
                 isScreenOff = false
             }
         }
@@ -39,8 +43,19 @@ class MainActivity : FlutterActivity() {
         val filter = IntentFilter().apply {
             addAction(Intent.ACTION_SCREEN_OFF)
             addAction(Intent.ACTION_SCREEN_ON)
+            addAction(Intent.ACTION_USER_PRESENT)
         }
         registerReceiver(screenReceiver, filter)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        isActivityResumed = true
+    }
+
+    override fun onPause() {
+        super.onPause()
+        isActivityResumed = false
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -72,10 +87,14 @@ class MainActivity : FlutterActivity() {
                 "isScreenInteractive" -> {
                     try {
                         val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
-                        val interactive = pm.isInteractive && !isScreenOff
-                        result.success(interactive)
+                        val km = getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager
+                        val isInteractive = pm.isInteractive && !isScreenOff
+                        val isKeyguardLocked = km?.isKeyguardLocked ?: false
+                        // Hanya anggap keluar jika layar hidup, tidak di lockscreen, dan aplikasi kita tidak aktif di layar
+                        val isOutside = isInteractive && !isKeyguardLocked && !isActivityResumed
+                        result.success(isOutside)
                     } catch (e: Exception) {
-                        result.success(true)
+                        result.success(false)
                     }
                 }
                 "startAlarm" -> {

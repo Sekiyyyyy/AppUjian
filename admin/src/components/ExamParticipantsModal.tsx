@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { X, RefreshCw, AlertCircle, Filter, Trash2, CheckCircle, Clock, Download, Search, FileSpreadsheet, Lock, Unlock } from 'lucide-react';
+import { X, RefreshCw, AlertCircle, Filter, Trash2, CheckCircle, Clock, Search, FileSpreadsheet, Lock, Unlock } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { confirmAction, showSuccessToast, showErrorToast } from '../utils/alert';
 
@@ -157,48 +157,7 @@ const ExamParticipantsModal: React.FC<ExamParticipantsModalProps> = ({
     }
   };
 
-  const handleExportCSV = () => {
-    if (filteredParticipants.length === 0) {
-      showErrorToast("Tidak ada data peserta untuk diexport");
-      return;
-    }
 
-    const headers = ["No", "Nama Siswa", "NISN/NIS", "Kelas", "Status Ujian", "Nilai"];
-    const rows = filteredParticipants.map((p, index) => {
-      let statusText = "Belum Mulai";
-      if (p.session_status === "ONGOING") statusText = "Sedang Mengerjakan";
-      else if (p.session_status === "FINISHED" || p.session_status === "SUBMITTED") statusText = "Selesai";
-      else if (p.session_status === "TIMEOUT") statusText = "Waktu Habis";
-
-      const className = p.class ? `${p.class.level} ${p.class.department} ${p.class.number}` : "-";
-      const score = (p.session_status === "FINISHED" || p.session_status === "SUBMITTED" || p.session_status === "TIMEOUT") 
-        ? (p.score ?? 0) 
-        : 0;
-
-      return [
-        index + 1,
-        `"${(p.name || 'Tanpa Nama').replace(/"/g, '""')}"`,
-        `"${(p.nis || '-').replace(/"/g, '""')}"`,
-        `"${className}"`,
-        `"${statusText}"`,
-        score
-      ].join(",");
-    });
-
-    // Add UTF-8 BOM so Excel opens with proper encoding
-    const csvContent = "\uFEFF" + [headers.join(","), ...rows].join("\r\n");
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    const safeTitle = examTitle.replace(/[^a-zA-Z0-9_-]/g, "_");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `Rekap_Nilai_${safeTitle}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-    showSuccessToast("Rekap nilai berhasil diexport!");
-  };
 
   if (!isOpen) return null;
 
@@ -274,15 +233,7 @@ const ExamParticipantsModal: React.FC<ExamParticipantsModalProps> = ({
               <FileSpreadsheet className={`w-4 h-4 text-emerald-600 ${isExporting ? 'animate-spin' : ''}`} />
               <span>{isExporting ? 'Mengunduh...' : 'Download Excel'}</span>
             </button>
-            <button 
-              onClick={handleExportCSV}
-              disabled={filteredParticipants.length === 0}
-              className="flex items-center space-x-1.5 px-2.5 py-1.5 text-xs font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 rounded-lg transition-colors"
-              title="Export Format CSV"
-            >
-              <Download className="w-3.5 h-3.5" />
-              <span>CSV</span>
-            </button>
+
             <button 
               onClick={fetchParticipants}
               className="flex items-center space-x-2 px-3 py-1.5 text-sm text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors"

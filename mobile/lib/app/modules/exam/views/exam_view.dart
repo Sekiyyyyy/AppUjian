@@ -55,22 +55,24 @@ class ExamView extends GetView<ExamController> {
               ],
             ),
             const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
+            Wrap(
+              alignment: WrapAlignment.spaceEvenly,
+              spacing: 12,
+              runSpacing: 8,
               children: [
                 _buildLegend(AppTheme.primaryColor, "Terjawab"),
                 _buildLegend(Colors.amber.shade500, "Ragu-ragu"),
                 _buildLegend(Colors.grey.shade200, "Belum", textColor: Colors.grey.shade600),
               ],
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
             Expanded(
               child: Obx(() => GridView.builder(
                 physics: const BouncingScrollPhysics(),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 5,
-                  crossAxisSpacing: 12,
-                  mainAxisSpacing: 12,
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: MediaQuery.of(context).size.width < 360 ? 4 : 5,
+                  crossAxisSpacing: 10,
+                  mainAxisSpacing: 10,
                 ),
                 itemCount: controller.questions.length,
                 itemBuilder: (context, index) {
@@ -148,64 +150,69 @@ class ExamView extends GetView<ExamController> {
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (context) => Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 580),
-          child: Container(
-            padding: const EdgeInsets.all(32),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-            ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                margin: const EdgeInsets.only(bottom: 24),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
-                  borderRadius: BorderRadius.circular(2),
+      builder: (context) => SafeArea(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 580),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+              ),
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        margin: const EdgeInsets.only(bottom: 20),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade300,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    Center(
+                      child: Text(
+                        "Informasi Ujian",
+                        style: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.bold, color: AppTheme.textPrimary, letterSpacing: -0.5),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    _buildInfoRow(Icons.verified_user_outlined, "Proktor Utama", exam['proktor'] ?? '-'),
+                    _buildInfoRow(Icons.people_outline_rounded, "Pengawas Ruang", exam['pengawas'] ?? '-'),
+                    _buildInfoRow(Icons.school_outlined, "Tahun / Semester", "${exam['tahun'] ?? '-'} / ${exam['semester'] ?? '-'}"),
+                    _buildInfoRow(Icons.timer_outlined, "Lama Ujian", "${exam['duration']} Menit"),
+                    const SizedBox(height: 24),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.primaryColor,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          elevation: 4,
+                          shadowColor: AppTheme.primaryColor.withValues(alpha: 0.4),
+                        ),
+                        onPressed: () => Get.back(),
+                        child: Text("Tutup", style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.bold)),
+                      ),
+                    )
+                  ],
                 ),
               ),
             ),
-            Center(
-              child: Text(
-                "Informasi Ujian",
-                style: GoogleFonts.inter(fontSize: 24, fontWeight: FontWeight.bold, color: AppTheme.textPrimary, letterSpacing: -0.5),
-              ),
-            ),
-            const SizedBox(height: 32),
-            _buildInfoRow(Icons.verified_user_outlined, "Proktor Utama", exam['proktor'] ?? '-'),
-            _buildInfoRow(Icons.people_outline_rounded, "Pengawas Ruang", exam['pengawas'] ?? '-'),
-            _buildInfoRow(Icons.school_outlined, "Tahun / Semester", "${exam['tahun'] ?? '-'} / ${exam['semester'] ?? '-'}"),
-            _buildInfoRow(Icons.timer_outlined, "Lama Ujian", "${exam['duration']} Menit"),
-            const SizedBox(height: 32),
-            SizedBox(
-              width: double.infinity,
-              height: 56,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primaryColor,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                  elevation: 8,
-                  shadowColor: AppTheme.primaryColor.withValues(alpha: 0.5),
-                ),
-                onPressed: () => Get.back(),
-                child: Text("Tutup", style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold)),
-              ),
-            )
-          ],
+          ),
         ),
       ),
-    ),
-  ),
-);
-}
+    );
+  }
 
   Widget _buildInfoRow(IconData icon, String label, String value) {
     return Padding(
@@ -850,15 +857,18 @@ class ExamView extends GetView<ExamController> {
           ),
           title: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
               Text(
                 controller.examTitle, 
-                style: GoogleFonts.inter(color: AppTheme.textPrimary, fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: -0.5),
+                style: GoogleFonts.inter(color: AppTheme.textPrimary, fontSize: 15, fontWeight: FontWeight.bold, letterSpacing: -0.5),
+                maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
               Text(
                 "CBT SMK Negeri 1 Beringin", 
-                style: GoogleFonts.inter(color: AppTheme.primaryColor, fontSize: 12, fontWeight: FontWeight.w600),
+                style: GoogleFonts.inter(color: AppTheme.primaryColor, fontSize: 11, fontWeight: FontWeight.w600),
+                maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
             ],
@@ -880,11 +890,11 @@ class ExamView extends GetView<ExamController> {
                   Obx(() {
                     if (controller.violationCount.value == 0) return const SizedBox.shrink();
                     return Container(
-                      margin: const EdgeInsets.only(right: 8),
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      margin: const EdgeInsets.only(right: 6),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
                         color: Colors.red.shade600,
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(14),
                         boxShadow: [
                           BoxShadow(color: Colors.red.withValues(alpha: 0.3), blurRadius: 6, offset: const Offset(0, 2))
                         ]
@@ -892,26 +902,26 @@ class ExamView extends GetView<ExamController> {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.warning_rounded, color: Colors.white, size: 14),
-                          const SizedBox(width: 4),
+                          const Icon(Icons.warning_rounded, color: Colors.white, size: 13),
+                          const SizedBox(width: 3),
                           Text(
                             "${controller.violationCount.value}/3",
-                            style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+                            style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11),
                           )
                         ],
                       ),
                     );
                   }),
                   Container(
-                    margin: const EdgeInsets.only(right: 16, top: 8, bottom: 8),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                    margin: const EdgeInsets.only(right: 12, top: 8, bottom: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                     decoration: BoxDecoration(
                       gradient: const LinearGradient(
                         colors: [AppTheme.primaryColor, AppTheme.secondaryColor],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(16),
                       boxShadow: [
                         BoxShadow(color: AppTheme.primaryColor.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 2))
                       ]
@@ -919,8 +929,8 @@ class ExamView extends GetView<ExamController> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.timer_rounded, color: Colors.white, size: 16),
-                        const SizedBox(width: 6),
+                        const Icon(Icons.timer_rounded, color: Colors.white, size: 15),
+                        const SizedBox(width: 5),
                         Obx(() {
                           bool isCritical = controller.timeRemaining.value > 0 && controller.timeRemaining.value < 300; // < 5 mins
                           return Text(
@@ -928,7 +938,7 @@ class ExamView extends GetView<ExamController> {
                             style: GoogleFonts.inter(
                               color: isCritical ? Colors.red.shade100 : Colors.white,
                               fontWeight: FontWeight.bold,
-                              fontSize: 15,
+                              fontSize: 13,
                               fontFeatures: const [FontFeature.tabularFigures()],
                             ),
                           );

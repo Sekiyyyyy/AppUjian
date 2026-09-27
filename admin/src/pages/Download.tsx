@@ -29,22 +29,21 @@ const DownloadPage: React.FC = () => {
       .catch(() => {
         // Fallback default
         setVersionInfo({
-          latest_version: '1.0.4',
-          build_number: 5,
+          latest_version: '1.0.5',
+          build_number: 6,
           min_version: '1.0.0',
-          title: 'Pembaruan Aplikasi CBT v1.0.4',
+          title: 'Pembaruan Aplikasi CBT v1.0.5',
           changelog: [
-            'Tampilan desktop: Tombol navigasi soal (Sebelumnya, Ragu-ragu, Berikutnya) kini fixed di bawah layar tanpa perlu scroll.',
-            'Penyempurnaan responsivitas tampilan ujian di seluruh perangkat (HP, Tablet, Laptop, PC Lab).',
-            'Penyempurnaan sistem keamanan Kiosk Anti-Cheat di Android, Windows, dan iOS.',
-            'Fitur pengacakan urutan soal (randomize questions) per sesi siswa.'
+            'Perbaikan tombol power: Layar mati atau tombol power tidak lagi mengunci sesi ujian.',
+            'Otomatis kunci ujian kini hanya aktif ketika siswa benar-benar keluar dari aplikasi.',
+            'Penyempurnaan responsivitas tampilan mobile pada semua ukuran layar.',
           ],
           download_url: '/download'
         });
       });
   }, []);
 
-  const version = versionInfo?.latest_version || '1.0.4';
+  const version = versionInfo?.latest_version || '1.0.5';
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 text-white flex flex-col justify-between selection:bg-emerald-500 selection:text-white">

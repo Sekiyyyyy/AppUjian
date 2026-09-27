@@ -29,8 +29,9 @@ class HomeView extends GetView<HomeController> {
                 SliverAppBar(
                   expandedHeight: () {
                     final h = MediaQuery.of(context).size.height;
-                    if (h < 500) return 190.0;
-                    if (h < 700) return 230.0;
+                    final w = MediaQuery.of(context).size.width;
+                    if (h < 600) return 230.0;
+                    if (w < 400) return 275.0;
                     return 280.0;
                   }(),
                   floating: false,
@@ -101,7 +102,12 @@ class HomeView extends GetView<HomeController> {
                               child: ConstrainedBox(
                                 constraints: const BoxConstraints(maxWidth: 960),
                                 child: Padding(
-                                  padding: const EdgeInsets.fromLTRB(24, 60, 24, 24),
+                                  padding: EdgeInsets.fromLTRB(
+                                    MediaQuery.of(context).size.width < 360 ? 16 : 24,
+                                    46,
+                                    MediaQuery.of(context).size.width < 360 ? 16 : 24,
+                                    18,
+                                  ),
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     mainAxisAlignment: MainAxisAlignment.end,
@@ -174,23 +180,23 @@ class HomeView extends GetView<HomeController> {
                                 child: BackdropFilter(
                                   filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
                                   child: Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                                     decoration: BoxDecoration(
                                       color: Colors.white.withValues(alpha: 0.15),
-                                      borderRadius: BorderRadius.circular(20),
+                                      borderRadius: BorderRadius.circular(18),
                                       border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
                                     ),
                                     child: Row(
                                       children: [
                                         Container(
-                                          padding: const EdgeInsets.all(10),
+                                          padding: const EdgeInsets.all(8),
                                           decoration: BoxDecoration(
                                             color: Colors.white.withValues(alpha: 0.2),
                                             shape: BoxShape.circle,
                                           ),
-                                          child: const Icon(Icons.person_outline, color: Colors.white, size: 24),
+                                          child: const Icon(Icons.person_outline, color: Colors.white, size: 20),
                                         ),
-                                        const SizedBox(width: 16),
+                                        const SizedBox(width: 12),
                                         Expanded(
                                           child: Column(
                                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -199,16 +205,18 @@ class HomeView extends GetView<HomeController> {
                                                 'NISN / NIS',
                                                 style: GoogleFonts.inter(
                                                   color: Colors.white.withValues(alpha: 0.7),
-                                                  fontSize: 12,
+                                                  fontSize: 11,
                                                   fontWeight: FontWeight.w500,
                                                 ),
                                               ),
-                                              const SizedBox(height: 4),
+                                              const SizedBox(height: 2),
                                               Obx(() => Text(
                                                 controller.studentNis.value,
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
                                                 style: GoogleFonts.inter(
                                                   color: Colors.white,
-                                                  fontSize: 15,
+                                                  fontSize: 14,
                                                   fontWeight: FontWeight.bold,
                                                   letterSpacing: 0.5,
                                                 ),
@@ -220,27 +228,33 @@ class HomeView extends GetView<HomeController> {
                                           if (controller.className.value.isEmpty || controller.className.value == '-') {
                                             return const SizedBox.shrink();
                                           }
-                                          return Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                            decoration: BoxDecoration(
-                                              color: Colors.white.withValues(alpha: 0.2),
-                                              borderRadius: BorderRadius.circular(12),
-                                              border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
-                                            ),
-                                            child: Row(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                const Icon(Icons.school_outlined, color: Colors.white, size: 14),
-                                                const SizedBox(width: 6),
-                                                Text(
-                                                  controller.className.value,
-                                                  style: GoogleFonts.inter(
-                                                    color: Colors.white,
-                                                    fontSize: 13,
-                                                    fontWeight: FontWeight.bold,
+                                          return Flexible(
+                                            child: Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                              decoration: BoxDecoration(
+                                                color: Colors.white.withValues(alpha: 0.2),
+                                                borderRadius: BorderRadius.circular(10),
+                                                border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
+                                              ),
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  const Icon(Icons.school_outlined, color: Colors.white, size: 13),
+                                                  const SizedBox(width: 5),
+                                                  Flexible(
+                                                    child: Text(
+                                                      controller.className.value,
+                                                      maxLines: 1,
+                                                      overflow: TextOverflow.ellipsis,
+                                                      style: GoogleFonts.inter(
+                                                        color: Colors.white,
+                                                        fontSize: 12,
+                                                        fontWeight: FontWeight.bold,
+                                                      ),
+                                                    ),
                                                   ),
-                                                ),
-                                              ],
+                                                ],
+                                              ),
                                             ),
                                           );
                                         }),
@@ -486,13 +500,15 @@ class HomeView extends GetView<HomeController> {
                                     ],
                                   ),
                                   const SizedBox(height: 24),
-                                  Row(
+                                  Wrap(
+                                    spacing: 16,
+                                    runSpacing: 8,
+                                    crossAxisAlignment: WrapCrossAlignment.center,
                                     children: [
                                       _buildInfoChip(
                                         Icons.timer_outlined,
                                         '${exam['duration']} Menit',
                                       ),
-                                      const SizedBox(width: 16),
                                       _buildInfoChip(
                                         Icons.menu_book_rounded,
                                         exam['subject']?['name']?.toString() ?? 'Umum',
@@ -560,15 +576,20 @@ class HomeView extends GetView<HomeController> {
 
   Widget _buildInfoChip(IconData icon, String label) {
     return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
         Icon(icon, size: 16, color: AppTheme.textSecondary),
         const SizedBox(width: 6),
-        Text(
-          label,
-          style: GoogleFonts.inter(
-            color: AppTheme.textSecondary,
-            fontSize: 13,
-            fontWeight: FontWeight.w500,
+        Flexible(
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.inter(
+              color: AppTheme.textSecondary,
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ),
       ],
@@ -678,7 +699,16 @@ class HomeView extends GetView<HomeController> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text("Mata Pelajaran", style: GoogleFonts.inter(color: AppTheme.textSecondary, fontSize: 14)),
-                      Text(exam['subject']?['name']?.toString() ?? 'Umum', style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          exam['subject']?['name']?.toString() ?? 'Umum',
+                          textAlign: TextAlign.right,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
+                        ),
+                      ),
                     ],
                   ),
                   const Padding(padding: EdgeInsets.symmetric(vertical: 12), child: Divider(height: 1)),
@@ -694,24 +724,29 @@ class HomeView extends GetView<HomeController> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text("Status", style: GoogleFonts.inter(color: AppTheme.textSecondary, fontSize: 14)),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: isLocked
-                              ? Colors.red.shade100
-                              : (isOngoing ? Colors.amber.shade100 : (isUpcoming ? Colors.blue.shade100 : Colors.green.shade100)),
-                          borderRadius: BorderRadius.circular(12)
-                        ),
-                        child: Text(
-                          isLocked
-                              ? "Terkunci (Hubungi Pengawas)"
-                              : (isOngoing ? "Sedang Dikerjakan" : (isUpcoming ? "Segera" : "Tersedia")),
-                          style: GoogleFonts.inter(
+                      const SizedBox(width: 12),
+                      Flexible(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
                             color: isLocked
-                                ? Colors.red.shade800
-                                : (isOngoing ? Colors.amber.shade800 : (isUpcoming ? Colors.blue.shade800 : Colors.green.shade800)),
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
+                                ? Colors.red.shade100
+                                : (isOngoing ? Colors.amber.shade100 : (isUpcoming ? Colors.blue.shade100 : Colors.green.shade100)),
+                            borderRadius: BorderRadius.circular(12)
+                          ),
+                          child: Text(
+                            isLocked
+                                ? "Terkunci (Hubungi Pengawas)"
+                                : (isOngoing ? "Sedang Dikerjakan" : (isUpcoming ? "Segera" : "Tersedia")),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.inter(
+                              color: isLocked
+                                  ? Colors.red.shade800
+                                  : (isOngoing ? Colors.amber.shade800 : (isUpcoming ? Colors.blue.shade800 : Colors.green.shade800)),
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                       ),

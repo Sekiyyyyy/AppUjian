@@ -14,6 +14,8 @@ class LoginView extends GetView<LoginController> {
     // Determine screen size for responsiveness
     final size = MediaQuery.of(context).size;
 
+    final isSmallScreen = size.width < 380;
+
     return Scaffold(
       body: Stack(
         children: [
@@ -90,19 +92,22 @@ class LoginView extends GetView<LoginController> {
             child: Center(
               child: SingleChildScrollView(
                 physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 24.0),
+                padding: EdgeInsets.symmetric(
+                  horizontal: isSmallScreen ? 16.0 : 24.0, 
+                  vertical: isSmallScreen ? 16.0 : 24.0,
+                ),
                 child: Center(
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 460),
                     child: ClipRRect(
-                      borderRadius: BorderRadius.circular(32),
+                      borderRadius: BorderRadius.circular(isSmallScreen ? 24 : 32),
                       child: BackdropFilter(
                         filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
                         child: Container(
-                          padding: const EdgeInsets.all(32),
+                          padding: EdgeInsets.all(isSmallScreen ? 20 : 32),
                           decoration: BoxDecoration(
                             color: Colors.white.withValues(alpha: 0.75),
-                            borderRadius: BorderRadius.circular(32),
+                            borderRadius: BorderRadius.circular(isSmallScreen ? 24 : 32),
                             border: Border.all(
                               color: Colors.white.withValues(alpha: 0.9),
                               width: 1.5,
@@ -127,7 +132,7 @@ class LoginView extends GetView<LoginController> {
                           // Logo
                           Center(
                             child: Container(
-                              padding: const EdgeInsets.all(12),
+                              padding: EdgeInsets.all(isSmallScreen ? 8 : 12),
                               decoration: BoxDecoration(
                                 color: Colors.white,
                                 shape: BoxShape.circle,
@@ -141,37 +146,37 @@ class LoginView extends GetView<LoginController> {
                               ),
                               child: Image.asset(
                                 'assets/images/logo.png',
-                                width: 80,
-                                height: 80,
+                                width: isSmallScreen ? 60 : 80,
+                                height: isSmallScreen ? 60 : 80,
                                 fit: BoxFit.contain,
                                 errorBuilder: (context, error, stackTrace) =>
-                                    const Icon(Icons.school_rounded, size: 80, color: AppTheme.primaryColor),
+                                    Icon(Icons.school_rounded, size: isSmallScreen ? 60 : 80, color: AppTheme.primaryColor),
                               ),
                             ),
                           ),
-                          const SizedBox(height: 24),
+                          SizedBox(height: isSmallScreen ? 16 : 24),
                           
                           // Titles
                           Text(
                             'Selamat Datang',
                             textAlign: TextAlign.center,
                             style: GoogleFonts.inter(
-                              fontSize: 28,
+                              fontSize: isSmallScreen ? 22 : 28,
                               fontWeight: FontWeight.bold,
                               color: AppTheme.textPrimary,
                               letterSpacing: -0.5,
                             ),
                           ),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 6),
                           Text(
                             'Portal CBT SMK Negeri 1 Beringin',
                             textAlign: TextAlign.center,
                             style: GoogleFonts.inter(
-                              fontSize: 14,
+                              fontSize: isSmallScreen ? 13 : 14,
                               color: AppTheme.textSecondary,
                             ),
                           ),
-                          const SizedBox(height: 40),
+                          SizedBox(height: isSmallScreen ? 24 : 36),
 
                            // Error Message
                            Obx(() => controller.errorMessage.isNotEmpty

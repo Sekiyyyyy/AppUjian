@@ -47,6 +47,8 @@ class ExamController extends GetxController with WidgetsBindingObserver {
   bool _isExamFinished = false;
   bool _wasInBackground = false;
   bool _isHandlingInAppAction = false;
+  Timer? _mobileExitCheckTimer;
+  AppLifecycleState? _currentLifecycleState;
 
   /// Whether we're running on a desktop platform (Windows/macOS/Linux)
   bool get _isDesktop =>
@@ -79,6 +81,7 @@ class ExamController extends GetxController with WidgetsBindingObserver {
   void onClose() {
     WidgetsBinding.instance.removeObserver(this);
     _timer?.cancel();
+    _mobileExitCheckTimer?.cancel();
     _disableKioskMode();
     _stopAlarm();
     super.onClose();
@@ -96,7 +99,6 @@ class ExamController extends GetxController with WidgetsBindingObserver {
     } catch (_) {}
   }
 
-
   Future<void> _stopAlarm() async {
     try {
       await _kioskChannel.invokeMethod('stopAlarm');
@@ -105,14 +107,22 @@ class ExamController extends GetxController with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) async {
+    _currentLifecycleState = state;
     if (_isExamFinished || isLoading.value || questions.isEmpty || isExamLocked.value || _isHandlingInAppAction) {
       return;
     }
 
-    if (state == AppLifecycleState.paused || 
-        state == AppLifecycleState.inactive || 
-        state == AppLifecycleState.hidden) {
-      
+    if (state == AppLifecycleState.resumed) {
+      // Kembali ke dalam aplikasi: batalkan timer cek keluar dan reset flag
+      _mobileExitCheckTimer?.cancel();
+      _mobileExitCheckTimer = null;
+      _wasInBackground = false;
+      return;
+    }
+
+    // Hanya periksa ketika aplikasi masuk background (paused atau hidden)
+    // Abaikan state 'inactive' karena terjadi saat tombol power dipencet atau panel notifikasi ditarik sesaat
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.hidden) {
       if (_isDesktop) {
         // Verify with native runner if window is truly not foreground
         bool isFg = true;
@@ -132,25 +142,30 @@ class ExamController extends GetxController with WidgetsBindingObserver {
         }
       } else {
         // Mobile (Android & iOS)
-        if (!_wasInBackground) {
-          _wasInBackground = true;
-          bool isScreenInteractive = true;
+        _mobileExitCheckTimer?.cancel();
+        // Beri jeda 1.2 detik untuk memastikan transisi layar mati (tombol power) selesai.
+        // Jika layar mati (tombol power dipencet), isScreenInteractive akan bernilai false.
+        // Hanya kunci ujian jika layar masih hidup dan siswa benar-benar berada di luar aplikasi ujian!
+        _mobileExitCheckTimer = Timer(const Duration(milliseconds: 1200), () async {
+          if (_currentLifecycleState == AppLifecycleState.resumed || _isExamFinished || isExamLocked.value) {
+            return;
+          }
+
+          bool isTrulyOutside = false;
           if (Platform.isAndroid) {
             try {
-              isScreenInteractive = await _kioskChannel.invokeMethod<bool>('isScreenInteractive') ?? false;
+              isTrulyOutside = await _kioskChannel.invokeMethod<bool>('isScreenInteractive') ?? false;
             } catch (_) {
-              isScreenInteractive = true;
+              isTrulyOutside = false;
             }
           }
 
-          if (isScreenInteractive) {
-            // Student genuinely left app to home screen or another app
+          if (isTrulyOutside) {
+            // Siswa terdeteksi benar-benar keluar ke Home / aplikasi lain saat layar menyala
             _lockExamSession("Terdeteksi keluar dari aplikasi ke beranda/aplikasi lain");
           }
-        }
+        });
       }
-    } else if (state == AppLifecycleState.resumed) {
-      _wasInBackground = false;
     }
   }
 
