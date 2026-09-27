@@ -134,7 +134,7 @@ const DownloadPage: React.FC = () => {
 
             <div>
               <a
-                href="/downloads/AppUjian_Setup.exe"
+                href={`/downloads/AppUjian_Setup_v${version}.exe`}
                 download={`AppUjian_Setup_v${version}.exe`}
                 className="w-full flex items-center justify-center space-x-2 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-3 px-4 rounded-xl transition-all shadow-lg shadow-emerald-900/30 active:scale-[0.98] text-sm"
               >
@@ -142,7 +142,7 @@ const DownloadPage: React.FC = () => {
                 <span>Unduh Windows (.exe)</span>
               </a>
               <p className="text-center text-[11px] text-slate-400 mt-2">
-                Ukuran: ~10.7 MB • Versi {version}
+                Ukuran: ~11.5 MB • Versi {version}
               </p>
             </div>
           </div>
@@ -181,7 +181,7 @@ const DownloadPage: React.FC = () => {
 
             <div>
               <a
-                href="/downloads/AppUjian.apk"
+                href={`/downloads/AppUjian_v${version}.apk`}
                 download={`AppUjian_v${version}.apk`}
                 className="w-full flex items-center justify-center space-x-2 bg-sky-600 hover:bg-sky-500 text-white font-semibold py-3 px-4 rounded-xl transition-all shadow-lg shadow-sky-900/30 active:scale-[0.98] text-sm"
               >
@@ -189,7 +189,7 @@ const DownloadPage: React.FC = () => {
                 <span>Unduh Android (.apk)</span>
               </a>
               <p className="text-center text-[11px] text-slate-400 mt-2">
-                Ukuran: ~54.4 MB (APK) • Versi {version}
+                Ukuran: ~55.0 MB (APK) • Versi {version}
               </p>
             </div>
           </div>
@@ -228,7 +228,7 @@ const DownloadPage: React.FC = () => {
 
             <div>
               <a
-                href="/downloads/AppUjian.ipa"
+                href={`/downloads/AppUjian_v${version}.ipa`}
                 download={`AppUjian_v${version}.ipa`}
                 className="w-full flex items-center justify-center space-x-2 bg-violet-600 hover:bg-violet-500 text-white font-semibold py-3 px-4 rounded-xl transition-all shadow-lg shadow-violet-900/30 active:scale-[0.98] text-sm"
               >
