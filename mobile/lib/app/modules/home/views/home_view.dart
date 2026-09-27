@@ -27,8 +27,12 @@ class HomeView extends GetView<HomeController> {
               physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
               slivers: [
                 SliverAppBar(
-                  automaticallyImplyLeading: false, // Sembunyikan tombol back bawaan
-                  expandedHeight: MediaQuery.of(context).size.height < 600 ? 220.0 : 280.0,
+                  expandedHeight: () {
+                    final h = MediaQuery.of(context).size.height;
+                    if (h < 500) return 190.0;
+                    if (h < 700) return 230.0;
+                    return 280.0;
+                  }(),
                   floating: false,
                   pinned: true,
                   backgroundColor: AppTheme.primaryColor,
@@ -121,9 +125,11 @@ class HomeView extends GetView<HomeController> {
                                         const SizedBox(height: 6),
                                         Obx(() => Text(
                                           controller.studentName.value,
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
                                           style: GoogleFonts.inter(
                                             color: Colors.white,
-                                            fontSize: 28,
+                                            fontSize: MediaQuery.of(context).size.width < 360 ? 22 : 28,
                                             fontWeight: FontWeight.bold,
                                             letterSpacing: -0.5,
                                           ),

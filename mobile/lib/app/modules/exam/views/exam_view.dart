@@ -268,25 +268,30 @@ class ExamView extends GetView<ExamController> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Row(
-              children: [
-                Container(
-                  width: 38,
-                  height: 38,
-                  decoration: BoxDecoration(
-                    color: AppTheme.primaryColor.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
+            Expanded(
+              child: Row(
+                children: [
+                  Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Center(
+                      child: Text("${currentIndex + 1}", style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.primaryColor)),
+                    ),
                   ),
-                  child: Center(
-                    child: Text("${currentIndex + 1}", style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.primaryColor)),
+                  const SizedBox(width: 12),
+                  Flexible(
+                    child: Text(
+                      "Pertanyaan No. ${currentIndex + 1}",
+                      style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
-                ),
-                const SizedBox(width: 14),
-                Text(
-                  "Pertanyaan No. ${currentIndex + 1}",
-                  style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
-                ),
-              ],
+                ],
+              ),
             ),
             InkWell(
               onTap: controller.toggleFlag,
@@ -457,8 +462,12 @@ class ExamView extends GetView<ExamController> {
   }
 
   Widget _buildDesktopSidebar(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final sidebarWidth = screenWidth < 1200 ? 280.0 : 320.0;
+    final gridCount = screenWidth < 1200 ? 4 : 5;
+
     return Container(
-      width: 320,
+      width: sidebarWidth,
       margin: const EdgeInsets.fromLTRB(0, 24, 28, 32),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -547,8 +556,8 @@ class ExamView extends GetView<ExamController> {
           Expanded(
             child: Obx(() => GridView.builder(
               physics: const BouncingScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 5,
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: gridCount,
                 crossAxisSpacing: 8,
                 mainAxisSpacing: 8,
               ),
@@ -624,150 +633,181 @@ class ExamView extends GetView<ExamController> {
   }
 
   Widget _buildDesktopBottomNav(int currentIndex, int qId) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(
-          top: BorderSide(color: Colors.grey.shade200, width: 1.5),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 12,
-            offset: const Offset(0, -4),
-          ),
-        ],
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 860),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              // Tombol Soal Sebelumnya
-              OutlinedButton.icon(
-                onPressed: currentIndex > 0 ? controller.previousQuestion : null,
-                icon: const Icon(Icons.arrow_back_rounded, size: 18),
-                label: Text(
-                  "SOAL SEBELUMNYA",
-                  style: GoogleFonts.inter(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppTheme.primaryColor,
-                  side: BorderSide(
-                    color: currentIndex > 0
-                        ? AppTheme.primaryColor.withValues(alpha: 0.3)
-                        : Colors.grey.shade200,
-                    width: 1.5,
-                  ),
-                  padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 15),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                  backgroundColor: Colors.white,
-                ),
-              ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final screenWidth = MediaQuery.of(context).size.width;
+        final isCompact = constraints.maxWidth < 620 || screenWidth < 1100;
 
-              // Tombol Ragu-ragu (Tengah)
-              Obx(() {
-                final isFlagged = controller.flagged[qId] ?? false;
-                return InkWell(
-                  onTap: controller.toggleFlag,
-                  borderRadius: BorderRadius.circular(14),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: isFlagged ? Colors.amber.shade500 : Colors.amber.shade50,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(
-                        color: isFlagged ? Colors.amber.shade600 : Colors.amber.shade300,
+        return Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            border: Border(
+              top: BorderSide(color: Colors.grey.shade200, width: 1.5),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.04),
+                blurRadius: 12,
+                offset: const Offset(0, -4),
+              ),
+            ],
+          ),
+          padding: EdgeInsets.symmetric(
+            horizontal: isCompact ? 16 : 28,
+            vertical: 14,
+          ),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 860),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  // Tombol Soal Sebelumnya
+                  OutlinedButton.icon(
+                    onPressed: currentIndex > 0 ? controller.previousQuestion : null,
+                    icon: const Icon(Icons.arrow_back_rounded, size: 18),
+                    label: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        isCompact ? "SEBELUMNYA" : "SOAL SEBELUMNYA",
+                        style: GoogleFonts.inter(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppTheme.primaryColor,
+                      side: BorderSide(
+                        color: currentIndex > 0
+                            ? AppTheme.primaryColor.withValues(alpha: 0.3)
+                            : Colors.grey.shade200,
                         width: 1.5,
                       ),
-                      boxShadow: isFlagged
-                          ? [
-                              BoxShadow(
-                                color: Colors.amber.withValues(alpha: 0.3),
-                                blurRadius: 8,
-                                offset: const Offset(0, 2),
-                              )
-                            ]
-                          : [],
+                      padding: EdgeInsets.symmetric(
+                        horizontal: isCompact ? 14 : 22,
+                        vertical: 15,
+                      ),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      backgroundColor: Colors.white,
                     ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          isFlagged ? Icons.check_box_rounded : Icons.check_box_outline_blank_rounded,
-                          size: 18,
-                          color: isFlagged ? Colors.white : Colors.amber.shade900,
+                  ),
+
+                  // Tombol Ragu-ragu (Tengah)
+                  Obx(() {
+                    final isFlagged = controller.flagged[qId] ?? false;
+                    return InkWell(
+                      onTap: controller.toggleFlag,
+                      borderRadius: BorderRadius.circular(14),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: isCompact ? 12 : 18,
+                          vertical: 12,
                         ),
-                        const SizedBox(width: 8),
-                        Text(
-                          "RAGU-RAGU",
+                        decoration: BoxDecoration(
+                          color: isFlagged ? Colors.amber.shade500 : Colors.amber.shade50,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: isFlagged ? Colors.amber.shade600 : Colors.amber.shade300,
+                            width: 1.5,
+                          ),
+                          boxShadow: isFlagged
+                              ? [
+                                  BoxShadow(
+                                    color: Colors.amber.withValues(alpha: 0.3),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2),
+                                  )
+                                ]
+                              : [],
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              isFlagged ? Icons.check_box_rounded : Icons.check_box_outline_blank_rounded,
+                              size: 18,
+                              color: isFlagged ? Colors.white : Colors.amber.shade900,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              "RAGU-RAGU",
+                              style: GoogleFonts.inter(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: isFlagged ? Colors.white : Colors.amber.shade900,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }),
+
+                  // Tombol Soal Berikutnya / Selesai Ujian
+                  if (currentIndex < controller.questions.length - 1)
+                    ElevatedButton.icon(
+                      onPressed: controller.nextQuestion,
+                      icon: const Icon(Icons.arrow_forward_rounded, size: 18),
+                      label: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          isCompact ? "BERIKUTNYA" : "SOAL BERIKUTNYA",
                           style: GoogleFonts.inter(
-                            fontSize: 13,
                             fontWeight: FontWeight.bold,
-                            color: isFlagged ? Colors.white : Colors.amber.shade900,
+                            fontSize: 13,
                             letterSpacing: 0.5,
                           ),
                         ),
-                      ],
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primaryColor,
+                        foregroundColor: Colors.white,
+                        elevation: 3,
+                        shadowColor: AppTheme.primaryColor.withValues(alpha: 0.3),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: isCompact ? 14 : 22,
+                          vertical: 15,
+                        ),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      ),
+                    )
+                  else
+                    ElevatedButton.icon(
+                      onPressed: controller.finishExamPrompt,
+                      icon: const Icon(Icons.check_circle_rounded, size: 18),
+                      label: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          "SELESAI UJIAN",
+                          style: GoogleFonts.inter(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green.shade600,
+                        foregroundColor: Colors.white,
+                        elevation: 3,
+                        shadowColor: Colors.green.withValues(alpha: 0.3),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: isCompact ? 14 : 22,
+                          vertical: 15,
+                        ),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      ),
                     ),
-                  ),
-                );
-              }),
-
-              // Tombol Soal Berikutnya / Selesai Ujian
-              if (currentIndex < controller.questions.length - 1)
-                ElevatedButton.icon(
-                  onPressed: controller.nextQuestion,
-                  icon: const Icon(Icons.arrow_forward_rounded, size: 18),
-                  label: Text(
-                    "SOAL BERIKUTNYA",
-                    style: GoogleFonts.inter(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primaryColor,
-                    foregroundColor: Colors.white,
-                    elevation: 3,
-                    shadowColor: AppTheme.primaryColor.withValues(alpha: 0.3),
-                    padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 15),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                  ),
-                )
-              else
-                ElevatedButton.icon(
-                  onPressed: controller.finishExamPrompt,
-                  icon: const Icon(Icons.check_circle_rounded, size: 18),
-                  label: Text(
-                    "SELESAI UJIAN",
-                    style: GoogleFonts.inter(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green.shade600,
-                    foregroundColor: Colors.white,
-                    elevation: 3,
-                    shadowColor: Colors.green.withValues(alpha: 0.3),
-                    padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 15),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                  ),
-                ),
-            ],
+                ],
+              ),
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -1047,11 +1087,11 @@ class ExamView extends GetView<ExamController> {
                       child: BackdropFilter(
                         filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                           decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.85),
+                            color: Colors.white.withValues(alpha: 0.9),
                             borderRadius: BorderRadius.circular(24),
-                            border: Border.all(color: Colors.white.withValues(alpha: 0.5), width: 1.5),
+                            border: Border.all(color: Colors.white.withValues(alpha: 0.6), width: 1.5),
                             boxShadow: [
                               BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 20, offset: const Offset(0, 10))
                             ],
@@ -1066,37 +1106,66 @@ class ExamView extends GetView<ExamController> {
                                   style: OutlinedButton.styleFrom(
                                     foregroundColor: AppTheme.primaryColor,
                                     side: BorderSide(color: currentIndex > 0 ? AppTheme.primaryColor.withValues(alpha: 0.3) : Colors.grey.shade200, width: 1.5),
-                                    padding: const EdgeInsets.symmetric(vertical: 16),
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                    padding: const EdgeInsets.symmetric(vertical: 14),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                                     backgroundColor: Colors.white.withValues(alpha: 0.5),
                                   ),
                                   child: Row(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
-                                      const Icon(Icons.arrow_back_rounded, size: 18),
-                                      const SizedBox(width: 8),
-                                      Text("KEMBALI", style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13, letterSpacing: 0.5)),
+                                      const Icon(Icons.arrow_back_rounded, size: 16),
+                                      const SizedBox(width: 6),
+                                      FittedBox(
+                                        fit: BoxFit.scaleDown,
+                                        child: Text("KEMBALI", style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 12, letterSpacing: 0.5)),
+                                      ),
                                     ],
                                   ),
                                 ),
                               ),
-                              const SizedBox(width: 12),
-                              
+                              const SizedBox(width: 8),
+
+                              // Quick Flag Doubt Button for Mobile
+                              InkWell(
+                                onTap: controller.toggleFlag,
+                                borderRadius: BorderRadius.circular(14),
+                                child: Obx(() {
+                                  final rawId = controller.questions[currentIndex]['id'];
+                                  final currentQId = rawId is int ? rawId : int.parse(rawId.toString());
+                                  final isFlagged = controller.flagged[currentQId] ?? false;
+                                  return AnimatedContainer(
+                                    duration: const Duration(milliseconds: 200),
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: isFlagged ? Colors.amber.shade500 : Colors.amber.shade50,
+                                      borderRadius: BorderRadius.circular(14),
+                                      border: Border.all(color: isFlagged ? Colors.amber.shade600 : Colors.amber.shade200),
+                                    ),
+                                    child: Icon(
+                                      isFlagged ? Icons.flag_rounded : Icons.outlined_flag_rounded,
+                                      color: isFlagged ? Colors.white : Colors.amber.shade800,
+                                      size: 20,
+                                    ),
+                                  );
+                                }),
+                              ),
+                              const SizedBox(width: 8),
+
                               // Grid Button
                               InkWell(
                                 onTap: () => _showQuestionGrid(context),
-                                borderRadius: BorderRadius.circular(16),
+                                borderRadius: BorderRadius.circular(14),
                                 child: Container(
-                                  padding: const EdgeInsets.all(16),
+                                  padding: const EdgeInsets.all(12),
                                   decoration: BoxDecoration(
                                     color: AppTheme.primaryColor.withValues(alpha: 0.1),
-                                    borderRadius: BorderRadius.circular(16),
+                                    borderRadius: BorderRadius.circular(14),
                                   ),
-                                  child: const Icon(Icons.grid_view_rounded, color: AppTheme.primaryColor, size: 24),
+                                  child: const Icon(Icons.grid_view_rounded, color: AppTheme.primaryColor, size: 20),
                                 ),
                               ),
-                              const SizedBox(width: 12),
-                              
+                              const SizedBox(width: 8),
+
                               // Next / Finish Button
                               Expanded(
                                 child: currentIndex < controller.questions.length - 1 
@@ -1105,17 +1174,20 @@ class ExamView extends GetView<ExamController> {
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: AppTheme.primaryColor,
                                       foregroundColor: Colors.white,
-                                      elevation: 8,
+                                      elevation: 6,
                                       shadowColor: AppTheme.primaryColor.withValues(alpha: 0.4),
-                                      padding: const EdgeInsets.symmetric(vertical: 16),
-                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                      padding: const EdgeInsets.symmetric(vertical: 14),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                                     ),
                                     child: Row(
                                       mainAxisAlignment: MainAxisAlignment.center,
                                       children: [
-                                        Text("LANJUT", style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13, letterSpacing: 0.5)),
-                                        const SizedBox(width: 8),
-                                        const Icon(Icons.arrow_forward_rounded, size: 18),
+                                        FittedBox(
+                                          fit: BoxFit.scaleDown,
+                                          child: Text("LANJUT", style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 12, letterSpacing: 0.5)),
+                                        ),
+                                        const SizedBox(width: 6),
+                                        const Icon(Icons.arrow_forward_rounded, size: 16),
                                       ],
                                     ),
                                   )
@@ -1124,17 +1196,20 @@ class ExamView extends GetView<ExamController> {
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: Colors.green.shade500,
                                       foregroundColor: Colors.white,
-                                      elevation: 8,
+                                      elevation: 6,
                                       shadowColor: Colors.green.withValues(alpha: 0.4),
-                                      padding: const EdgeInsets.symmetric(vertical: 16),
-                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                      padding: const EdgeInsets.symmetric(vertical: 14),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                                     ),
                                     child: Row(
                                       mainAxisAlignment: MainAxisAlignment.center,
                                       children: [
-                                        const Icon(Icons.check_circle_rounded, size: 20),
-                                        const SizedBox(width: 8),
-                                        Text("SELESAI", style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13, letterSpacing: 0.5)),
+                                        const Icon(Icons.check_circle_rounded, size: 18),
+                                        const SizedBox(width: 6),
+                                        FittedBox(
+                                          fit: BoxFit.scaleDown,
+                                          child: Text("SELESAI", style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 12, letterSpacing: 0.5)),
+                                        ),
                                       ],
                                     ),
                                   ),

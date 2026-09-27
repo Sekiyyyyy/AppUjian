@@ -15,8 +15,12 @@ class ProfileView extends GetView<ProfileController> {
         physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
         slivers: [
           SliverAppBar(
-            automaticallyImplyLeading: false,
-            expandedHeight: MediaQuery.of(context).size.height < 600 ? 220.0 : 280.0,
+            expandedHeight: () {
+              final h = MediaQuery.of(context).size.height;
+              if (h < 500) return 190.0;
+              if (h < 700) return 230.0;
+              return 280.0;
+            }(),
             floating: false,
             pinned: true,
             backgroundColor: AppTheme.primaryColor,
@@ -71,12 +75,18 @@ class ProfileView extends GetView<ProfileController> {
                                   ),
                                 ),
                                 const SizedBox(height: 16),
-                                Obx(() => Text(
-                                  controller.studentName.value,
-                                  style: GoogleFonts.inter(
-                                    color: Colors.white,
-                                    fontSize: 24,
-                                    fontWeight: FontWeight.bold,
+                                Obx(() => Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                                  child: Text(
+                                    controller.studentName.value,
+                                    textAlign: TextAlign.center,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: GoogleFonts.inter(
+                                      color: Colors.white,
+                                      fontSize: MediaQuery.of(context).size.width < 360 ? 20 : 24,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
                                 )),
                                 const SizedBox(height: 4),

@@ -29,14 +29,14 @@ const DownloadPage: React.FC = () => {
       .catch(() => {
         // Fallback default
         setVersionInfo({
-          latest_version: '1.0.3',
-          build_number: 4,
+          latest_version: '1.0.4',
+          build_number: 5,
           min_version: '1.0.0',
-          title: 'Pembaruan Aplikasi CBT v1.0.3',
+          title: 'Pembaruan Aplikasi CBT v1.0.4',
           changelog: [
-            'Pembaruan ikon resmi SMKN 1 Beringin di semua platform (.apk, .exe, .ipa).',
-            'Penyempurnaan form login CBT: Username & Password langsung dari kartu ujian.',
-            'Peningkatan sistem keamanan Kiosk Anti-Cheat di Android, Windows, dan iOS.',
+            'Tampilan desktop: Tombol navigasi soal (Sebelumnya, Ragu-ragu, Berikutnya) kini fixed di bawah layar tanpa perlu scroll.',
+            'Penyempurnaan responsivitas tampilan ujian di seluruh perangkat (HP, Tablet, Laptop, PC Lab).',
+            'Penyempurnaan sistem keamanan Kiosk Anti-Cheat di Android, Windows, dan iOS.',
             'Fitur pengacakan urutan soal (randomize questions) per sesi siswa.'
           ],
           download_url: '/download'
@@ -44,7 +44,7 @@ const DownloadPage: React.FC = () => {
       });
   }, []);
 
-  const version = versionInfo?.latest_version || '1.0.3';
+  const version = versionInfo?.latest_version || '1.0.4';
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 text-white flex flex-col justify-between selection:bg-emerald-500 selection:text-white">
