@@ -20,16 +20,16 @@ type AppVersionResponse struct {
 // GetAppVersion returns the latest version metadata of student client applications
 func GetAppVersion(c *gin.Context) {
 	c.JSON(http.StatusOK, AppVersionResponse{
-		LatestVersion: "1.0.2",
-		BuildNumber:   3,
+		LatestVersion: "1.0.3",
+		BuildNumber:   4,
 		MinVersion:    "1.0.0",
 		ForceUpdate:   false,
-		Title:         "Pembaruan Aplikasi CBT v1.0.2",
+		Title:         "Pembaruan Aplikasi CBT v1.0.3",
 		Changelog: []string{
-			"Optimalisasi antarmuka dan stabilitas koneksi client ke server sekolah.",
-			"Peningkatan sistem keamanan kunci layar anti-curang di semua platform.",
-			"Dukungan penuh multi-platform: Android, Windows Desktop (.exe), dan Apple iOS (.ipa).",
-			"Penyempurnaan sinkronisasi jawaban dan deteksi status ujian otomatis.",
+			"Pembaruan ikon resmi SMKN 1 Beringin di semua platform (.apk, .exe, .ipa).",
+			"Penyempurnaan form login CBT: Username & Password langsung dari kartu ujian.",
+			"Peningkatan sistem keamanan Kiosk Anti-Cheat di Android, Windows, dan iOS.",
+			"Fitur pengacakan urutan soal (randomize questions) per sesi siswa.",
 		},
 		DownloadURL: "https://ujian.tiksmkn1beringin.my.id/download",
 	})

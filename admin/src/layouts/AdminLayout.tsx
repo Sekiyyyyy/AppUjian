@@ -17,7 +17,9 @@ import {
   X,
   Clock,
   UserCheck,
-  User as UserIcon
+  User as UserIcon,
+  DoorOpen,
+  FileText
 } from 'lucide-react';
 
 const AdminLayout = () => {
@@ -77,6 +79,8 @@ const AdminLayout = () => {
       items: [
         { path: '/dashboard', icon: <LayoutDashboard size={19} />, label: 'Dashboard' },
         { path: '/dashboard/classes', icon: <School size={19} />, label: 'Manajemen Kelas', adminOnly: true },
+        { path: '/dashboard/rooms', icon: <DoorOpen size={19} />, label: 'Ruang & Sesi', adminOnly: true },
+        { path: '/dashboard/cards', icon: <FileText size={19} />, label: 'Kartu Ujian', adminOnly: true },
         { path: '/dashboard/subjects', icon: <BookOpen size={19} />, label: 'Mata Pelajaran' },
         { path: '/dashboard/questions', icon: <Database size={19} />, label: 'Bank Soal' },
         { path: '/dashboard/exams', icon: <Calendar size={19} />, label: 'Jadwal Ujian' },

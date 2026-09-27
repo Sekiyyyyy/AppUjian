@@ -146,3 +146,73 @@ func PromoteClasses(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "Kenaikan kelas berhasil diproses"})
 }
+
+// UpdateClassRoomSession updates the room, session, and server name for a class
+func UpdateClassRoomSession(c *gin.Context) {
+	id := c.Param("id")
+	var req struct {
+		Ruangan    string `json:"ruangan"`
+		Sesi       string `json:"sesi"`
+		ServerName string `json:"server_name"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Format data tidak valid"})
+		return
+	}
+
+	var class models.Class
+	if err := config.DB.First(&class, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Kelas tidak ditemukan"})
+		return
+	}
+
+	class.Ruangan = req.Ruangan
+	class.Sesi = req.Sesi
+	class.ServerName = req.ServerName
+
+	if err := config.DB.Save(&class).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menyimpan pengaturan ruangan dan sesi"})
+		return
+	}
+
+	c.JSON(http.StatusOK, class)
+}
+
+// BatchUpdateClassRoomSession updates room and session for multiple classes simultaneously
+func BatchUpdateClassRoomSession(c *gin.Context) {
+	var req struct {
+		ClassIDs   []uint  `json:"class_ids" binding:"required"`
+		Ruangan    *string `json:"ruangan"`
+		Sesi       *string `json:"sesi"`
+		ServerName *string `json:"server_name"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil || len(req.ClassIDs) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Pilih minimal satu kelas"})
+		return
+	}
+
+	updates := map[string]interface{}{}
+	if req.Ruangan != nil {
+		updates["ruangan"] = *req.Ruangan
+	}
+	if req.Sesi != nil {
+		updates["sesi"] = *req.Sesi
+	}
+	if req.ServerName != nil {
+		updates["server_name"] = *req.ServerName
+	}
+
+	if len(updates) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Tidak ada data perubahan ruangan atau sesi"})
+		return
+	}
+
+	if err := config.DB.Model(&models.Class{}).Where("id IN ?", req.ClassIDs).Updates(updates).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal memperbarui data kelas secara massal"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("Berhasil mengatur ruangan dan sesi untuk %d kelas", len(req.ClassIDs))})
+}

@@ -205,13 +205,13 @@ class LoginView extends GetView<LoginController> {
                               children: [
                                 // Username Field
                                 Text(
-                                  "Nomor Induk Siswa",
+                                  "Username (Token)",
                                   style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.textPrimary),
                                 ),
                                 const SizedBox(height: 8),
                                 _buildTextField(
                                   controller: controller.nisnController,
-                                  hint: "Masukkan NISN Anda",
+                                  hint: "Masukkan Username dari kartu ujian",
                                   icon: Icons.person_outline_rounded,
                                   autofillHints: const [AutofillHints.username],
                                 ),
@@ -219,13 +219,13 @@ class LoginView extends GetView<LoginController> {
 
                                 // Password Field
                                 Text(
-                                  "Kata Sandi",
+                                  "Password (Token)",
                                   style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.textPrimary),
                                 ),
                                 const SizedBox(height: 8),
                                 _buildTextField(
                                   controller: controller.passwordController,
-                                  hint: "Masukkan kata sandi",
+                                  hint: "Masukkan Password dari kartu ujian",
                                   icon: Icons.lock_outline_rounded,
                                   isPassword: true,
                                   autofillHints: const [AutofillHints.password],

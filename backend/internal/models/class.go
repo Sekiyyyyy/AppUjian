@@ -13,6 +13,9 @@ type Class struct {
 	Department string `json:"department"` // e.g., "PPLG", "TKJ", "AKL"
 	Number     string `json:"number"`     // e.g., "1", "2", "3"
 	Name       string `json:"name"`       // Generated e.g., "XII PPLG 1"
+	Ruangan    string `gorm:"type:varchar(100);default:''" json:"ruangan"`
+	Sesi       string `gorm:"type:varchar(50);default:''" json:"sesi"`
+	ServerName string `gorm:"type:varchar(100);default:''" json:"server_name"`
 }
 
 func (c *Class) BeforeSave(tx *gorm.DB) (err error) {

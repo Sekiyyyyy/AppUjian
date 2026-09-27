@@ -274,7 +274,72 @@ func GenerateTokens(c *gin.Context) {
 }
 
 func ExportTokens(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{"message": "Tokens exported"})
+	var students []models.Student
+	query := config.DB.Preload("User").Preload("Class")
+
+	classID := c.Query("class_id")
+	if classID != "" && classID != "null" && classID != "undefined" && classID != "ALL" {
+		query = query.Where("class_id = ?", classID)
+	}
+
+	studentID := c.Query("student_id")
+	if studentID != "" && studentID != "null" && studentID != "undefined" {
+		query = query.Where("students.id = ?", studentID)
+	}
+
+	if err := query.Joins("JOIN users ON users.id = students.user_id").Order("students.class_id ASC, users.name ASC").Find(&students).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch student tokens"})
+		return
+	}
+
+	type TokenItem struct {
+		ID           uint   `json:"id"`
+		Name         string `json:"name"`
+		NISN         string `json:"nisn"`
+		NIS          string `json:"nis"`
+		ClassName    string `json:"class_name"`
+		ClassID      uint   `json:"class_id"`
+		Username     string `json:"username"`
+		Password     string `json:"password"`
+		TempatLahir  string `json:"tempat_lahir"`
+		TanggalLahir string `json:"tanggal_lahir"`
+		JenisKelamin string `json:"jenis_kelamin"`
+		Ruangan      string `json:"ruangan"`
+		Sesi         string `json:"sesi"`
+		ServerName   string `json:"server_name"`
+	}
+
+	var results []TokenItem
+	for _, s := range students {
+		className := "-"
+		ruangan := ""
+		sesi := ""
+		serverName := ""
+		if s.Class != nil {
+			className = s.Class.Name
+			ruangan = s.Class.Ruangan
+			sesi = s.Class.Sesi
+			serverName = s.Class.ServerName
+		}
+		results = append(results, TokenItem{
+			ID:           s.ID,
+			Name:         s.User.Name,
+			NISN:         s.NISN,
+			NIS:          s.NIS,
+			ClassName:    className,
+			ClassID:      s.ClassID,
+			Username:     s.User.Username,
+			Password:     s.TokenPassword,
+			TempatLahir:  s.TempatLahir,
+			TanggalLahir: s.TanggalLahir,
+			JenisKelamin: s.JenisKelamin,
+			Ruangan:      ruangan,
+			Sesi:         sesi,
+			ServerName:   serverName,
+		})
+	}
+
+	c.JSON(http.StatusOK, results)
 }
 
 // ImportStudentsCSV handles importing students from a CSV file

@@ -87,6 +87,8 @@ func main() {
 			adminRoutes.POST("/classes", controllers.CreateClass)
 			adminRoutes.POST("/classes/promote", controllers.PromoteClasses)
 			adminRoutes.DELETE("/classes/:id", controllers.DeleteClass)
+			adminRoutes.PUT("/classes/:id/room-session", controllers.UpdateClassRoomSession)
+			adminRoutes.POST("/classes/batch-room-session", controllers.BatchUpdateClassRoomSession)
 
 			// Categories Management
 			adminRoutes.GET("/categories", controllers.GetCategories)

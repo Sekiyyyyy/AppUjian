@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"math"
+	"math/rand"
 	"net/http"
 	"strings"
 	"time"
@@ -165,6 +166,17 @@ func GetExamQuestions(c *gin.Context) {
 			Content:       q.Content,
 			Options:       opts,
 			StudentAnswer: ans,
+		})
+	}
+
+	// Fitur Pengacakan Soal (Randomize Questions):
+	// Menggunakan shuffle Fisher-Yates dengan seed deterministik berbasis session.ID & student.ID.
+	// 1. Setiap siswa mendapatkan urutan soal acak yang berbeda (mencegah saling lirik/contek).
+	// 2. Jika siswa mengalami refresh / relogin pada sesi yang sama, urutan soal tetap konsisten.
+	if len(questions) > 1 {
+		r := rand.New(rand.NewSource(int64(session.ID)*10007 + int64(student.ID)))
+		r.Shuffle(len(questions), func(i, j int) {
+			questions[i], questions[j] = questions[j], questions[i]
 		})
 	}
 

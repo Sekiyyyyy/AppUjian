@@ -8,9 +8,10 @@ import {
   Edit2, 
   Save, 
   X, 
-  UserCircle,
-  RefreshCw,
-  AlertCircle
+  UserCircle, 
+  RefreshCw, 
+  AlertCircle,
+  Printer 
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { confirmAction, showSuccessToast, showErrorToast } from '../utils/alert';
@@ -18,7 +19,13 @@ import { confirmAction, showSuccessToast, showErrorToast } from '../utils/alert'
 interface Student {
   id: number;
   nisn: string;
+  nis?: string;
+  class_id?: number;
+  token_password?: string;
+  tempat_lahir?: string;
+  tanggal_lahir?: string;
   user: {
+    id: number;
     name: string;
     username: string;
   };
@@ -31,6 +38,7 @@ const ClassDetails = () => {
   
   const [className, setClassName] = useState('Memuat Kelas...');
   const [students, setStudents] = useState<Student[]>([]);
+  const [currentClassItem, setCurrentClassItem] = useState<{ ID: number; name: string } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   
   // Editing State
@@ -48,7 +56,9 @@ const ClassDetails = () => {
       });
       const cls = classRes.data.find((c: any) => c.ID === Number(id));
       if (cls) {
-        setClassName(`${cls.level} ${cls.department} ${cls.number}`.trim());
+        const fullClassName = `${cls.level} ${cls.department} ${cls.number}`.trim();
+        setClassName(fullClassName);
+        setCurrentClassItem({ ID: cls.ID, name: fullClassName });
       } else {
         setClassName('Kelas Tidak Ditemukan');
       }
@@ -154,6 +164,15 @@ const ClassDetails = () => {
             className="hidden" 
             onChange={handleFileUpload}
           />
+          <button 
+            onClick={() => navigate(`/dashboard/cards?class_id=${id}`)}
+            disabled={isLoading || students.length === 0}
+            className="btn-primary flex items-center space-x-2 text-xs sm:text-sm py-2 px-3.5 bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs"
+            title="Cetak & Unduh Kartu Peserta Ujian (Token) Kelas Ini"
+          >
+            <Printer size={16} />
+            <span>Cetak Kartu Kelas</span>
+          </button>
           <button 
             onClick={() => fileInputRef.current?.click()}
             disabled={isLoading}
@@ -264,7 +283,14 @@ const ClassDetails = () => {
                           </button>
                         </div>
                       ) : (
-                        <div className="flex justify-end space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex justify-end space-x-1 sm:space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button 
+                            onClick={() => navigate(`/dashboard/cards?student_id=${s.id}&class_id=${id}`)}
+                            className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+                            title="Cetak Kartu Ujian Siswa Ini"
+                          >
+                            <Printer size={16} />
+                          </button>
                           <button 
                             onClick={() => startEdit(s)}
                             className="p-2 text-slate-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
@@ -289,6 +315,7 @@ const ClassDetails = () => {
           </table>
         </div>
       </div>
+
     </div>
   );
 };

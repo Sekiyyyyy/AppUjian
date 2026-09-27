@@ -111,7 +111,7 @@ class ProfileView extends GetView<ProfileController> {
                         _buildMenuCard(
                           icon: Icons.system_update_rounded,
                           title: 'Periksa Pembaruan Aplikasi',
-                          subtitle: 'Versi v1.0.2 (Build 3)',
+                          subtitle: 'Versi v1.0.3 (Build 4)',
                           color: AppTheme.primaryColor,
                           onTap: () => controller.checkForUpdates(),
                         ),

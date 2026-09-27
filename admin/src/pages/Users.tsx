@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Plus, Users as UsersIcon, Search, ChevronLeft, ChevronRight, Shield, Trash2, AlertCircle, Edit2, Key, GraduationCap, School, Eye, Award, Copy, RefreshCw } from 'lucide-react';
+import { Plus, Users as UsersIcon, Search, ChevronLeft, ChevronRight, Shield, Trash2, AlertCircle, Edit2, Key, GraduationCap, School, Eye, Award, Copy, RefreshCw, Printer } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { confirmAction, showSuccessToast, showErrorToast, showWarningToast } from '../utils/alert';
 import { useDebounce } from '../hooks/useDebounce';
@@ -150,6 +151,7 @@ const Users = () => {
   // Profile View Modal
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<StudentItem | null>(null);
+  const navigate = useNavigate();
 
   const fetchUsers = async () => {
     try {
@@ -377,50 +379,6 @@ const Users = () => {
     }
   };
 
-  const handleExportTokens = async () => {
-    try {
-      const response = await axios.get('/api/v1/admin/students/export-tokens', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-
-      const tokens = response.data;
-      if (!tokens || tokens.length === 0) {
-        showWarningToast("Tidak ada data siswa.");
-        return;
-      }
-
-      const headers = ["Nama Siswa", "NISN", "Kelas", "Username (Token)", "Password"];
-      const csvRows = [];
-      csvRows.push(headers.join(","));
-
-      for (const t of tokens) {
-        const row = [
-          `"${t.name}"`, 
-          `"${t.nisn}"`, 
-          `"${t.class_name}"`, 
-          `"${t.username}"`, 
-          `"${t.password}"`
-        ];
-        csvRows.push(row.join(","));
-      }
-
-      const csvString = csvRows.join("\n");
-      const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      
-      const link = document.createElement("a");
-      link.setAttribute("href", url);
-      link.setAttribute("download", `Token_Ujian_Aktif_${new Date().toISOString().slice(0,10)}.csv`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
-      showSuccessToast("Token berhasil diunduh!");
-    } catch {
-      showErrorToast("Gagal mengunduh token.");
-    }
-  };
-
   return (
     <div className="space-y-6">
       <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -435,8 +393,18 @@ const Users = () => {
             </button>
           ) : (
             <>
-              <button onClick={handleExportTokens} className="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center space-x-1.5 shadow-xs transition-colors w-full sm:w-auto">
-                <Key size={16} /><span>Unduh Token</span>
+              <button 
+                onClick={() => {
+                  if (filterClassId !== 'ALL') {
+                    navigate(`/dashboard/cards?class_id=${filterClassId}`);
+                  } else {
+                    navigate('/dashboard/cards');
+                  }
+                }} 
+                className="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center space-x-1.5 shadow-xs transition-colors w-full sm:w-auto"
+                title="Cetak & Unduh Kartu Ujian (Token) dalam format PDF A4"
+              >
+                <Printer size={16} /><span>Unduh / Cetak Kartu</span>
               </button>
               <button onClick={handleGenerateTokens} className="bg-amber-500 hover:bg-amber-600 text-white px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center space-x-1.5 shadow-xs transition-colors w-full sm:w-auto">
                 <Key size={16} /><span>Generate Token</span>
@@ -733,7 +701,14 @@ const Users = () => {
                           <div className="mt-1"><span className="text-slate-500">P:</span> <span className="font-bold text-amber-600">{(s as any).token_password || '***'}</span></div>
                         </div>
                       </td>
-                      <td className="py-4 px-6 text-right space-x-2">
+                      <td className="py-4 px-6 text-right space-x-1.5 sm:space-x-2">
+                        <button 
+                          onClick={() => navigate(`/dashboard/cards?student_id=${s.id}&class_id=${s.class_id}`)} 
+                          className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors" 
+                          title="Cetak Kartu Ujian (Token)"
+                        >
+                          <Printer size={16} />
+                        </button>
                         <button onClick={() => { setSelectedStudent(s); setIsProfileModalOpen(true); }} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Lihat Profil Lengkap">
                           <Eye size={16} />
                         </button>
@@ -743,6 +718,7 @@ const Users = () => {
                         <button 
                           onClick={() => handleDeleteStudent(s.id, s.user.name)}
                           className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          title="Hapus Siswa"
                         >
                           <Trash2 size={16} />
                         </button>
@@ -1176,7 +1152,17 @@ const Users = () => {
                 </table>
               </div>
               
-              <div className="mt-6 flex justify-end">
+              <div className="mt-6 flex justify-end items-center">
+                <button 
+                  onClick={() => {
+                    setIsProfileModalOpen(false);
+                    navigate(`/dashboard/cards?student_id=${selectedStudent.id}&class_id=${selectedStudent.class_id}`);
+                  }} 
+                  className="btn-secondary flex items-center space-x-2 text-xs font-semibold mr-2"
+                >
+                  <Printer size={16} />
+                  <span>Cetak Kartu Ujian</span>
+                </button>
                 <button 
                   onClick={() => {
                     setIsProfileModalOpen(false);
@@ -1192,6 +1178,7 @@ const Users = () => {
           </div>
         </div>
       )}
+
     </div>
   );
 };
