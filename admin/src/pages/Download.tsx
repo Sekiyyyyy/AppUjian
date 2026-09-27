@@ -29,21 +29,22 @@ const DownloadPage: React.FC = () => {
       .catch(() => {
         // Fallback default
         setVersionInfo({
-          latest_version: '1.0.0',
-          build_number: 1,
+          latest_version: '1.0.3',
+          build_number: 4,
           min_version: '1.0.0',
-          title: 'Pembaruan Aplikasi CBT',
+          title: 'Pembaruan Aplikasi CBT v1.0.3',
           changelog: [
-            'Rilis resmi aplikasi CBT SMK Negeri 1 Beringin.',
-            'Fitur keamanan anti-curang dan kunci layar otomatis.',
-            'Tersambung langsung ke cloud server resmi.'
+            'Pembaruan ikon resmi SMKN 1 Beringin di semua platform (.apk, .exe, .ipa).',
+            'Penyempurnaan form login CBT: Username & Password langsung dari kartu ujian.',
+            'Peningkatan sistem keamanan Kiosk Anti-Cheat di Android, Windows, dan iOS.',
+            'Fitur pengacakan urutan soal (randomize questions) per sesi siswa.'
           ],
           download_url: '/download'
         });
       });
   }, []);
 
-  const version = versionInfo?.latest_version || '1.0.0';
+  const version = versionInfo?.latest_version || '1.0.3';
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 text-white flex flex-col justify-between selection:bg-emerald-500 selection:text-white">

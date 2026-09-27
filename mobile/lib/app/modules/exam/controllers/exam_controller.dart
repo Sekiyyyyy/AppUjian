@@ -131,16 +131,20 @@ class ExamController extends GetxController with WidgetsBindingObserver {
           _lockExamSession("Terdeteksi keluar dari aplikasi ujian (Desktop)");
         }
       } else {
-        // Mobile
+        // Mobile (Android & iOS)
         if (!_wasInBackground) {
           _wasInBackground = true;
-          bool isScreenInteractive = false;
-          try {
-            isScreenInteractive = await _kioskChannel.invokeMethod<bool>('isScreenInteractive') ?? false;
-          } catch (_) {}
+          bool isScreenInteractive = true;
+          if (Platform.isAndroid) {
+            try {
+              isScreenInteractive = await _kioskChannel.invokeMethod<bool>('isScreenInteractive') ?? false;
+            } catch (_) {
+              isScreenInteractive = true;
+            }
+          }
 
           if (isScreenInteractive) {
-            // Student genuinely left app to home screen or another app while screen is on
+            // Student genuinely left app to home screen or another app
             _lockExamSession("Terdeteksi keluar dari aplikasi ke beranda/aplikasi lain");
           }
         }
