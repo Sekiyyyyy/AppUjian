@@ -623,6 +623,154 @@ class ExamView extends GetView<ExamController> {
     );
   }
 
+  Widget _buildDesktopBottomNav(int currentIndex, int qId) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border(
+          top: BorderSide(color: Colors.grey.shade200, width: 1.5),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 12,
+            offset: const Offset(0, -4),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 860),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              // Tombol Soal Sebelumnya
+              OutlinedButton.icon(
+                onPressed: currentIndex > 0 ? controller.previousQuestion : null,
+                icon: const Icon(Icons.arrow_back_rounded, size: 18),
+                label: Text(
+                  "SOAL SEBELUMNYA",
+                  style: GoogleFonts.inter(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppTheme.primaryColor,
+                  side: BorderSide(
+                    color: currentIndex > 0
+                        ? AppTheme.primaryColor.withValues(alpha: 0.3)
+                        : Colors.grey.shade200,
+                    width: 1.5,
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 15),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  backgroundColor: Colors.white,
+                ),
+              ),
+
+              // Tombol Ragu-ragu (Tengah)
+              Obx(() {
+                final isFlagged = controller.flagged[qId] ?? false;
+                return InkWell(
+                  onTap: controller.toggleFlag,
+                  borderRadius: BorderRadius.circular(14),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: isFlagged ? Colors.amber.shade500 : Colors.amber.shade50,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: isFlagged ? Colors.amber.shade600 : Colors.amber.shade300,
+                        width: 1.5,
+                      ),
+                      boxShadow: isFlagged
+                          ? [
+                              BoxShadow(
+                                color: Colors.amber.withValues(alpha: 0.3),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              )
+                            ]
+                          : [],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          isFlagged ? Icons.check_box_rounded : Icons.check_box_outline_blank_rounded,
+                          size: 18,
+                          color: isFlagged ? Colors.white : Colors.amber.shade900,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          "RAGU-RAGU",
+                          style: GoogleFonts.inter(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            color: isFlagged ? Colors.white : Colors.amber.shade900,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }),
+
+              // Tombol Soal Berikutnya / Selesai Ujian
+              if (currentIndex < controller.questions.length - 1)
+                ElevatedButton.icon(
+                  onPressed: controller.nextQuestion,
+                  icon: const Icon(Icons.arrow_forward_rounded, size: 18),
+                  label: Text(
+                    "SOAL BERIKUTNYA",
+                    style: GoogleFonts.inter(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primaryColor,
+                    foregroundColor: Colors.white,
+                    elevation: 3,
+                    shadowColor: AppTheme.primaryColor.withValues(alpha: 0.3),
+                    padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 15),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
+                )
+              else
+                ElevatedButton.icon(
+                  onPressed: controller.finishExamPrompt,
+                  icon: const Icon(Icons.check_circle_rounded, size: 18),
+                  label: Text(
+                    "SELESAI UJIAN",
+                    style: GoogleFonts.inter(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green.shade600,
+                    foregroundColor: Colors.white,
+                    elevation: 3,
+                    shadowColor: Colors.green.withValues(alpha: 0.3),
+                    padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 15),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return PopScope(
@@ -809,74 +957,38 @@ class ExamView extends GetView<ExamController> {
 
               if (isDesktop) {
                 return Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // Main Question Area
+                    // Main Question Area with Fixed Bottom Navigation
                     Expanded(
-                      child: SingleChildScrollView(
-                        physics: const BouncingScrollPhysics(),
-                        padding: const EdgeInsets.fromLTRB(28, 24, 20, 32),
-                        child: Center(
-                          child: ConstrainedBox(
-                            constraints: const BoxConstraints(maxWidth: 860),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                _buildQuestionHeader(currentIndex, qId),
-                                _buildQuestionBody(currentQuestion),
-                                const SizedBox(height: 24),
-                                _buildOptionsList(qId, options),
-                                const SizedBox(height: 32),
-                                // Desktop Navigation Row
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    OutlinedButton.icon(
-                                      onPressed: currentIndex > 0 ? controller.previousQuestion : null,
-                                      icon: const Icon(Icons.arrow_back_rounded, size: 18),
-                                      label: Text("SOAL SEBELUMNYA", style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13, letterSpacing: 0.5)),
-                                      style: OutlinedButton.styleFrom(
-                                        foregroundColor: AppTheme.primaryColor,
-                                        side: BorderSide(color: currentIndex > 0 ? AppTheme.primaryColor.withValues(alpha: 0.3) : Colors.grey.shade200, width: 1.5),
-                                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                                        backgroundColor: Colors.white,
-                                      ),
-                                    ),
-                                    if (currentIndex < controller.questions.length - 1)
-                                      ElevatedButton.icon(
-                                        onPressed: controller.nextQuestion,
-                                        icon: const Icon(Icons.arrow_forward_rounded, size: 18),
-                                        label: Text("SOAL BERIKUTNYA", style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13, letterSpacing: 0.5)),
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: AppTheme.primaryColor,
-                                          foregroundColor: Colors.white,
-                                          elevation: 4,
-                                          shadowColor: AppTheme.primaryColor.withValues(alpha: 0.3),
-                                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                                        ),
-                                      )
-                                    else
-                                      ElevatedButton.icon(
-                                        onPressed: controller.finishExamPrompt,
-                                        icon: const Icon(Icons.check_circle_rounded, size: 18),
-                                        label: Text("SELESAI UJIAN", style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13, letterSpacing: 0.5)),
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: Colors.green.shade600,
-                                          foregroundColor: Colors.white,
-                                          elevation: 4,
-                                          shadowColor: Colors.green.withValues(alpha: 0.3),
-                                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                                        ),
-                                      ),
-                                  ],
+                      child: Column(
+                        children: [
+                          // Scrollable Question Content
+                          Expanded(
+                            child: SingleChildScrollView(
+                              physics: const BouncingScrollPhysics(),
+                              padding: const EdgeInsets.fromLTRB(28, 24, 28, 32),
+                              child: Center(
+                                child: ConstrainedBox(
+                                  constraints: const BoxConstraints(maxWidth: 860),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      _buildQuestionHeader(currentIndex, qId),
+                                      _buildQuestionBody(currentQuestion),
+                                      const SizedBox(height: 24),
+                                      _buildOptionsList(qId, options),
+                                      const SizedBox(height: 16),
+                                    ],
+                                  ),
                                 ),
-                              ],
+                              ),
                             ),
                           ),
-                        ),
+
+                          // Fixed Bottom Navigation Bar for Desktop
+                          _buildDesktopBottomNav(currentIndex, qId),
+                        ],
                       ),
                     ),
 
