@@ -99,7 +99,7 @@ jobs:
         working-directory: mobile
         run: |
           flutter config --enable-ios
-          if [ ! -d "ios" ]; then
+          if [ ! -f "ios/Runner.xcodeproj/project.pbxproj" ]; then
             echo "Generating iOS project files..."
             flutter create --platforms=ios --org com.smkn1beringin .
           fi
