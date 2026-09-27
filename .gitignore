@@ -8,7 +8,9 @@ admin/dist/
 downloads/
 appujian_backend
 backend/appujian_backend
+backend/appujian-backend
 .env
 *.log
+.sync_state.json
+.sync_temp/
 sync_artifacts.sh
-sync_artifacts.py

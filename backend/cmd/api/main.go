@@ -58,7 +58,7 @@ func main() {
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"status":  "healthy",
-			"version": "1.0.2",
+			"version": "1.0.4",
 		})
 	})
 
@@ -76,6 +76,12 @@ func main() {
 		appRoutes := api.Group("/app")
 		{
 			appRoutes.GET("/version", controllers.GetAppVersion)
+		}
+
+		// Webhook for GitHub Actions auto-sync
+		webhookRoutes := api.Group("/webhook")
+		{
+			webhookRoutes.POST("/sync", controllers.SyncWebhook)
 		}
 
 		// Protected Admin / Teacher Routes

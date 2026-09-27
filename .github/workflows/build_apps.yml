@@ -128,3 +128,27 @@ jobs:
           name: AppUjian-iOS-IPA
           path: mobile/build/ios/ipa/AppUjian.ipa
           if-no-files-found: error
+
+  # Auto-deploy: Trigger server sync after all builds complete
+  deploy:
+    name: Trigger Server Sync
+    runs-on: ubuntu-latest
+    needs: [build-android, build-windows, build-ios]
+    if: success()
+    steps:
+      - name: Trigger Artifact Sync Webhook
+        run: |
+          echo "🚀 Triggering artifact sync on production server..."
+          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" \
+            -X POST \
+            -H "X-Webhook-Secret: appujian-sync-secret-2026" \
+            -H "Content-Type: application/json" \
+            "https://ujian.tiksmkn1beringin.my.id/api/v1/webhook/sync")
+          
+          if [ "$RESPONSE" = "200" ]; then
+            echo "✅ Sync webhook triggered successfully!"
+          else
+            echo "⚠️ Webhook returned status $RESPONSE. Manual sync may be needed."
+            echo "   Run: python3 /home/server/AppUjian/sync_artifacts.py --force"
+          fi
+
