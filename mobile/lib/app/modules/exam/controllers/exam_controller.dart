@@ -120,52 +120,61 @@ class ExamController extends GetxController with WidgetsBindingObserver {
       return;
     }
 
-    // Hanya periksa ketika aplikasi masuk background (paused atau hidden)
-    // Abaikan state 'inactive' karena terjadi saat tombol power dipencet atau panel notifikasi ditarik sesaat
-    if (state == AppLifecycleState.paused || state == AppLifecycleState.hidden) {
-      if (_isDesktop) {
-        // Verify with native runner if window is truly not foreground
-        bool isFg = true;
+    if (_isDesktop) {
+      // Desktop (Windows / macOS / Linux)
+      // Di desktop TIDAK ADA tombol power layar mati seperti di HP.
+      // Setiap kali aplikasi kehilangan fokus (inactive, paused, hidden) atau di-minimize / alt-tab:
+      // Ujian LANGSUNG DIKUNCI seketika tanpa celah!
+      if (state == AppLifecycleState.inactive ||
+          state == AppLifecycleState.paused ||
+          state == AppLifecycleState.hidden) {
+        bool isFg = false;
         try {
-          isFg = await _kioskChannel.invokeMethod<bool>('isWindowForeground') ?? true;
-        } catch (_) {}
+          isFg = await _kioskChannel.invokeMethod<bool>('isWindowForeground') ?? false;
+        } catch (_) {
+          isFg = false;
+        }
 
-        if (isFg) {
-          // Window/child view is still in foreground! (False-positive from in-app interaction)
+        if (!isFg) {
+          if (!_wasInBackground) {
+            _wasInBackground = true;
+            _lockExamSession("Terdeteksi keluar dari aplikasi ujian (Desktop)");
+          }
+        }
+      }
+      return;
+    }
+
+    // Mobile (Android & iOS)
+    // Hanya periksa ketika aplikasi masuk background (paused atau hidden)
+    // Abaikan state 'inactive' di mobile karena terjadi sesaat ketika tombol power dipencet
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.hidden) {
+      _mobileExitCheckTimer?.cancel();
+      // Beri jeda 1.2 detik untuk memastikan transisi layar mati (tombol power) selesai.
+      // Jika layar mati (tombol power dipencet), isScreenInteractive bernilai false -> TIDAK dikunci.
+      // Hanya kunci ujian jika layar masih hidup dan siswa benar-benar berada di luar aplikasi ujian!
+      _mobileExitCheckTimer = Timer(const Duration(milliseconds: 1200), () async {
+        if (_currentLifecycleState == AppLifecycleState.resumed || _isExamFinished || isExamLocked.value) {
           return;
         }
 
-        // Window genuinely lost focus or was minimized/switched away!
-        if (!_wasInBackground) {
-          _wasInBackground = true;
-          _lockExamSession("Terdeteksi keluar dari aplikasi ujian (Desktop)");
+        bool isTrulyOutside = false;
+        if (Platform.isAndroid) {
+          try {
+            isTrulyOutside = await _kioskChannel.invokeMethod<bool>('isScreenInteractive') ?? false;
+          } catch (_) {
+            isTrulyOutside = false;
+          }
+        } else {
+          // iOS: jika 1.2 detik tetap paused/hidden, berarti keluar aplikasi
+          isTrulyOutside = true;
         }
-      } else {
-        // Mobile (Android & iOS)
-        _mobileExitCheckTimer?.cancel();
-        // Beri jeda 1.2 detik untuk memastikan transisi layar mati (tombol power) selesai.
-        // Jika layar mati (tombol power dipencet), isScreenInteractive akan bernilai false.
-        // Hanya kunci ujian jika layar masih hidup dan siswa benar-benar berada di luar aplikasi ujian!
-        _mobileExitCheckTimer = Timer(const Duration(milliseconds: 1200), () async {
-          if (_currentLifecycleState == AppLifecycleState.resumed || _isExamFinished || isExamLocked.value) {
-            return;
-          }
 
-          bool isTrulyOutside = false;
-          if (Platform.isAndroid) {
-            try {
-              isTrulyOutside = await _kioskChannel.invokeMethod<bool>('isScreenInteractive') ?? false;
-            } catch (_) {
-              isTrulyOutside = false;
-            }
-          }
-
-          if (isTrulyOutside) {
-            // Siswa terdeteksi benar-benar keluar ke Home / aplikasi lain saat layar menyala
-            _lockExamSession("Terdeteksi keluar dari aplikasi ke beranda/aplikasi lain");
-          }
-        });
-      }
+        if (isTrulyOutside) {
+          // Siswa terdeteksi benar-benar keluar ke Home / aplikasi lain saat layar menyala
+          _lockExamSession("Terdeteksi keluar dari aplikasi ke beranda/aplikasi lain");
+        }
+      });
     }
   }
 

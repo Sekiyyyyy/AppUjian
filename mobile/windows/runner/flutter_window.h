@@ -21,7 +21,8 @@ class FlutterWindow : public Win32Window {
   void EnableKioskMode();
   void DisableKioskMode();
   bool IsKioskActive() const { return kiosk_active_; }
-  bool IsWindowForeground() const;
+  bool IsWindowForeground();
+  void ResetExternalFocusLost() { external_focus_lost_ = false; }
 
  protected:
   // Win32Window:
@@ -40,6 +41,7 @@ class FlutterWindow : public Win32Window {
 
   // --- Kiosk Mode State ---
   bool kiosk_active_ = false;
+  bool external_focus_lost_ = false;
   LONG original_style_ = 0;
   LONG original_ex_style_ = 0;
   RECT original_rect_ = {0, 0, 0, 0};

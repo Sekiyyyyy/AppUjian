@@ -14,3 +14,4 @@ backend/appujian-backend
 .sync_state.json
 .sync_temp/
 sync_artifacts.sh
+.github_token

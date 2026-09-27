@@ -29,17 +29,21 @@ import urllib.error
 from pathlib import Path
 from datetime import datetime
 
-# ─── Configuration ─────────────────────────────────────────────────────────
-GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "")
-GITHUB_REPO = os.environ.get("GITHUB_REPO", "Sekiyyyyy/AppUjian")
-GITHUB_API = f"https://api.github.com/repos/{GITHUB_REPO}"
-
 # Paths
 SCRIPT_DIR = Path(__file__).parent.resolve()
 PUBLIC_DOWNLOADS = SCRIPT_DIR / "admin" / "public" / "downloads"
 DIST_DOWNLOADS = SCRIPT_DIR / "admin" / "dist" / "downloads"
 STATE_FILE = SCRIPT_DIR / ".sync_state.json"
 TEMP_DIR = SCRIPT_DIR / ".sync_temp"
+
+# ─── Configuration ─────────────────────────────────────────────────────────
+GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "")
+token_file = SCRIPT_DIR / ".github_token"
+if not GITHUB_TOKEN and token_file.exists():
+    GITHUB_TOKEN = token_file.read_text().strip()
+
+GITHUB_REPO = os.environ.get("GITHUB_REPO", "Sekiyyyyy/AppUjian")
+GITHUB_API = f"https://api.github.com/repos/{GITHUB_REPO}"
 
 # Artifact name mapping (GitHub artifact name → local filename template)
 ARTIFACT_MAP = {

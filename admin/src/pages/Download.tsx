@@ -29,21 +29,22 @@ const DownloadPage: React.FC = () => {
       .catch(() => {
         // Fallback default
         setVersionInfo({
-          latest_version: '1.0.5',
-          build_number: 6,
+          latest_version: '1.0.6',
+          build_number: 7,
           min_version: '1.0.0',
-          title: 'Pembaruan Aplikasi CBT v1.0.5',
+          title: 'Pembaruan Aplikasi CBT v1.0.6',
           changelog: [
-            'Perbaikan tombol power: Layar mati atau tombol power tidak lagi mengunci sesi ujian.',
-            'Otomatis kunci ujian kini hanya aktif ketika siswa benar-benar keluar dari aplikasi.',
-            'Penyempurnaan responsivitas tampilan mobile pada semua ukuran layar.',
+            'Penyempurnaan anti-cheat Desktop: Aplikasi ujian di desktop langsung terkunci seketika saat siswa beralih jendela/keluar tanpa celah.',
+            'Penyempurnaan responsivitas halaman Riwayat Ujian: Bebas overflow dan menggunakan grid 2 kolom di desktop.',
+            'Penyempurnaan tampilan kartu siswa di beranda Desktop agar proporsional dan tidak meregang kosong.',
+            'Perilaku tombol power Mobile: Layar mati via tombol power tetap aman dan ujian lanjut tanpa terkunci.',
           ],
           download_url: '/download'
         });
       });
   }, []);
 
-  const version = versionInfo?.latest_version || '1.0.5';
+  const version = versionInfo?.latest_version || '1.0.6';
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 text-white flex flex-col justify-between selection:bg-emerald-500 selection:text-white">

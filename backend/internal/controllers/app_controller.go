@@ -20,15 +20,16 @@ type AppVersionResponse struct {
 // GetAppVersion returns the latest version metadata of student client applications
 func GetAppVersion(c *gin.Context) {
 	c.JSON(http.StatusOK, AppVersionResponse{
-		LatestVersion: "1.0.5",
-		BuildNumber:   6,
+		LatestVersion: "1.0.6",
+		BuildNumber:   7,
 		MinVersion:    "1.0.0",
 		ForceUpdate:   false,
-		Title:         "Pembaruan Aplikasi CBT v1.0.5",
+		Title:         "Pembaruan Aplikasi CBT v1.0.6",
 		Changelog: []string{
-			"Perbaikan tombol power: Layar mati atau tombol power tidak lagi mengunci sesi ujian (ujian dapat dilanjutkan saat layar dinyalakan kembali).",
-			"Otomatis kunci ujian kini hanya aktif ketika siswa benar-benar keluar dari aplikasi.",
-			"Penyempurnaan responsivitas tampilan mobile pada semua ukuran layar (bebas dari teks terpotong dan overflow bar).",
+			"Penyempurnaan anti-cheat Desktop: Aplikasi ujian di desktop langsung terkunci seketika saat siswa beralih jendela/keluar tanpa celah.",
+			"Penyempurnaan responsivitas halaman Riwayat Ujian: Bebas dari overflow pada nama mapel panjang dan menggunakan grid 2 kolom di desktop.",
+			"Penyempurnaan tampilan kartu siswa di beranda Desktop agar proporsional dan tidak meregang kosong.",
+			"Perilaku tombol power Mobile: Layar mati via tombol power tetap aman dan ujian lanjut tanpa terkunci.",
 		},
 		DownloadURL: "https://ujian.tiksmkn1beringin.my.id/download",
 	})

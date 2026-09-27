@@ -30,6 +30,7 @@ class HomeView extends GetView<HomeController> {
                   expandedHeight: () {
                     final h = MediaQuery.of(context).size.height;
                     final w = MediaQuery.of(context).size.width;
+                    if (w >= 700) return 210.0;
                     if (h < 600) return 230.0;
                     if (w < 400) return 275.0;
                     return 280.0;
@@ -38,6 +39,14 @@ class HomeView extends GetView<HomeController> {
                   pinned: true,
                   backgroundColor: AppTheme.primaryColor,
                   elevation: 0,
+                  title: Text(
+                    'CBT SMKN 1 Beringin',
+                    style: GoogleFonts.inter(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
                   actions: [
                     IconButton(
                       tooltip: 'Segarkan Jadwal (F5)',
@@ -53,8 +62,9 @@ class HomeView extends GetView<HomeController> {
                     ),
                     const SizedBox(width: 8),
                   ],
-              flexibleSpace: FlexibleSpaceBar(
-                background: Stack(
+                  flexibleSpace: FlexibleSpaceBar(
+                    collapseMode: CollapseMode.parallax,
+                    background: Stack(
                   children: [
                     // Gradient Background
                     Container(
@@ -175,90 +185,98 @@ class HomeView extends GetView<HomeController> {
                               ),
                               const Spacer(),
                               // Glassmorphic Info Card
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(20),
-                                child: BackdropFilter(
-                                  filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white.withValues(alpha: 0.15),
-                                      borderRadius: BorderRadius.circular(18),
-                                      border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        Container(
-                                          padding: const EdgeInsets.all(8),
-                                          decoration: BoxDecoration(
-                                            color: Colors.white.withValues(alpha: 0.2),
-                                            shape: BoxShape.circle,
-                                          ),
-                                          child: const Icon(Icons.person_outline, color: Colors.white, size: 20),
+                              Align(
+                                alignment: Alignment.centerLeft,
+                                child: ConstrainedBox(
+                                  constraints: BoxConstraints(
+                                    maxWidth: MediaQuery.of(context).size.width >= 700 ? 440 : double.infinity,
+                                  ),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(20),
+                                    child: BackdropFilter(
+                                      filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white.withValues(alpha: 0.15),
+                                          borderRadius: BorderRadius.circular(18),
+                                          border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
                                         ),
-                                        const SizedBox(width: 12),
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                'NISN / NIS',
-                                                style: GoogleFonts.inter(
-                                                  color: Colors.white.withValues(alpha: 0.7),
-                                                  fontSize: 11,
-                                                  fontWeight: FontWeight.w500,
-                                                ),
-                                              ),
-                                              const SizedBox(height: 2),
-                                              Obx(() => Text(
-                                                controller.studentNis.value,
-                                                maxLines: 1,
-                                                overflow: TextOverflow.ellipsis,
-                                                style: GoogleFonts.inter(
-                                                  color: Colors.white,
-                                                  fontSize: 14,
-                                                  fontWeight: FontWeight.bold,
-                                                  letterSpacing: 0.5,
-                                                ),
-                                              )),
-                                            ],
-                                          ),
-                                        ),
-                                        Obx(() {
-                                          if (controller.className.value.isEmpty || controller.className.value == '-') {
-                                            return const SizedBox.shrink();
-                                          }
-                                          return Flexible(
-                                            child: Container(
-                                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                        child: Row(
+                                          children: [
+                                            Container(
+                                              padding: const EdgeInsets.all(8),
                                               decoration: BoxDecoration(
                                                 color: Colors.white.withValues(alpha: 0.2),
-                                                borderRadius: BorderRadius.circular(10),
-                                                border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
+                                                shape: BoxShape.circle,
                                               ),
-                                              child: Row(
-                                                mainAxisSize: MainAxisSize.min,
+                                              child: const Icon(Icons.person_outline, color: Colors.white, size: 20),
+                                            ),
+                                            const SizedBox(width: 12),
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
                                                 children: [
-                                                  const Icon(Icons.school_outlined, color: Colors.white, size: 13),
-                                                  const SizedBox(width: 5),
-                                                  Flexible(
-                                                    child: Text(
-                                                      controller.className.value,
-                                                      maxLines: 1,
-                                                      overflow: TextOverflow.ellipsis,
-                                                      style: GoogleFonts.inter(
-                                                        color: Colors.white,
-                                                        fontSize: 12,
-                                                        fontWeight: FontWeight.bold,
-                                                      ),
+                                                  Text(
+                                                    'NISN / NIS',
+                                                    style: GoogleFonts.inter(
+                                                      color: Colors.white.withValues(alpha: 0.7),
+                                                      fontSize: 11,
+                                                      fontWeight: FontWeight.w500,
                                                     ),
                                                   ),
+                                                  const SizedBox(height: 2),
+                                                  Obx(() => Text(
+                                                    controller.studentNis.value,
+                                                    maxLines: 1,
+                                                    overflow: TextOverflow.ellipsis,
+                                                    style: GoogleFonts.inter(
+                                                      color: Colors.white,
+                                                      fontSize: 14,
+                                                      fontWeight: FontWeight.bold,
+                                                      letterSpacing: 0.5,
+                                                    ),
+                                                  )),
                                                 ],
                                               ),
                                             ),
-                                          );
-                                        }),
-                                      ],
+                                            Obx(() {
+                                              if (controller.className.value.isEmpty || controller.className.value == '-') {
+                                                return const SizedBox.shrink();
+                                              }
+                                              return Flexible(
+                                                child: Container(
+                                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.white.withValues(alpha: 0.2),
+                                                    borderRadius: BorderRadius.circular(10),
+                                                    border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
+                                                  ),
+                                                  child: Row(
+                                                    mainAxisSize: MainAxisSize.min,
+                                                    children: [
+                                                      const Icon(Icons.school_outlined, color: Colors.white, size: 13),
+                                                      const SizedBox(width: 5),
+                                                      Flexible(
+                                                        child: Text(
+                                                          controller.className.value,
+                                                          maxLines: 1,
+                                                          overflow: TextOverflow.ellipsis,
+                                                          style: GoogleFonts.inter(
+                                                            color: Colors.white,
+                                                            fontSize: 12,
+                                                            fontWeight: FontWeight.bold,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              );
+                                            }),
+                                          ],
+                                        ),
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -400,6 +418,40 @@ class HomeView extends GetView<HomeController> {
             );
               }
 
+              final screenWidth = MediaQuery.of(context).size.width;
+              final isDesktop = screenWidth >= 700;
+
+              if (isDesktop) {
+                return SliverPadding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                  sliver: SliverToBoxAdapter(
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 1000),
+                        child: GridView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            mainAxisExtent: 165,
+                            crossAxisSpacing: 16,
+                            mainAxisSpacing: 16,
+                          ),
+                          itemCount: controller.activeExams.length,
+                          itemBuilder: (context, index) {
+                            final exam = controller.activeExams[index];
+                            final isLocked = exam['session_status'] == 'LOCKED';
+                            final isOngoing = exam['session_status'] == 'ONGOING';
+                            final isUpcoming = DateTime.parse(exam['start_time']).toLocal().isAfter(DateTime.now());
+                            return _buildActiveExamCard(context, exam, isLocked, isOngoing, isUpcoming);
+                          },
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }
+
               return SliverPadding(
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
                 sliver: SliverList(
@@ -413,122 +465,18 @@ class HomeView extends GetView<HomeController> {
                       return Center(
                         child: ConstrainedBox(
                           constraints: const BoxConstraints(maxWidth: 960),
-                          child: Container(
-                            margin: const EdgeInsets.only(bottom: 20),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(24),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: AppTheme.primaryColor.withValues(alpha: 0.06),
-                                  blurRadius: 24,
-                                  offset: const Offset(0, 8),
-                                ),
-                              ],
-                            ),
-                            child: Material(
-                              color: Colors.transparent,
-                              child: InkWell(
-                                onTap: () {
-                                  _showStartExamDialog(context, exam, isOngoing);
-                                },
-                                borderRadius: BorderRadius.circular(24),
-                                splashColor: AppTheme.primaryColor.withValues(alpha: 0.1),
-                                highlightColor: AppTheme.primaryColor.withValues(alpha: 0.05),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(24),
-                                  child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Expanded(
-                                        child: Text(
-                                          exam['title']?.toString() ?? 'Tanpa Judul',
-                                          style: GoogleFonts.inter(
-                                            fontSize: 18,
-                                            fontWeight: FontWeight.bold,
-                                            color: AppTheme.textPrimary,
-                                            height: 1.3,
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 16),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                        decoration: BoxDecoration(
-                                          color: isLocked
-                                              ? Colors.red.shade50
-                                              : (isOngoing ? Colors.amber.shade50 : (isUpcoming ? Colors.blue.shade50 : AppTheme.primaryColor.withValues(alpha: 0.1))),
-                                          borderRadius: BorderRadius.circular(20),
-                                          border: Border.all(
-                                            color: isLocked
-                                                ? Colors.red.shade300
-                                                : (isOngoing ? Colors.amber.shade200 : (isUpcoming ? Colors.blue.shade200 : AppTheme.primaryColor.withValues(alpha: 0.2))),
-                                          ),
-                                        ),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Icon(
-                                              isLocked
-                                                  ? Icons.lock_rounded
-                                                  : (isOngoing ? Icons.play_circle_fill_rounded : (isUpcoming ? Icons.schedule_rounded : Icons.check_circle_rounded)),
-                                              size: 14,
-                                              color: isLocked
-                                                  ? Colors.red.shade700
-                                                  : (isOngoing ? Colors.amber.shade700 : (isUpcoming ? Colors.blue.shade700 : AppTheme.primaryColor)),
-                                            ),
-                                            const SizedBox(width: 4),
-                                            Text(
-                                              isLocked
-                                                  ? 'Terkunci'
-                                                  : (isOngoing ? 'Lanjut' : (isUpcoming ? 'Segera' : 'Tersedia')),
-                                              style: GoogleFonts.inter(
-                                                color: isLocked
-                                                    ? Colors.red.shade800
-                                                    : (isOngoing ? Colors.amber.shade800 : (isUpcoming ? Colors.blue.shade800 : AppTheme.primaryColor)),
-                                                fontSize: 12,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 24),
-                                  Wrap(
-                                    spacing: 16,
-                                    runSpacing: 8,
-                                    crossAxisAlignment: WrapCrossAlignment.center,
-                                    children: [
-                                      _buildInfoChip(
-                                        Icons.timer_outlined,
-                                        '${exam['duration']} Menit',
-                                      ),
-                                      _buildInfoChip(
-                                        Icons.menu_book_rounded,
-                                        exam['subject']?['name']?.toString() ?? 'Umum',
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
+                          child: Padding(
+                            padding: const EdgeInsets.only(bottom: 16),
+                            child: _buildActiveExamCard(context, exam, isLocked, isOngoing, isUpcoming),
                           ),
                         ),
-                      ),
-                    ),
-                  );
-                },
-                childCount: controller.activeExams.length,
+                      );
+                    },
+                    childCount: controller.activeExams.length,
+                  ),
                 ),
-              ),
-            );
-          }),
+              );
+            }),
           
           // Panduan Ujian Section (To fill empty space at bottom)
           SliverToBoxAdapter(
@@ -573,6 +521,119 @@ class HomeView extends GetView<HomeController> {
 ),
 );
 }
+
+  Widget _buildActiveExamCard(BuildContext context, dynamic exam, bool isLocked, bool isOngoing, bool isUpcoming) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.primaryColor.withValues(alpha: 0.06),
+            blurRadius: 24,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            _showStartExamDialog(context, exam, isOngoing);
+          },
+          borderRadius: BorderRadius.circular(24),
+          splashColor: AppTheme.primaryColor.withValues(alpha: 0.1),
+          highlightColor: AppTheme.primaryColor.withValues(alpha: 0.05),
+          child: Padding(
+            padding: const EdgeInsets.all(22),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        exam['title']?.toString() ?? 'Tanpa Judul',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.inter(
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.textPrimary,
+                          height: 1.3,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: isLocked
+                            ? Colors.red.shade50
+                            : (isOngoing ? Colors.amber.shade50 : (isUpcoming ? Colors.blue.shade50 : AppTheme.primaryColor.withValues(alpha: 0.1))),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: isLocked
+                              ? Colors.red.shade300
+                              : (isOngoing ? Colors.amber.shade200 : (isUpcoming ? Colors.blue.shade200 : AppTheme.primaryColor.withValues(alpha: 0.2))),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            isLocked
+                                ? Icons.lock_rounded
+                                : (isOngoing ? Icons.play_circle_fill_rounded : (isUpcoming ? Icons.schedule_rounded : Icons.check_circle_rounded)),
+                            size: 13,
+                            color: isLocked
+                                ? Colors.red.shade700
+                                : (isOngoing ? Colors.amber.shade700 : (isUpcoming ? Colors.blue.shade700 : AppTheme.primaryColor)),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            isLocked
+                                ? 'Terkunci'
+                                : (isOngoing ? 'Lanjut' : (isUpcoming ? 'Segera' : 'Tersedia')),
+                            style: GoogleFonts.inter(
+                              color: isLocked
+                                  ? Colors.red.shade800
+                                  : (isOngoing ? Colors.amber.shade800 : (isUpcoming ? Colors.blue.shade800 : AppTheme.primaryColor)),
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                Wrap(
+                  spacing: 16,
+                  runSpacing: 8,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    _buildInfoChip(
+                      Icons.timer_outlined,
+                      '${exam['duration']} Menit',
+                    ),
+                    _buildInfoChip(
+                      Icons.menu_book_rounded,
+                      exam['subject']?['name']?.toString() ?? 'Umum',
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
   Widget _buildInfoChip(IconData icon, String label) {
     return Row(

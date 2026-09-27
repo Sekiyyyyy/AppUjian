@@ -58,7 +58,9 @@ bool FlutterWindow::OnCreate() {
           // On desktop, always return true (screen is always interactive)
           result->Success(flutter::EncodableValue(true));
         } else if (call.method_name() == "isWindowForeground") {
-          result->Success(flutter::EncodableValue(self->IsWindowForeground()));
+          bool fg = self->IsWindowForeground();
+          self->ResetExternalFocusLost();
+          result->Success(flutter::EncodableValue(fg));
         } else {
           result->NotImplemented();
         }
@@ -91,9 +93,13 @@ void FlutterWindow::OnDestroy() {
 // Kiosk Mode Implementation
 // ============================================================================
 
-bool FlutterWindow::IsWindowForeground() const {
-  HWND hwnd = const_cast<FlutterWindow*>(this)->GetHandle();
+bool FlutterWindow::IsWindowForeground() {
+  if (external_focus_lost_) {
+    return false;
+  }
+  HWND hwnd = GetHandle();
   if (!hwnd) return false;
+  if (IsIconic(hwnd)) return false;
   HWND fg = GetForegroundWindow();
   if (!fg) return false;
   return (fg == hwnd || fg == flutter_child_hwnd_ || IsChild(hwnd, fg));
@@ -102,6 +108,7 @@ bool FlutterWindow::IsWindowForeground() const {
 void FlutterWindow::EnableKioskMode() {
   if (kiosk_active_) return;
 
+  external_focus_lost_ = false;
   HWND hwnd = GetHandle();
   if (!hwnd) return;
 
@@ -314,6 +321,16 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
         }
         break;
 
+      case WM_ACTIVATE: {
+        if (LOWORD(wparam) == WA_INACTIVE) {
+          HWND other = reinterpret_cast<HWND>(lparam);
+          if (other && other != hwnd && other != flutter_child_hwnd_ && !IsChild(hwnd, other)) {
+            external_focus_lost_ = true;
+          }
+        }
+        break;
+      }
+
       case WM_KILLFOCUS: {
         HWND fg = GetForegroundWindow();
         HWND nextFocus = reinterpret_cast<HWND>(wparam);
@@ -324,6 +341,7 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
         }
 
         // Truly lost focus to an external window:
+        external_focus_lost_ = true;
         SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0,
                      SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
         SetTimer(hwnd, 9999, 100, nullptr);
