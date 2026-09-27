@@ -276,10 +276,13 @@ const AdminLayout = () => {
 
           {/* User Card */}
           <div className={`p-2.5 rounded-xl bg-slate-50/80 border border-slate-100 ${
-            isCollapsed ? 'flex justify-center p-2' : ''
+            isCollapsed ? 'flex flex-col items-center p-2 space-y-2' : ''
           }`}>
-            <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'space-x-3'}`}>
-              <div className="w-9 h-9 rounded-full bg-blue-100/70 text-blue-700 flex items-center justify-center flex-shrink-0">
+            <div className={`flex items-center ${isCollapsed ? 'justify-center w-full' : 'space-x-3'}`}>
+              <div 
+                className="w-9 h-9 rounded-full bg-blue-100/70 text-blue-700 flex items-center justify-center flex-shrink-0"
+                title={user?.name || user?.username || 'Administrator'}
+              >
                 <UserIcon size={17} />
               </div>
               {(!isCollapsed || isMobileOpen) && (
@@ -307,9 +310,9 @@ const AdminLayout = () => {
               <button 
                 onClick={logout}
                 title="Log Out"
-                className="w-8 h-8 mt-2 mx-auto flex items-center justify-center text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                className="w-9 h-9 flex items-center justify-center text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg border border-slate-200/60 transition-colors"
               >
-                <LogOut size={15} />
+                <LogOut size={16} />
               </button>
             )}
           </div>

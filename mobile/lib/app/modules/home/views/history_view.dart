@@ -9,8 +9,6 @@ class HistoryView extends GetView<HomeController> {
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isDesktop = screenWidth >= 700;
 
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
@@ -89,34 +87,15 @@ class HistoryView extends GetView<HomeController> {
                 );
               }
 
-              // Responsive: Desktop uses 2-column Grid, Mobile uses 1-column ListView
-              if (isDesktop) {
-                return GridView.builder(
-                  physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-                  padding: const EdgeInsets.fromLTRB(24, 20, 24, 100),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    mainAxisExtent: 140,
-                    crossAxisSpacing: 16,
-                    mainAxisSpacing: 16,
-                  ),
-                  itemCount: controller.historyExams.length,
-                  itemBuilder: (context, index) {
-                    final exam = controller.historyExams[index];
-                    return _buildHistoryCard(context, exam, isDesktop: true);
-                  },
-                );
-              }
-
               return ListView.builder(
                 physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),
+                padding: const EdgeInsets.fromLTRB(24, 20, 24, 100),
                 itemCount: controller.historyExams.length,
                 itemBuilder: (context, index) {
                   final exam = controller.historyExams[index];
                   return Padding(
-                    padding: const EdgeInsets.only(bottom: 14),
-                    child: _buildHistoryCard(context, exam, isDesktop: false),
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: _buildHistoryCard(context, exam),
                   );
                 },
               );
@@ -127,7 +106,7 @@ class HistoryView extends GetView<HomeController> {
     );
   }
 
-  Widget _buildHistoryCard(BuildContext context, dynamic exam, {required bool isDesktop}) {
+  Widget _buildHistoryCard(BuildContext context, dynamic exam) {
     final status = exam['session_status']?.toString() ?? 'BELUM MULAI';
     final isTimeout = status == 'TIMEOUT';
     final isMissed = status == 'BELUM MULAI';
@@ -232,7 +211,7 @@ class HistoryView extends GetView<HomeController> {
                     const SizedBox(width: 6),
                     ConstrainedBox(
                       constraints: BoxConstraints(
-                        maxWidth: isDesktop ? 220 : (screenWidth < 360 ? 120 : 180),
+                        maxWidth: screenWidth < 360 ? 130 : 260,
                       ),
                       child: Text(
                         exam['subject']?['name']?.toString() ?? 'Umum',

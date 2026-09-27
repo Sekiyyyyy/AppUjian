@@ -39,29 +39,6 @@ class HomeView extends GetView<HomeController> {
                   pinned: true,
                   backgroundColor: AppTheme.primaryColor,
                   elevation: 0,
-                  title: Text(
-                    'CBT SMKN 1 Beringin',
-                    style: GoogleFonts.inter(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                  actions: [
-                    IconButton(
-                      tooltip: 'Segarkan Jadwal (F5)',
-                      icon: Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: const Icon(Icons.refresh_rounded, color: Colors.white, size: 20),
-                      ),
-                      onPressed: controller.fetchExams,
-                    ),
-                    const SizedBox(width: 8),
-                  ],
                   flexibleSpace: FlexibleSpaceBar(
                     collapseMode: CollapseMode.parallax,
                     background: Stack(
@@ -185,98 +162,84 @@ class HomeView extends GetView<HomeController> {
                               ),
                               const Spacer(),
                               // Glassmorphic Info Card
-                              Align(
-                                alignment: Alignment.centerLeft,
-                                child: ConstrainedBox(
-                                  constraints: BoxConstraints(
-                                    maxWidth: MediaQuery.of(context).size.width >= 700 ? 440 : double.infinity,
-                                  ),
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(20),
-                                    child: BackdropFilter(
-                                      filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                        decoration: BoxDecoration(
-                                          color: Colors.white.withValues(alpha: 0.15),
-                                          borderRadius: BorderRadius.circular(18),
-                                          border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(20),
+                                child: BackdropFilter(
+                                  filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(18),
+                                      border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.all(8),
+                                          decoration: BoxDecoration(
+                                            color: Colors.white.withValues(alpha: 0.2),
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: const Icon(Icons.person_outline, color: Colors.white, size: 20),
                                         ),
-                                        child: Row(
-                                          children: [
-                                            Container(
-                                              padding: const EdgeInsets.all(8),
-                                              decoration: BoxDecoration(
-                                                color: Colors.white.withValues(alpha: 0.2),
-                                                shape: BoxShape.circle,
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                'NISN / NIS',
+                                                style: GoogleFonts.inter(
+                                                  color: Colors.white.withValues(alpha: 0.7),
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.w500,
+                                                ),
                                               ),
-                                              child: const Icon(Icons.person_outline, color: Colors.white, size: 20),
+                                              const SizedBox(height: 2),
+                                              Obx(() => Text(
+                                                controller.studentNis.value,
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: GoogleFonts.inter(
+                                                  color: Colors.white,
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.bold,
+                                                  letterSpacing: 0.5,
+                                                ),
+                                              )),
+                                            ],
+                                          ),
+                                        ),
+                                        Obx(() {
+                                          if (controller.className.value.isEmpty || controller.className.value == '-') {
+                                            return const SizedBox.shrink();
+                                          }
+                                          return Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                            decoration: BoxDecoration(
+                                              color: Colors.white.withValues(alpha: 0.2),
+                                              borderRadius: BorderRadius.circular(10),
+                                              border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
                                             ),
-                                            const SizedBox(width: 12),
-                                            Expanded(
-                                              child: Column(
-                                                crossAxisAlignment: CrossAxisAlignment.start,
-                                                children: [
-                                                  Text(
-                                                    'NISN / NIS',
-                                                    style: GoogleFonts.inter(
-                                                      color: Colors.white.withValues(alpha: 0.7),
-                                                      fontSize: 11,
-                                                      fontWeight: FontWeight.w500,
-                                                    ),
-                                                  ),
-                                                  const SizedBox(height: 2),
-                                                  Obx(() => Text(
-                                                    controller.studentNis.value,
-                                                    maxLines: 1,
-                                                    overflow: TextOverflow.ellipsis,
-                                                    style: GoogleFonts.inter(
-                                                      color: Colors.white,
-                                                      fontSize: 14,
-                                                      fontWeight: FontWeight.bold,
-                                                      letterSpacing: 0.5,
-                                                    ),
-                                                  )),
-                                                ],
-                                              ),
-                                            ),
-                                            Obx(() {
-                                              if (controller.className.value.isEmpty || controller.className.value == '-') {
-                                                return const SizedBox.shrink();
-                                              }
-                                              return Flexible(
-                                                child: Container(
-                                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                                                  decoration: BoxDecoration(
-                                                    color: Colors.white.withValues(alpha: 0.2),
-                                                    borderRadius: BorderRadius.circular(10),
-                                                    border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
-                                                  ),
-                                                  child: Row(
-                                                    mainAxisSize: MainAxisSize.min,
-                                                    children: [
-                                                      const Icon(Icons.school_outlined, color: Colors.white, size: 13),
-                                                      const SizedBox(width: 5),
-                                                      Flexible(
-                                                        child: Text(
-                                                          controller.className.value,
-                                                          maxLines: 1,
-                                                          overflow: TextOverflow.ellipsis,
-                                                          style: GoogleFonts.inter(
-                                                            color: Colors.white,
-                                                            fontSize: 12,
-                                                            fontWeight: FontWeight.bold,
-                                                          ),
-                                                        ),
-                                                      ),
-                                                    ],
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                const Icon(Icons.school_outlined, color: Colors.white, size: 14),
+                                                const SizedBox(width: 6),
+                                                Text(
+                                                  controller.className.value,
+                                                  style: GoogleFonts.inter(
+                                                    color: Colors.white,
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.bold,
                                                   ),
                                                 ),
-                                              );
-                                            }),
-                                          ],
-                                        ),
-                                      ),
+                                              ],
+                                            ),
+                                          );
+                                        }),
+                                      ],
                                     ),
                                   ),
                                 ),
@@ -418,40 +381,6 @@ class HomeView extends GetView<HomeController> {
             );
               }
 
-              final screenWidth = MediaQuery.of(context).size.width;
-              final isDesktop = screenWidth >= 700;
-
-              if (isDesktop) {
-                return SliverPadding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                  sliver: SliverToBoxAdapter(
-                    child: Center(
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 1000),
-                        child: GridView.builder(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            mainAxisExtent: 165,
-                            crossAxisSpacing: 16,
-                            mainAxisSpacing: 16,
-                          ),
-                          itemCount: controller.activeExams.length,
-                          itemBuilder: (context, index) {
-                            final exam = controller.activeExams[index];
-                            final isLocked = exam['session_status'] == 'LOCKED';
-                            final isOngoing = exam['session_status'] == 'ONGOING';
-                            final isUpcoming = DateTime.parse(exam['start_time']).toLocal().isAfter(DateTime.now());
-                            return _buildActiveExamCard(context, exam, isLocked, isOngoing, isUpcoming);
-                          },
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              }
-
               return SliverPadding(
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
                 sliver: SliverList(
@@ -466,7 +395,7 @@ class HomeView extends GetView<HomeController> {
                         child: ConstrainedBox(
                           constraints: const BoxConstraints(maxWidth: 960),
                           child: Padding(
-                            padding: const EdgeInsets.only(bottom: 16),
+                            padding: const EdgeInsets.only(bottom: 20),
                             child: _buildActiveExamCard(context, exam, isLocked, isOngoing, isUpcoming),
                           ),
                         ),

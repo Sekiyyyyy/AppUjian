@@ -7,8 +7,8 @@ import '../../theme/app_theme.dart';
 
 class UpdateService {
   // Versi aplikasi yang sedang terpasang di perangkat saat ini
-  static const String currentVersion = "1.0.6";
-  static const int currentBuildNumber = 7;
+  static const String currentVersion = "1.0.7";
+  static const int currentBuildNumber = 8;
 
   static bool _hasChecked = false;
 
