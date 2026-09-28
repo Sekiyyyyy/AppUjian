@@ -29,22 +29,22 @@ const DownloadPage: React.FC = () => {
       .catch(() => {
         // Fallback default
         setVersionInfo({
-          latest_version: '1.0.7',
-          build_number: 8,
-          min_version: '1.0.0',
-          title: 'Pembaruan Aplikasi CBT v1.0.7',
+          latest_version: '1.0.8',
+          build_number: 9,
+          min_version: '1.0.8',
+          title: 'Pembaruan Wajib Aplikasi CBT v1.0.8',
           changelog: [
-            'Penyempurnaan tata letak Desktop: Kartu ujian aktif dan kartu siswa kini tampil penuh (full-width) proporsional dan tidak lagi terbelah setengah.',
-            'Pembersihan judul header yang bertumpuk pada tampilan beranda desktop.',
-            'Penyempurnaan halaman Riwayat Ujian: Tampil rapi dan proporsional.',
-            'Anti-cheat Desktop dan Mobile: Tetap ketat dan aman.',
+            'Pembaruan keamanan sistem ujian terbaru dan peningkatan integritas ujian.',
+            'Pembaruan Wajib: Menutup seluruh celah keamanan dan kecurangan pada versi terdahulu.',
+            'Sinkronisasi ketat live room pengawas ujian dan kontrol siswa.',
+            'Optimalisasi performa, kestabilan koneksi, dan responsivitas pengerjaan soal.',
           ],
           download_url: '/download'
         });
       });
   }, []);
 
-  const version = versionInfo?.latest_version || '1.0.7';
+  const version = versionInfo?.latest_version || '1.0.8';
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 text-white flex flex-col justify-between selection:bg-emerald-500 selection:text-white">

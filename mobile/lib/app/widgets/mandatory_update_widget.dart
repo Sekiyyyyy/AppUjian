@@ -203,7 +203,7 @@ class MandatoryUpdateWidget extends StatelessWidget {
                                   padding: const EdgeInsets.symmetric(vertical: 14),
                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                                 ),
-                                onPressed: UpdateService.openDownloadUrl,
+                                onPressed: () => UpdateService.openDownloadUrl(),
                                 icon: const Icon(Icons.download_rounded, size: 20),
                                 label: Text(
                                   'Unduh Pembaruan Sekarang',
@@ -211,7 +211,25 @@ class MandatoryUpdateWidget extends StatelessWidget {
                                 ),
                               ),
                             ),
-                            const SizedBox(height: 12),
+                            const SizedBox(height: 8),
+
+                            // Open Download Website in Browser
+                            SizedBox(
+                              width: double.infinity,
+                              child: TextButton.icon(
+                                style: TextButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(vertical: 10),
+                                  foregroundColor: AppTheme.primaryColor,
+                                ),
+                                onPressed: () => UpdateService.openDownloadUrl('https://ujian.tiksmkn1beringin.my.id/download'),
+                                icon: const Icon(Icons.open_in_browser_rounded, size: 18),
+                                label: Text(
+                                  'Buka Halaman Web Unduhan',
+                                  style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
 
                             // Recheck Button (Secondary)
                             SizedBox(

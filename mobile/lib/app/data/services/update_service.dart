@@ -1,3 +1,5 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -34,7 +36,6 @@ class UpdateService {
         final String remoteLatestVersion = data['latest_version']?.toString() ?? currentVersion;
         final int remoteBuild = data['build_number'] is int ? data['build_number'] : int.tryParse(data['build_number']?.toString() ?? '') ?? currentBuildNumber;
         final String remoteMinVersion = data['min_version']?.toString() ?? '1.0.0';
-        final bool forceUpdate = data['force_update'] ?? false;
         final String remoteDownloadUrl = data['download_url']?.toString() ?? 'https://ujian.tiksmkn1beringin.my.id/download';
         final String remoteTitle = data['title']?.toString() ?? 'Pembaruan Wajib Aplikasi CBT';
 
@@ -49,14 +50,16 @@ class UpdateService {
         updateTitle.value = remoteTitle;
         changelog.assignAll(remoteChangelog);
 
-        // Evaluasi apakah versi server lebih baru atau update diwajibkan
-        final bool hasNewerVersion = _isVersionNewer(remoteLatestVersion, currentVersion) || (remoteBuild > currentBuildNumber);
+        // Evaluasi apakah versi server lebih baru atau versi saat ini usang (di bawah min version)
+        final bool hasNewerVersion = _isVersionNewer(remoteLatestVersion, currentVersion) || 
+            (remoteLatestVersion == currentVersion && remoteBuild > currentBuildNumber);
         final bool isBelowMinVersion = _isVersionNewer(remoteMinVersion, currentVersion);
-        final bool shouldForce = hasNewerVersion || isBelowMinVersion || forceUpdate;
+        
+        // Pembaruan HANYA diwajibkan jika aplikasi memang tertinggal versi
+        final bool isUpdateNeeded = hasNewerVersion || isBelowMinVersion;
 
-        if (hasNewerVersion || shouldForce) {
+        if (isUpdateNeeded) {
           isUpdateRequired.value = true;
-          _showUpdateDialog();
           return true;
         } else {
           isUpdateRequired.value = false;
@@ -97,47 +100,88 @@ class UpdateService {
         downloadUrl.value = data['download_url'].toString();
       }
     }
-    isUpdateRequired.value = true;
-    _showUpdateDialog();
+    final int remoteBuild = data != null && data['build_number'] != null 
+        ? (data['build_number'] is int ? data['build_number'] : int.tryParse(data['build_number'].toString()) ?? 0)
+        : 0;
+    final bool isOutdated = _isVersionNewer(latestVersion.value, currentVersion) || 
+        (latestVersion.value == currentVersion && remoteBuild > currentBuildNumber);
+    if (isOutdated) {
+      isUpdateRequired.value = true;
+    }
   }
 
   /// Membandingkan semver string (contoh: "1.0.8" vs "1.0.7")
   static bool _isVersionNewer(String remote, String local) {
-    if (remote == local) return false;
+    final rClean = remote.replaceAll(RegExp(r'[^\d.]'), '').trim();
+    final lClean = local.replaceAll(RegExp(r'[^\d.]'), '').trim();
+    if (rClean == lClean) return false;
     try {
-      final rParts = remote.split('.').map(int.parse).toList();
-      final lParts = local.split('.').map(int.parse).toList();
+      final rParts = rClean.split('.').map((e) => int.tryParse(e) ?? 0).toList();
+      final lParts = lClean.split('.').map((e) => int.tryParse(e) ?? 0).toList();
 
-      for (int i = 0; i < 3; i++) {
+      final maxLen = rParts.length > lParts.length ? rParts.length : lParts.length;
+      for (int i = 0; i < maxLen; i++) {
         final r = i < rParts.length ? rParts[i] : 0;
         final l = i < lParts.length ? lParts[i] : 0;
         if (r > l) return true;
         if (r < l) return false;
       }
     } catch (_) {
-      return remote != local;
+      return rClean != lClean;
     }
     return false;
   }
 
+  /// Mendapatkan URL download langsung sesuai sistem operasi perangkat
+  static String getPlatformDownloadUrl() {
+    if (!kIsWeb && Platform.isAndroid) {
+      return 'https://ujian.tiksmkn1beringin.my.id/downloads/AppUjian.apk';
+    }
+    if (!kIsWeb && Platform.isWindows) {
+      return 'https://ujian.tiksmkn1beringin.my.id/downloads/AppUjian_Setup.exe';
+    }
+    if (!kIsWeb && Platform.isIOS) {
+      return 'https://ujian.tiksmkn1beringin.my.id/downloads/AppUjian.ipa';
+    }
+    return downloadUrl.value;
+  }
+
   /// Membuka tautan download installer / APK aplikasi
-  static Future<void> openDownloadUrl() async {
-    final uri = Uri.parse(downloadUrl.value);
+  static Future<void> openDownloadUrl([String? specificUrl]) async {
+    String urlStr = (specificUrl ?? getPlatformDownloadUrl()).trim();
+    if (urlStr.isEmpty) {
+      urlStr = 'https://ujian.tiksmkn1beringin.my.id/download';
+    }
+
+    // Eksekusi langsung di Windows melalui cmd start agar pasti terbuka di browser default
+    if (!kIsWeb && Platform.isWindows) {
+      try {
+        await Process.run('cmd', ['/c', 'start', '', urlStr]);
+        return;
+      } catch (e) {
+        debugPrint('Windows Process.run error: $e');
+      }
+    }
+
+    final uri = Uri.parse(urlStr);
     try {
       final launched = await launchUrl(
         uri,
         mode: LaunchMode.externalApplication,
       );
       if (!launched) {
-        await launchUrl(
+        final fallbackLaunched = await launchUrl(
           uri,
           mode: LaunchMode.platformDefault,
         );
+        if (!fallbackLaunched) {
+          await launchUrl(uri);
+        }
       }
     } catch (e) {
       debugPrint('Error membuka URL unduhan (external): $e');
       try {
-        await launchUrl(uri);
+        await launchUrl(uri, mode: LaunchMode.platformDefault);
       } catch (err) {
         debugPrint('Error membuka URL unduhan (fallback): $err');
       }

@@ -85,11 +85,22 @@ func StudentVersionCheckMiddleware() gin.HandlerFunc {
 
 // GetAppVersion returns the latest version metadata of student client applications
 func GetAppVersion(c *gin.Context) {
+	clientVersion := c.GetHeader("X-App-Version")
+	clientBuildStr := c.GetHeader("X-App-Build")
+	clientBuild, _ := strconv.Atoi(clientBuildStr)
+
+	// If client provided version headers and is already on latest, force_update is false.
+	// If client version is outdated, force_update is true.
+	isOutdated := false
+	if clientVersion != "" {
+		isOutdated = IsVersionOutdated(clientVersion, clientBuild)
+	}
+
 	c.JSON(http.StatusOK, AppVersionResponse{
 		LatestVersion: CurrentLatestAppVersion,
 		BuildNumber:   CurrentLatestBuildNumber,
 		MinVersion:    CurrentMinAppVersion,
-		ForceUpdate:   true,
+		ForceUpdate:   isOutdated,
 		Title:         "Pembaruan Wajib Aplikasi CBT v" + CurrentLatestAppVersion,
 		Changelog: []string{
 			"Pembaruan keamanan sistem ujian terbaru dan peningkatan integritas ujian.",
