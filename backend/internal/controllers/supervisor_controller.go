@@ -63,7 +63,7 @@ func GetMySupervisionSchedules(c *gin.Context) {
 	err := config.DB.Preload("Exam.Subject").
 		Preload("Class").
 		Preload("Teacher").
-		Where("teacher_id = ?", teacherID).
+		Where("exam_supervisors.teacher_id = ?", teacherID).
 		Joins("LEFT JOIN exams ON exams.id = exam_supervisors.exam_id").
 		Order("exams.start_time ASC, exam_supervisors.id DESC").
 		Find(&supervisors).Error
@@ -654,5 +654,189 @@ func ImportSupervisorsExcel(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"message":        msg,
 		"imported_count": importedCount,
+	})
+}
+
+// StartSupervisionSession allows a supervisor or admin to activate/start an exam session for their room/class
+func StartSupervisionSession(c *gin.Context) {
+	id := c.Param("id")
+	var supervisor models.ExamSupervisor
+	if err := config.DB.Preload("Exam").Preload("Class").First(&supervisor, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Jadwal pengawas tidak ditemukan"})
+		return
+	}
+
+	// Verify authorization: admin or the assigned teacher
+	role, _ := c.Get("role")
+	roleStr, _ := role.(string)
+	isAdmin := roleStr == string(models.RoleAdmin) || roleStr == string(models.RoleSuperAdmin)
+	if !isAdmin {
+		userID, exists := c.Get("userID")
+		if !exists {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+			return
+		}
+		var teacherID uint
+		if idFloat, ok := userID.(float64); ok {
+			teacherID = uint(idFloat)
+		} else if idUint, ok := userID.(uint); ok {
+			teacherID = idUint
+		}
+		if supervisor.TeacherID != teacherID && supervisor.Exam.TeacherID != teacherID {
+			c.JSON(http.StatusForbidden, gin.H{"error": "Akses Ditolak: Anda bukan pengawas yang ditugaskan untuk ruangan/kelas ini."})
+			return
+		}
+	}
+
+	supervisor.Status = "STARTED"
+	supervisor.IsStarted = true
+	supervisor.IsPaused = false
+	config.DB.Save(&supervisor)
+
+	// Ensure exam status is ACTIVE
+	config.DB.Model(&models.Exam{}).Where("id = ?", supervisor.ExamID).Updates(map[string]interface{}{
+		"status":     "ACTIVE",
+		"is_started": true,
+		"is_paused":  false,
+	})
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":    fmt.Sprintf("Sesi ujian untuk kelas %s di %s berhasil dimulai! Siswa sekarang dapat mulai mengerjakan.", supervisor.Class.Name, supervisor.Ruangan),
+		"supervisor": supervisor,
+	})
+}
+
+// PauseSupervisionSession pauses/freezes exam for all students in the supervisor's class/room (e.g. if students are noisy)
+func PauseSupervisionSession(c *gin.Context) {
+	id := c.Param("id")
+	var supervisor models.ExamSupervisor
+	if err := config.DB.Preload("Exam").Preload("Class").First(&supervisor, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Jadwal pengawas tidak ditemukan"})
+		return
+	}
+
+	role, _ := c.Get("role")
+	roleStr, _ := role.(string)
+	isAdmin := roleStr == string(models.RoleAdmin) || roleStr == string(models.RoleSuperAdmin)
+	if !isAdmin {
+		userID, exists := c.Get("userID")
+		if !exists {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+			return
+		}
+		var teacherID uint
+		if idFloat, ok := userID.(float64); ok {
+			teacherID = uint(idFloat)
+		} else if idUint, ok := userID.(uint); ok {
+			teacherID = idUint
+		}
+		if supervisor.TeacherID != teacherID && supervisor.Exam.TeacherID != teacherID {
+			c.JSON(http.StatusForbidden, gin.H{"error": "Akses Ditolak: Anda bukan pengawas yang ditugaskan untuk ruangan/kelas ini."})
+			return
+		}
+	}
+
+	var req struct {
+		Reason string `json:"reason"`
+	}
+	_ = c.ShouldBindJSON(&req)
+	reason := strings.TrimSpace(req.Reason)
+	if reason == "" {
+		reason = "Ujian diberhentikan sementara oleh Pengawas Ruang (Suasana kelas berisik / instruksi pengawas). Harap tenang dan tertib!"
+	}
+
+	supervisor.Status = "PAUSED"
+	supervisor.IsPaused = true
+	config.DB.Save(&supervisor)
+
+	// Freeze all ONGOING student sessions in this class for this exam
+	var studentIDs []uint
+	config.DB.Model(&models.Student{}).Where("class_id = ?", supervisor.ClassID).Pluck("id", &studentIDs)
+
+	if len(studentIDs) > 0 {
+		config.DB.Model(&models.ExamSession{}).
+			Where("exam_id = ? AND student_id IN ? AND status = ?", supervisor.ExamID, studentIDs, "ONGOING").
+			Updates(map[string]interface{}{
+				"status":      "PAUSED",
+				"lock_reason": reason,
+			})
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":    fmt.Sprintf("Ujian kelas %s di %s berhasil diberhentikan sementara. Seluruh siswa telah dijeda.", supervisor.Class.Name, supervisor.Ruangan),
+		"supervisor": supervisor,
+	})
+}
+
+// ResumeSupervisionSession resumes exam for all students in the supervisor's class/room
+func ResumeSupervisionSession(c *gin.Context) {
+	id := c.Param("id")
+	var supervisor models.ExamSupervisor
+	if err := config.DB.Preload("Exam").Preload("Class").First(&supervisor, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Jadwal pengawas tidak ditemukan"})
+		return
+	}
+
+	role, _ := c.Get("role")
+	roleStr, _ := role.(string)
+	isAdmin := roleStr == string(models.RoleAdmin) || roleStr == string(models.RoleSuperAdmin)
+	if !isAdmin {
+		userID, exists := c.Get("userID")
+		if !exists {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+			return
+		}
+		var teacherID uint
+		if idFloat, ok := userID.(float64); ok {
+			teacherID = uint(idFloat)
+		} else if idUint, ok := userID.(uint); ok {
+			teacherID = idUint
+		}
+		if supervisor.TeacherID != teacherID && supervisor.Exam.TeacherID != teacherID {
+			c.JSON(http.StatusForbidden, gin.H{"error": "Akses Ditolak: Anda bukan pengawas yang ditugaskan untuk ruangan/kelas ini."})
+			return
+		}
+	}
+
+	supervisor.Status = "STARTED"
+	supervisor.IsPaused = false
+	config.DB.Save(&supervisor)
+
+	// Resume all PAUSED student sessions in this class for this exam
+	var studentIDs []uint
+	config.DB.Model(&models.Student{}).Where("class_id = ?", supervisor.ClassID).Pluck("id", &studentIDs)
+
+	if len(studentIDs) > 0 {
+		config.DB.Model(&models.ExamSession{}).
+			Where("exam_id = ? AND student_id IN ? AND status = ?", supervisor.ExamID, studentIDs, "PAUSED").
+			Updates(map[string]interface{}{
+				"status":      "ONGOING",
+				"is_unlocked": true,
+				"lock_reason": "",
+			})
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":    fmt.Sprintf("Ujian kelas %s di %s berhasil dilanjutkan kembali. Siswa dapat melanjutkan pengerjaan.", supervisor.Class.Name, supervisor.Ruangan),
+		"supervisor": supervisor,
+	})
+}
+
+// FinishSupervisionSession marks supervisor session as completed
+func FinishSupervisionSession(c *gin.Context) {
+	id := c.Param("id")
+	var supervisor models.ExamSupervisor
+	if err := config.DB.Preload("Exam").Preload("Class").First(&supervisor, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Jadwal pengawas tidak ditemukan"})
+		return
+	}
+
+	supervisor.Status = "FINISHED"
+	supervisor.IsPaused = false
+	config.DB.Save(&supervisor)
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":    "Sesi pengawasan ujian telah ditandai selesai.",
+		"supervisor": supervisor,
 	})
 }

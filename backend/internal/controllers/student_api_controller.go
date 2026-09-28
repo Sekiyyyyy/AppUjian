@@ -57,21 +57,50 @@ func GetStudentExams(c *gin.Context) {
 		sessionMap[s.ExamID] = s.Status
 	}
 
+	var supervisors []models.ExamSupervisor
+	config.DB.Where("class_id = ?", student.ClassID).Find(&supervisors)
+	supMap := make(map[uint]models.ExamSupervisor)
+	for _, s := range supervisors {
+		supMap[s.ExamID] = s
+	}
+
 	type ExamResponse struct {
 		models.Exam
-		SessionStatus string `json:"session_status"`
+		SessionStatus    string `json:"session_status"`
+		CanStart         bool   `json:"can_start"`
+		SupervisorStatus string `json:"supervisor_status"`
 	}
 
 	var response []ExamResponse = make([]ExamResponse, 0)
 	for _, exam := range exams {
 		status := sessionMap[exam.ID]
-		if status == "" {
-			status = "BELUM MULAI"
+		sup, hasSupervisor := supMap[exam.ID]
+		canStart := false
+		supervisorStatus := "WAITING"
+
+		if hasSupervisor {
+			supervisorStatus = sup.Status
+			canStart = (sup.Status == "STARTED")
+		} else {
+			canStart = exam.IsStarted || exam.Status == "ACTIVE" || exam.IsMakeupOpen
+			if canStart {
+				supervisorStatus = "STARTED"
+			}
+		}
+
+		if status == "" || status == "BELUM MULAI" {
+			if !canStart && !exam.IsMakeupOpen {
+				status = "MENUNGGU PENGAWAS"
+			} else {
+				status = "BELUM MULAI"
+			}
 		}
 
 		response = append(response, ExamResponse{
-			Exam:          exam,
-			SessionStatus: status,
+			Exam:             exam,
+			SessionStatus:    status,
+			CanStart:         canStart,
+			SupervisorStatus: supervisorStatus,
 		})
 	}
 

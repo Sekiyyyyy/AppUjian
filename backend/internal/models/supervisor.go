@@ -15,4 +15,7 @@ type ExamSupervisor struct {
 	Teacher   *User  `gorm:"foreignKey:TeacherID" json:"teacher,omitempty"`
 	Ruangan   string `gorm:"type:varchar(100)" json:"ruangan"` // e.g. "Lab Komputer 1", "Ruang 04"
 	Notes     string `gorm:"type:varchar(255)" json:"notes"`   // e.g. "Pengawas Utama", "Sesi Pagi"
+	Status    string `gorm:"type:varchar(50);default:'WAITING'" json:"status"` // WAITING, STARTED, PAUSED, FINISHED
+	IsStarted bool   `gorm:"default:false" json:"is_started"`
+	IsPaused  bool   `gorm:"default:false" json:"is_paused"`
 }

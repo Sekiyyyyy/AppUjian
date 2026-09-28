@@ -20,7 +20,10 @@ import {
   Eye, 
   Info,
   MapPin,
-  RefreshCw
+  RefreshCw,
+  Play,
+  Pause,
+  Square
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { confirmAction, showSuccessToast, showErrorToast } from '../utils/alert';
@@ -69,6 +72,9 @@ interface ExamSupervisor {
   teacher?: UserItem;
   ruangan: string;
   notes: string;
+  status?: string;
+  is_started?: boolean;
+  is_paused?: boolean;
   CreatedAt: string;
 }
 
@@ -123,20 +129,26 @@ const Supervisors = () => {
         ? '/api/v1/admin/supervisors' 
         : '/api/v1/admin/supervisors/my-schedules';
 
-      const [supRes, examsRes, classesRes, usersRes] = await Promise.all([
+      const requests: Promise<any>[] = [
         axios.get(supervisorEndpoint, { headers: { Authorization: `Bearer ${token}` } }),
         axios.get('/api/v1/admin/exams', { headers: { Authorization: `Bearer ${token}` } }),
         axios.get('/api/v1/admin/classes', { headers: { Authorization: `Bearer ${token}` } }),
-        axios.get('/api/v1/admin/users', { headers: { Authorization: `Bearer ${token}` } })
-      ]);
+      ];
 
-      setSupervisors(supRes.data || []);
-      setExams(examsRes.data || []);
-      setClasses(classesRes.data || []);
-      setTeachers(usersRes.data || []);
-    } catch (error) {
-      console.error('Failed to load supervisor data:', error);
-      showErrorToast('Gagal memuat jadwal pengawas ujian');
+      if (isAdmin) {
+        requests.push(axios.get('/api/v1/admin/users', { headers: { Authorization: `Bearer ${token}` } }));
+      }
+
+      const results = await Promise.all(requests);
+      setSupervisors(results[0]?.data || []);
+      setExams(results[1]?.data || []);
+      setClasses(results[2]?.data || []);
+      if (isAdmin && results[3]) {
+        setTeachers(results[3]?.data || []);
+      }
+    } catch (error: any) {
+      console.error('Failed to load supervisor data:', error?.response?.data || error);
+      showErrorToast(error?.response?.data?.error || 'Gagal memuat jadwal pengawas ujian');
     } finally {
       setIsLoading(false);
     }
@@ -309,6 +321,79 @@ const Supervisors = () => {
   const handleOpenMonitor = (examId: number, examTitle: string, classId?: number) => {
     setMonitorExam({ id: examId, title: examTitle, classId });
     setIsParticipantsModalOpen(true);
+  };
+
+  // Supervisor Session Controls
+  const handleStartSession = async (s: ExamSupervisor) => {
+    const className = s.class?.name || `Kelas #${s.class_id}`;
+    const confirmed = await confirmAction(
+      'Mulai Sesi Ujian',
+      `Mulai sesi ujian untuk ${className}? Siswa di kelas ini sekarang akan dapat menekan tombol Mulai Ujian pada aplikasi mereka.`
+    );
+    if (!confirmed) return;
+
+    try {
+      await axios.post(`/api/v1/admin/supervisors/${s.ID}/start`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      showSuccessToast(`Sesi ujian ${className} dimulai! Siswa dapat mulai mengerjakan.`);
+      fetchData();
+    } catch (err: any) {
+      showErrorToast(err.response?.data?.error || 'Gagal memulai sesi ujian');
+    }
+  };
+
+  const handlePauseSession = async (s: ExamSupervisor) => {
+    const className = s.class?.name || `Kelas #${s.class_id}`;
+    const confirmed = await confirmAction(
+      'Hentikan Sementara Ujian',
+      `Hentikan sementara ujian untuk seluruh siswa di ${className}? Layar siswa yang sedang mengerjakan akan dibekukan sementara hingga Anda melanjutkannya.`
+    );
+    if (!confirmed) return;
+
+    try {
+      await axios.post(`/api/v1/admin/supervisors/${s.ID}/pause`, {
+        reason: 'Ujian dihentikan sementara oleh pengawas ruang (suasana tidak kondusif / berisik)'
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      showSuccessToast(`Ujian kelas ${className} berhasil dihentikan sementara.`);
+      fetchData();
+    } catch (err: any) {
+      showErrorToast(err.response?.data?.error || 'Gagal menghentikan sementara ujian');
+    }
+  };
+
+  const handleResumeSession = async (s: ExamSupervisor) => {
+    const className = s.class?.name || `Kelas #${s.class_id}`;
+    try {
+      await axios.post(`/api/v1/admin/supervisors/${s.ID}/resume`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      showSuccessToast(`Ujian kelas ${className} berhasil dilanjutkan.`);
+      fetchData();
+    } catch (err: any) {
+      showErrorToast(err.response?.data?.error || 'Gagal melanjutkan ujian');
+    }
+  };
+
+  const handleFinishSession = async (s: ExamSupervisor) => {
+    const className = s.class?.name || `Kelas #${s.class_id}`;
+    const confirmed = await confirmAction(
+      'Selesaikan Sesi Pengawasan',
+      `Apakah Anda yakin ingin menyelesaikan sesi pengawasan di ${className}? Status sesi akan ditandai selesai.`
+    );
+    if (!confirmed) return;
+
+    try {
+      await axios.post(`/api/v1/admin/supervisors/${s.ID}/finish`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      showSuccessToast(`Sesi pengawasan kelas ${className} diselesaikan.`);
+      fetchData();
+    } catch (err: any) {
+      showErrorToast(err.response?.data?.error || 'Gagal menyelesaikan sesi pengawasan');
+    }
   };
 
   // Filtered List
@@ -542,14 +627,15 @@ const Supervisors = () => {
                 <th className="px-6 py-4">Kelas / Rombel</th>
                 <th className="px-6 py-4">Guru Pengawas</th>
                 <th className="px-6 py-4">Ruangan</th>
+                <th className="px-6 py-4">Status Sesi</th>
                 <th className="px-6 py-4">Keterangan</th>
-                <th className="px-6 py-4 text-right">Aksi</th>
+                <th className="px-6 py-4 text-right">Kontrol & Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {isLoading ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-slate-400">
+                  <td colSpan={7} className="px-6 py-12 text-center text-slate-400">
                     <div className="flex flex-col items-center justify-center space-y-2">
                       <RefreshCw className="w-6 h-6 animate-spin text-indigo-600" />
                       <span>Memuat data jadwal pengawas...</span>
@@ -558,7 +644,7 @@ const Supervisors = () => {
                 </tr>
               ) : filteredSupervisors.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-slate-400">
+                  <td colSpan={7} className="px-6 py-12 text-center text-slate-400">
                     <div className="flex flex-col items-center justify-center space-y-2">
                       <UserCheck className="w-8 h-8 text-slate-300" />
                       <p className="font-medium text-slate-600">Tidak ada jadwal pengawas yang ditemukan</p>
@@ -577,6 +663,7 @@ const Supervisors = () => {
                   const teacherUser = s.teacher?.username || '';
                   const ruangan = s.ruangan || '-';
                   const notes = s.notes || '-';
+                  const sessionStatus = s.status || 'WAITING';
 
                   return (
                     <tr key={s.ID} className="hover:bg-slate-50/60 transition-colors">
@@ -625,6 +712,31 @@ const Supervisors = () => {
                         </div>
                       </td>
 
+                      {/* Session Status Column */}
+                      <td className="px-6 py-4">
+                        {sessionStatus === 'STARTED' ? (
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-xs">
+                            <span className="w-2 h-2 mr-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                            Berlangsung
+                          </span>
+                        ) : sessionStatus === 'PAUSED' ? (
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200 shadow-xs">
+                            <Pause className="w-3 h-3 mr-1 text-amber-600 fill-current" />
+                            Dihentikan
+                          </span>
+                        ) : sessionStatus === 'FINISHED' ? (
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-200">
+                            <CheckCircle2 className="w-3 h-3 mr-1 text-slate-500" />
+                            Selesai
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200 shadow-xs">
+                            <Clock className="w-3 h-3 mr-1 text-blue-600" />
+                            Menunggu Pengawas
+                          </span>
+                        )}
+                      </td>
+
                       {/* Notes Column */}
                       <td className="px-6 py-4 text-xs text-slate-500">
                         {notes}
@@ -633,15 +745,59 @@ const Supervisors = () => {
                       {/* Action Column */}
                       <td className="px-6 py-4 text-right">
                         <div className="flex items-center justify-end space-x-1.5">
+                          {/* Sesi Control Buttons */}
+                          {sessionStatus === 'WAITING' && (
+                            <button
+                              onClick={() => handleStartSession(s)}
+                              className="inline-flex items-center space-x-1 px-3 py-1.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-xs transition-colors"
+                              title="Mulai sesi ujian di kelas ini agar siswa dapat mengerjakan ujian"
+                            >
+                              <Play className="w-3.5 h-3.5 fill-current" />
+                              <span>Mulai Ujian</span>
+                            </button>
+                          )}
+
+                          {sessionStatus === 'STARTED' && (
+                            <button
+                              onClick={() => handlePauseSession(s)}
+                              className="inline-flex items-center space-x-1 px-3 py-1.5 text-xs font-bold text-amber-900 bg-amber-100 hover:bg-amber-200 border border-amber-300 rounded-lg shadow-xs transition-colors"
+                              title="Hentikan sementara ujian untuk seluruh siswa jika kelas berisik"
+                            >
+                              <Pause className="w-3.5 h-3.5 fill-current" />
+                              <span>Hentikan Ujian</span>
+                            </button>
+                          )}
+
+                          {sessionStatus === 'PAUSED' && (
+                            <button
+                              onClick={() => handleResumeSession(s)}
+                              className="inline-flex items-center space-x-1 px-3 py-1.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-xs transition-colors"
+                              title="Lanjutkan kembali ujian untuk seluruh siswa di kelas ini"
+                            >
+                              <Play className="w-3.5 h-3.5 fill-current" />
+                              <span>Lanjutkan Ujian</span>
+                            </button>
+                          )}
+
                           {/* Pantau & Buka Kunci Modal */}
                           <button
                             onClick={() => handleOpenMonitor(s.exam_id, examTitle, s.class_id)}
                             className="inline-flex items-center space-x-1 px-3 py-1.5 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-lg border border-indigo-200 transition-colors shadow-xs"
-                            title="Pantau peserta ujian & buka kunci siswa di kelas ini"
+                            title="Pantau peserta ujian, kontrol per siswa & buka kunci"
                           >
                             <Eye className="w-3.5 h-3.5" />
-                            <span>Pantau & Kunci</span>
+                            <span>Pantau Siswa</span>
                           </button>
+
+                          {(sessionStatus === 'STARTED' || sessionStatus === 'PAUSED') && (
+                            <button
+                              onClick={() => handleFinishSession(s)}
+                              className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+                              title="Selesaikan Sesi Pengawasan"
+                            >
+                              <Square className="w-3.5 h-3.5" />
+                            </button>
+                          )}
 
                           {isAdmin && (
                             <>

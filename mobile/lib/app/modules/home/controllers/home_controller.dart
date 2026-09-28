@@ -103,9 +103,9 @@ class HomeController extends GetxController {
           final isMakeupOpen = exam['is_makeup_open'] == true;
 
           if (exam['status'] == 'ACTIVE' || exam['status'] == 'SCHEDULED') {
-             if (exam['session_status'] == 'ONGOING' || exam['session_status'] == 'LOCKED') {
+             if (exam['session_status'] == 'ONGOING' || exam['session_status'] == 'LOCKED' || exam['session_status'] == 'PAUSED') {
                 isActive = true;
-             } else if (exam['session_status'] == 'BELUM MULAI') {
+             } else if (exam['session_status'] == 'BELUM MULAI' || exam['session_status'] == 'MENUNGGU PENGAWAS') {
                 if (isMakeupOpen) {
                    isActive = true;
                 } else if (now.isAfter(startTime) && now.isBefore(endTime)) {
@@ -146,6 +146,21 @@ class HomeController extends GetxController {
   }
 
   void startExam(dynamic exam) async {
+    if (exam['session_status'] == 'MENUNGGU PENGAWAS' || exam['can_start'] == false) {
+      AppToast.info(
+        title: "Menunggu Pengawas",
+        message: "Ujian belum dimulai oleh guru pengawas ruang. Harap tunggu pengawas memulai sesi ujian.",
+      );
+      return;
+    }
+    if (exam['session_status'] == 'PAUSED') {
+      AppToast.warning(
+        title: "Ujian Dihentikan Sementara",
+        message: "Ujian saat ini sedang diberhentikan sementara oleh pengawas ruang (misal suasana kelas berisik).",
+      );
+      return;
+    }
+
     Get.toNamed('/exam', arguments: {
       'exam_id': exam['ID'],
       'title': exam['title']?.toString() ?? 'Ujian',

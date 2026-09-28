@@ -389,6 +389,8 @@ class HomeView extends GetView<HomeController> {
                       final exam = controller.activeExams[index];
                       final isLocked = exam['session_status'] == 'LOCKED';
                       final isOngoing = exam['session_status'] == 'ONGOING';
+                      final isPaused = exam['session_status'] == 'PAUSED';
+                      final isWaitingSupervisor = exam['session_status'] == 'MENUNGGU PENGAWAS' || exam['can_start'] == false;
                       final isUpcoming = DateTime.parse(exam['start_time']).toLocal().isAfter(DateTime.now());
                       
                       return Center(
@@ -396,7 +398,15 @@ class HomeView extends GetView<HomeController> {
                           constraints: const BoxConstraints(maxWidth: 960),
                           child: Padding(
                             padding: const EdgeInsets.only(bottom: 20),
-                            child: _buildActiveExamCard(context, exam, isLocked, isOngoing, isUpcoming),
+                            child: _buildActiveExamCard(
+                              context, 
+                              exam, 
+                              isLocked, 
+                              isOngoing, 
+                              isUpcoming,
+                              isPaused: isPaused,
+                              isWaitingSupervisor: isWaitingSupervisor,
+                            ),
                           ),
                         ),
                       );
@@ -451,7 +461,15 @@ class HomeView extends GetView<HomeController> {
 );
 }
 
-  Widget _buildActiveExamCard(BuildContext context, dynamic exam, bool isLocked, bool isOngoing, bool isUpcoming) {
+  Widget _buildActiveExamCard(
+    BuildContext context, 
+    dynamic exam, 
+    bool isLocked, 
+    bool isOngoing, 
+    bool isUpcoming, {
+    bool isPaused = false,
+    bool isWaitingSupervisor = false,
+  }) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -468,7 +486,13 @@ class HomeView extends GetView<HomeController> {
         color: Colors.transparent,
         child: InkWell(
           onTap: () {
-            _showStartExamDialog(context, exam, isOngoing);
+            _showStartExamDialog(
+              context, 
+              exam, 
+              isOngoing,
+              isPaused: isPaused,
+              isWaitingSupervisor: isWaitingSupervisor,
+            );
           },
           borderRadius: BorderRadius.circular(24),
           splashColor: AppTheme.primaryColor.withValues(alpha: 0.1),
@@ -502,12 +526,20 @@ class HomeView extends GetView<HomeController> {
                       decoration: BoxDecoration(
                         color: isLocked
                             ? Colors.red.shade50
-                            : (isOngoing ? Colors.amber.shade50 : (isUpcoming ? Colors.blue.shade50 : AppTheme.primaryColor.withValues(alpha: 0.1))),
+                            : (isPaused
+                                ? Colors.orange.shade50
+                                : (isWaitingSupervisor
+                                    ? Colors.amber.shade50
+                                    : (isOngoing ? Colors.amber.shade50 : (isUpcoming ? Colors.blue.shade50 : AppTheme.primaryColor.withValues(alpha: 0.1))))),
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
                           color: isLocked
                               ? Colors.red.shade300
-                              : (isOngoing ? Colors.amber.shade200 : (isUpcoming ? Colors.blue.shade200 : AppTheme.primaryColor.withValues(alpha: 0.2))),
+                              : (isPaused
+                                  ? Colors.orange.shade300
+                                  : (isWaitingSupervisor
+                                      ? Colors.amber.shade300
+                                      : (isOngoing ? Colors.amber.shade200 : (isUpcoming ? Colors.blue.shade200 : AppTheme.primaryColor.withValues(alpha: 0.2))))),
                         ),
                       ),
                       child: Row(
@@ -516,21 +548,37 @@ class HomeView extends GetView<HomeController> {
                           Icon(
                             isLocked
                                 ? Icons.lock_rounded
-                                : (isOngoing ? Icons.play_circle_fill_rounded : (isUpcoming ? Icons.schedule_rounded : Icons.check_circle_rounded)),
+                                : (isPaused
+                                    ? Icons.pause_circle_filled_rounded
+                                    : (isWaitingSupervisor
+                                        ? Icons.hourglass_top_rounded
+                                        : (isOngoing ? Icons.play_circle_fill_rounded : (isUpcoming ? Icons.schedule_rounded : Icons.check_circle_rounded)))),
                             size: 13,
                             color: isLocked
                                 ? Colors.red.shade700
-                                : (isOngoing ? Colors.amber.shade700 : (isUpcoming ? Colors.blue.shade700 : AppTheme.primaryColor)),
+                                : (isPaused
+                                    ? Colors.orange.shade700
+                                    : (isWaitingSupervisor
+                                        ? Colors.amber.shade800
+                                        : (isOngoing ? Colors.amber.shade700 : (isUpcoming ? Colors.blue.shade700 : AppTheme.primaryColor)))),
                           ),
                           const SizedBox(width: 4),
                           Text(
                             isLocked
                                 ? 'Terkunci'
-                                : (isOngoing ? 'Lanjut' : (isUpcoming ? 'Segera' : 'Tersedia')),
+                                : (isPaused
+                                    ? 'Dihentikan'
+                                    : (isWaitingSupervisor
+                                        ? 'Tunggu Pengawas'
+                                        : (isOngoing ? 'Lanjut' : (isUpcoming ? 'Segera' : 'Tersedia')))),
                             style: GoogleFonts.inter(
                               color: isLocked
                                   ? Colors.red.shade800
-                                  : (isOngoing ? Colors.amber.shade800 : (isUpcoming ? Colors.blue.shade800 : AppTheme.primaryColor)),
+                                  : (isPaused
+                                      ? Colors.orange.shade800
+                                      : (isWaitingSupervisor
+                                          ? Colors.amber.shade900
+                                          : (isOngoing ? Colors.amber.shade800 : (isUpcoming ? Colors.blue.shade800 : AppTheme.primaryColor)))),
                               fontSize: 11,
                               fontWeight: FontWeight.bold,
                             ),
@@ -611,7 +659,13 @@ class HomeView extends GetView<HomeController> {
     );
   }
 
-  void _showStartExamDialog(BuildContext context, dynamic exam, bool isOngoing) {
+  void _showStartExamDialog(
+    BuildContext context, 
+    dynamic exam, 
+    bool isOngoing, {
+    bool isPaused = false,
+    bool isWaitingSupervisor = false,
+  }) {
     final isLocked = exam['session_status'] == 'LOCKED';
     final isUpcoming = DateTime.parse(exam['start_time']).toLocal().isAfter(DateTime.now());
     showModalBottomSheet(
@@ -652,13 +706,21 @@ class HomeView extends GetView<HomeController> {
                   width: 52,
                   height: 52,
                   decoration: BoxDecoration(
-                    color: isLocked ? Colors.red.shade50 : AppTheme.primaryColor.withValues(alpha: 0.1),
+                    color: isLocked 
+                        ? Colors.red.shade50 
+                        : (isPaused || isWaitingSupervisor ? Colors.amber.shade50 : AppTheme.primaryColor.withValues(alpha: 0.1)),
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Center(
                     child: Icon(
-                      isLocked ? Icons.lock_rounded : Icons.assignment_rounded,
-                      color: isLocked ? Colors.red.shade700 : AppTheme.primaryColor,
+                      isLocked 
+                          ? Icons.lock_rounded 
+                          : (isPaused 
+                              ? Icons.pause_circle_filled_rounded 
+                              : (isWaitingSupervisor ? Icons.hourglass_top_rounded : Icons.assignment_rounded)),
+                      color: isLocked 
+                          ? Colors.red.shade700 
+                          : (isPaused || isWaitingSupervisor ? Colors.amber.shade800 : AppTheme.primaryColor),
                       size: 28,
                     ),
                   ),
@@ -721,19 +783,31 @@ class HomeView extends GetView<HomeController> {
                           decoration: BoxDecoration(
                             color: isLocked
                                 ? Colors.red.shade100
-                                : (isOngoing ? Colors.amber.shade100 : (isUpcoming ? Colors.blue.shade100 : Colors.green.shade100)),
+                                : (isPaused
+                                    ? Colors.orange.shade100
+                                    : (isWaitingSupervisor
+                                        ? Colors.amber.shade100
+                                        : (isOngoing ? Colors.amber.shade100 : (isUpcoming ? Colors.blue.shade100 : Colors.green.shade100)))),
                             borderRadius: BorderRadius.circular(12)
                           ),
                           child: Text(
                             isLocked
                                 ? "Terkunci (Hubungi Pengawas)"
-                                : (isOngoing ? "Sedang Dikerjakan" : (isUpcoming ? "Segera" : "Tersedia")),
+                                : (isPaused
+                                    ? "Dihentikan Pengawas"
+                                    : (isWaitingSupervisor
+                                        ? "Menunggu Pengawas"
+                                        : (isOngoing ? "Sedang Dikerjakan" : (isUpcoming ? "Segera" : "Tersedia")))),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: GoogleFonts.inter(
                               color: isLocked
                                   ? Colors.red.shade800
-                                  : (isOngoing ? Colors.amber.shade800 : (isUpcoming ? Colors.blue.shade800 : Colors.green.shade800)),
+                                  : (isPaused
+                                      ? Colors.orange.shade800
+                                      : (isWaitingSupervisor
+                                          ? Colors.amber.shade900
+                                          : (isOngoing ? Colors.amber.shade800 : (isUpcoming ? Colors.blue.shade800 : Colors.green.shade800)))),
                               fontSize: 12,
                               fontWeight: FontWeight.bold,
                             ),
@@ -745,6 +819,54 @@ class HomeView extends GetView<HomeController> {
                 ],
               ),
             ),
+            if (isWaitingSupervisor) ...[
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.amber.shade50,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: Colors.amber.shade200),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.hourglass_top_rounded, color: Colors.amber.shade800, size: 22),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        "Ujian belum dimulai oleh pengawas ruang. Harap tunggu pengawas di ruangan memulai sesi ujian sebelum Anda dapat mengerjakan.",
+                        style: GoogleFonts.inter(fontSize: 13, color: Colors.amber.shade900, height: 1.4, fontWeight: FontWeight.w500),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            if (isPaused) ...[
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade50,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: Colors.orange.shade200),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.pause_circle_filled_rounded, color: Colors.orange.shade800, size: 22),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        "Ujian saat ini sedang dihentikan sementara oleh pengawas ruang (misal suasana kelas berisik). Harap tertib dan tunggu pengawas melanjutkan ujian.",
+                        style: GoogleFonts.inter(fontSize: 13, color: Colors.orange.shade900, height: 1.4, fontWeight: FontWeight.w500),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
             if (isLocked) ...[
               const SizedBox(height: 16),
               Container(
@@ -786,22 +908,26 @@ class HomeView extends GetView<HomeController> {
                 const SizedBox(width: 16),
                 Expanded(
                   child: ElevatedButton(
-                    onPressed: (isUpcoming || isLocked) ? null : () {
+                    onPressed: (isUpcoming || isLocked || isWaitingSupervisor || isPaused) ? null : () {
                       Get.back(); // close modal
                       controller.startExam(exam); // Start exam
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: (isUpcoming || isLocked) ? Colors.grey.shade400 : AppTheme.primaryColor,
+                      backgroundColor: (isUpcoming || isLocked || isWaitingSupervisor || isPaused) ? Colors.grey.shade400 : AppTheme.primaryColor,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      elevation: (isUpcoming || isLocked) ? 0 : 4,
+                      elevation: (isUpcoming || isLocked || isWaitingSupervisor || isPaused) ? 0 : 4,
                       shadowColor: AppTheme.primaryColor.withValues(alpha: 0.4)
                     ),
                     child: Text(
                       isLocked
                           ? "Ujian Terkunci"
-                          : (isOngoing ? "Lanjutkan" : (isUpcoming ? "Belum Waktunya" : "Mulai Ujian")),
+                          : (isPaused
+                              ? "Ujian Dihentikan"
+                              : (isWaitingSupervisor
+                                  ? "Menunggu Pengawas"
+                                  : (isOngoing ? "Lanjutkan" : (isUpcoming ? "Belum Waktunya" : "Mulai Ujian")))),
                       style: GoogleFonts.inter(fontWeight: FontWeight.bold),
                     ),
                   ),

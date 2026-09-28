@@ -154,8 +154,11 @@ const Exams = () => {
   const [title, setTitle] = useState('');
   const [subjectId, setSubjectId] = useState<number | ''>('');
   const [categoryId, setCategoryId] = useState<number | ''>('');
-  const [startTime, setStartTime] = useState('');
-  const [endTime, setEndTime] = useState('');
+  const [examDate, setExamDate] = useState(() => {
+    const d = new Date();
+    const pad = (n: number) => (n < 10 ? '0' + n : n);
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  });
   const [duration, setDuration] = useState(90);
   const [selectedClassIds, setSelectedClassIds] = useState<number[]>([]);
   const [classFilterLevel, setClassFilterLevel] = useState('ALL');
@@ -198,19 +201,7 @@ const Exams = () => {
   useEffect(() => {
     fetchData();
 
-    // Default times: starting in 1 hour, ending 3 hours later
-    const now = new Date();
-    const start = new Date(now.getTime() + 60 * 60 * 1000);
-    const end = new Date(start.getTime() + 2 * 60 * 60 * 1000);
 
-    // Format YYYY-MM-DDTHH:mm
-    const formatLocalISO = (d: Date) => {
-      const pad = (n: number) => (n < 10 ? '0' + n : n);
-      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-    };
-
-    setStartTime(formatLocalISO(start));
-    setEndTime(formatLocalISO(end));
   }, []);
 
   // Handle URL query params to auto-open create modal or schedule modal for a specific exam
@@ -266,8 +257,7 @@ const Exams = () => {
     setTitle(exam.title);
     setSubjectId(exam.subject_id);
     if (exam.category_id) setCategoryId(exam.category_id);
-    setStartTime(exam.start_time ? exam.start_time.substring(0, 16) : '');
-    setEndTime(exam.end_time ? exam.end_time.substring(0, 16) : '');
+    setExamDate(exam.start_time ? exam.start_time.substring(0, 10) : new Date().toISOString().substring(0, 10));
     setDuration(exam.duration || 90);
     setTahun(exam.tahun || '');
     setSemester(exam.semester || 'Ganjil');
@@ -283,8 +273,7 @@ const Exams = () => {
     setTitle('');
     setSubjectId('');
     setCategoryId('');
-    setStartTime('');
-    setEndTime('');
+    setExamDate(new Date().toISOString().substring(0, 10));
     setDuration(90);
     setTahun('');
     setSemester('Ganjil');
@@ -339,8 +328,8 @@ const Exams = () => {
         title,
         subject_id: Number(subjectId),
         category_id: categoryId ? Number(categoryId) : undefined,
-        start_time: new Date(startTime).toISOString(),
-        end_time: new Date(endTime).toISOString(),
+        start_time: new Date(`${examDate}T00:00:00`).toISOString(),
+        end_time: new Date(`${examDate}T23:59:59.999`).toISOString(),
         duration: Number(duration),
         total_points: 100,
         status: 'SCHEDULED',
@@ -614,16 +603,13 @@ const Exams = () => {
                       <span>Durasi Pengerjaan: <strong className="text-slate-800">{exam.duration} Menit</strong></span>
                     </div>
                     <div className="flex items-center space-x-2">
-                      <Calendar size={14} className="text-slate-400" />
+                      <Calendar size={14} className="text-primary-600" />
                       <span>
-                        Mulai: {startDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        Tanggal: <strong className="text-slate-800">{startDate.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</strong>
                       </span>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <Calendar size={14} className="text-slate-400" />
-                      <span>
-                        Selesai: {endDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                      </span>
+                    <div className="text-[11px] text-slate-500 pl-5">
+                      ✓ Tersedia 1 hari penuh (00:00 - 23:59 WIB)
                     </div>
                   </div>
 
@@ -840,47 +826,44 @@ const Exams = () => {
                 </div>
               </div>
 
-              {/* Waktu & Durasi */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">
-                    Waktu Mulai
-                  </label>
-                  <input
-                    type="datetime-local"
-                    value={startTime}
-                    onChange={(e) => setStartTime(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-primary-500"
-                    required
-                  />
-                </div>
+              {/* Jadwal Tanggal & Durasi (1 Hari Penuh) */}
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                      <Calendar size={14} className="text-primary-600" />
+                      Tanggal Pelaksanaan Ujian
+                    </label>
+                    <input
+                      type="date"
+                      value={examDate}
+                      onChange={(e) => setExamDate(e.target.value)}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 bg-white"
+                      required
+                    />
+                    <p className="text-[11px] text-slate-500 mt-1">
+                      Otomatis tersedia 1 hari penuh (00:00 - 23:59 WIB). Ujian baru dapat dimulai saat Pengawas mengaktifkan sesi.
+                    </p>
+                  </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">
-                    Waktu Selesai
-                  </label>
-                  <input
-                    type="datetime-local"
-                    value={endTime}
-                    onChange={(e) => setEndTime(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-primary-500"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">
-                    Durasi (Menit)
-                  </label>
-                  <input
-                    type="number"
-                    min="5"
-                    max="300"
-                    value={duration}
-                    onChange={(e) => setDuration(Number(e.target.value))}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-primary-500"
-                    required
-                  />
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                      <Clock size={14} className="text-primary-600" />
+                      Durasi Pengerjaan Siswa (Menit)
+                    </label>
+                    <input
+                      type="number"
+                      min="5"
+                      max="300"
+                      value={duration}
+                      onChange={(e) => setDuration(Number(e.target.value))}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 bg-white"
+                      required
+                    />
+                    <p className="text-[11px] text-slate-500 mt-1">
+                      Waktu pengerjaan bagi siswa setelah ujian diaktifkan pengawas (misal 90 menit).
+                    </p>
+                  </div>
                 </div>
               </div>
 

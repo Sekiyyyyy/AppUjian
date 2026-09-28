@@ -378,20 +378,20 @@ func GetExamParticipants(c *gin.Context) {
 	roleStr, _ := role.(string)
 	isAdmin := roleStr == string(models.RoleAdmin) || roleStr == string(models.RoleSuperAdmin)
 
+	var callerTeacherID uint
 	supervisedClassMap := make(map[uint]bool)
 	if !isAdmin {
 		userID, exists := c.Get("userID")
 		if exists && userID != nil {
-			var teacherID uint
 			if idFloat, ok := userID.(float64); ok {
-				teacherID = uint(idFloat)
+				callerTeacherID = uint(idFloat)
 			} else if idUint, ok := userID.(uint); ok {
-				teacherID = idUint
+				callerTeacherID = idUint
 			}
 
 			var supervisedClassIDs []uint
 			config.DB.Model(&models.ExamSupervisor{}).
-				Where("exam_id = ? AND teacher_id = ?", examID, teacherID).
+				Where("exam_id = ? AND teacher_id = ?", examID, callerTeacherID).
 				Pluck("class_id", &supervisedClassIDs)
 
 			for _, cid := range supervisedClassIDs {
@@ -400,6 +400,8 @@ func GetExamParticipants(c *gin.Context) {
 		}
 	}
 
+	canExport := isAdmin || (exam.TeacherID != 0 && exam.TeacherID == callerTeacherID)
+
 	type ParticipantResponse struct {
 		models.Student
 		Name          string  `json:"name"`
@@ -407,19 +409,23 @@ func GetExamParticipants(c *gin.Context) {
 		Score         float64 `json:"score"`
 		CanUnlock     bool    `json:"can_unlock"`
 		IsSupervisor  bool    `json:"is_supervisor"`
+		CanExport     bool    `json:"can_export"`
+		LockReason    string  `json:"lock_reason"`
 	}
 
 	var responses []ParticipantResponse = make([]ParticipantResponse, 0)
 	for _, student := range students {
 		status := "BELUM MULAI"
 		var score float64
+		var lockReason string
 		if session, exists := sessionMap[student.ID]; exists {
 			status = session.Status
 			score = session.Score
+			lockReason = session.LockReason
 		}
 
 		isSupervisor := isAdmin || supervisedClassMap[student.ClassID]
-		canUnlock := (status == "LOCKED") && isSupervisor
+		canUnlock := (status == "LOCKED" || status == "PAUSED") && isSupervisor
 
 		responses = append(responses, ParticipantResponse{
 			Student:       student,
@@ -428,6 +434,8 @@ func GetExamParticipants(c *gin.Context) {
 			Score:         score,
 			CanUnlock:     canUnlock,
 			IsSupervisor:  isSupervisor,
+			CanExport:     canExport,
+			LockReason:    lockReason,
 		})
 	}
 
@@ -536,8 +544,8 @@ func UnlockStudentExam(c *gin.Context) {
 		}
 	}
 
-	if session.Status != "LOCKED" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Ujian siswa tidak dalam status terkunci (status: " + session.Status + ")"})
+	if session.Status != "LOCKED" && session.Status != "PAUSED" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Ujian siswa tidak dalam status terkunci atau dijeda (status: " + session.Status + ")"})
 		return
 	}
 
@@ -552,6 +560,92 @@ func UnlockStudentExam(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Kunci ujian siswa berhasil dibuka. Siswa dapat melanjutkan ujian."})
 }
 
+// PauseStudentsExam allows pausing specific selected students or all students in an exam/class
+func PauseStudentsExam(c *gin.Context) {
+	examID := c.Param("id")
+	var req struct {
+		StudentIDs []uint `json:"student_ids"`
+		ClassID    uint   `json:"class_id"`
+		Reason     string `json:"reason"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Payload tidak valid"})
+		return
+	}
+
+	reason := strings.TrimSpace(req.Reason)
+	if reason == "" {
+		reason = "Ujian diberhentikan sementara oleh Pengawas Ruang (Siswa berisik / instruksi pengawas). Harap tenang dan tertib!"
+	}
+
+	query := config.DB.Model(&models.ExamSession{}).Where("exam_id = ? AND status = ?", examID, "ONGOING")
+	if len(req.StudentIDs) > 0 {
+		query = query.Where("student_id IN ?", req.StudentIDs)
+	} else if req.ClassID > 0 {
+		var classStudentIDs []uint
+		config.DB.Model(&models.Student{}).Where("class_id = ?", req.ClassID).Pluck("id", &classStudentIDs)
+		if len(classStudentIDs) == 0 {
+			c.JSON(http.StatusOK, gin.H{"message": "Tidak ada siswa dalam kelas tersebut", "affected": 0})
+			return
+		}
+		query = query.Where("student_id IN ?", classStudentIDs)
+	}
+
+	res := query.Updates(map[string]interface{}{
+		"status":      "PAUSED",
+		"lock_reason": reason,
+	})
+
+	if res.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal memberhentikan sementara ujian siswa"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":  fmt.Sprintf("Berhasil memberhentikan sementara ujian untuk %d siswa.", res.RowsAffected),
+		"affected": res.RowsAffected,
+	})
+}
+
+// ResumeStudentsExam allows resuming paused/locked students
+func ResumeStudentsExam(c *gin.Context) {
+	examID := c.Param("id")
+	var req struct {
+		StudentIDs []uint `json:"student_ids"`
+		ClassID    uint   `json:"class_id"`
+	}
+	_ = c.ShouldBindJSON(&req)
+
+	query := config.DB.Model(&models.ExamSession{}).Where("exam_id = ? AND (status = ? OR status = ?)", examID, "PAUSED", "LOCKED")
+	if len(req.StudentIDs) > 0 {
+		query = query.Where("student_id IN ?", req.StudentIDs)
+	} else if req.ClassID > 0 {
+		var classStudentIDs []uint
+		config.DB.Model(&models.Student{}).Where("class_id = ?", req.ClassID).Pluck("id", &classStudentIDs)
+		if len(classStudentIDs) == 0 {
+			c.JSON(http.StatusOK, gin.H{"message": "Tidak ada siswa dalam kelas tersebut", "affected": 0})
+			return
+		}
+		query = query.Where("student_id IN ?", classStudentIDs)
+	}
+
+	res := query.Updates(map[string]interface{}{
+		"status":      "ONGOING",
+		"is_unlocked": true,
+		"lock_reason": "",
+	})
+
+	if res.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal melanjutkan ujian siswa"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":  fmt.Sprintf("Berhasil melanjutkan kembali ujian untuk %d siswa.", res.RowsAffected),
+		"affected": res.RowsAffected,
+	})
+}
+
 // ExportExamGradesExcel exports the exam grades for a specific class or all classes in .xlsx format
 func ExportExamGradesExcel(c *gin.Context) {
 	examID := c.Param("id")
@@ -563,21 +657,23 @@ func ExportExamGradesExcel(c *gin.Context) {
 		return
 	}
 
-	// Security: If current user is a teacher, verify they are the author of this exam
+	// Security: Only Admin or the Teacher who created this exam can export grades
 	role, exists := c.Get("role")
 	if exists && role == string(models.RoleTeacher) {
 		userID, idExists := c.Get("userID")
-		if idExists {
-			var teacherID uint
-			if idFloat, ok := userID.(float64); ok {
-				teacherID = uint(idFloat)
-			} else if idUint, ok := userID.(uint); ok {
-				teacherID = idUint
-			}
-			if exam.TeacherID != 0 && exam.TeacherID != teacherID {
-				c.JSON(http.StatusForbidden, gin.H{"error": "Anda hanya dapat mengunduh nilai untuk ujian yang Anda buat sendiri"})
-				return
-			}
+		if !idExists {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+			return
+		}
+		var teacherID uint
+		if idFloat, ok := userID.(float64); ok {
+			teacherID = uint(idFloat)
+		} else if idUint, ok := userID.(uint); ok {
+			teacherID = idUint
+		}
+		if exam.TeacherID != teacherID || exam.TeacherID == 0 {
+			c.JSON(http.StatusForbidden, gin.H{"error": "Akses ditolak: Hanya guru pembuat ujian ini dan admin yang berwenang mengunduh rekap nilai Excel"})
+			return
 		}
 	}
 

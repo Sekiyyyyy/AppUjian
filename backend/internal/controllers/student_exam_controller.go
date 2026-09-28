@@ -37,11 +37,39 @@ func StartExam(c *gin.Context) {
 	now := time.Now()
 	if !exam.IsMakeupOpen {
 		if now.Before(exam.StartTime) {
-			c.JSON(http.StatusForbidden, gin.H{"error": "Ujian belum dimulai"})
+			c.JSON(http.StatusForbidden, gin.H{"error": "Ujian belum dimulai sesuai jadwal"})
 			return
 		}
 		if now.After(exam.EndTime) {
-			c.JSON(http.StatusForbidden, gin.H{"error": "Waktu ujian sudah habis"})
+			c.JSON(http.StatusForbidden, gin.H{"error": "Waktu ujian hari ini sudah berakhir"})
+			return
+		}
+	}
+
+	// Gatekeeper: Check if supervisor has started the exam for student's class
+	var sup models.ExamSupervisor
+	errSup := config.DB.Where("exam_id = ? AND class_id = ?", exam.ID, student.ClassID).First(&sup).Error
+	if errSup == nil {
+		if sup.Status == "PAUSED" {
+			c.JSON(http.StatusForbidden, gin.H{
+				"error":   "EXAM_PAUSED",
+				"message": "Ujian sedang diberhentikan sementara oleh Pengawas Ruang. Harap tenang dan tunggu instruksi pengawas.",
+			})
+			return
+		}
+		if sup.Status != "STARTED" && !exam.IsMakeupOpen {
+			c.JSON(http.StatusForbidden, gin.H{
+				"error":   "WAITING_SUPERVISOR",
+				"message": "Ujian belum dimulai oleh Guru Pengawas di ruangan. Silakan tunggu instruksi pengawas untuk mulai.",
+			})
+			return
+		}
+	} else {
+		if !exam.IsStarted && exam.Status != "ACTIVE" && !exam.IsMakeupOpen {
+			c.JSON(http.StatusForbidden, gin.H{
+				"error":   "WAITING_SUPERVISOR",
+				"message": "Ujian belum dimulai oleh Guru Pengawas. Silakan tunggu instruksi pengawas untuk mulai.",
+			})
 			return
 		}
 	}
@@ -49,6 +77,16 @@ func StartExam(c *gin.Context) {
 	var session models.ExamSession
 	err := config.DB.Where("student_id = ? AND exam_id = ?", student.ID, exam.ID).First(&session).Error
 	if err == nil {
+		if session.Status == "PAUSED" {
+			c.JSON(http.StatusForbidden, gin.H{
+				"error":       "EXAM_PAUSED",
+				"message":     session.LockReason,
+				"lock_reason": session.LockReason,
+				"session":     session,
+			})
+			return
+		}
+
 		if session.Status == "LOCKED" {
 			c.JSON(http.StatusForbidden, gin.H{
 				"error":       "LOCKED",
@@ -215,6 +253,17 @@ func SubmitAnswer(c *gin.Context) {
 	}
 
 	if session.Status != "ONGOING" {
+		if session.Status == "PAUSED" {
+			msg := session.LockReason
+			if msg == "" {
+				msg = "Ujian sedang diberhentikan sementara oleh Pengawas Ruang. Harap tenang dan tunggu instruksi pengawas."
+			}
+			c.JSON(http.StatusForbidden, gin.H{
+				"error":   "EXAM_PAUSED",
+				"message": msg,
+			})
+			return
+		}
 		if session.Status == "LOCKED" {
 			c.JSON(http.StatusForbidden, gin.H{
 				"error":   "LOCKED",
@@ -399,6 +448,17 @@ func GetExamSessionStatus(c *gin.Context) {
 	if err := config.DB.Where("student_id = ? AND exam_id = ?", student.ID, examID).First(&session).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Sesi ujian tidak ditemukan"})
 		return
+	}
+
+	// Also check if supervisor is currently paused
+	var supervisor models.ExamSupervisor
+	if err := config.DB.Where("exam_id = ? AND class_id = ?", examID, student.ClassID).First(&supervisor).Error; err == nil {
+		if supervisor.Status == "PAUSED" && session.Status == "ONGOING" {
+			session.Status = "PAUSED"
+			if session.LockReason == "" {
+				session.LockReason = "Ujian dihentikan sementara oleh pengawas ruang (suasana tidak kondusif / berisik)"
+			}
+		}
 	}
 
 	c.JSON(http.StatusOK, gin.H{

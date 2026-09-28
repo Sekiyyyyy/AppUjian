@@ -50,6 +50,11 @@ class ExamController extends GetxController with WidgetsBindingObserver {
   Timer? _mobileExitCheckTimer;
   AppLifecycleState? _currentLifecycleState;
 
+  // Supervisor Pause Tracking
+  final isExamPaused = false.obs;
+  final pauseReason = ''.obs;
+  Timer? _sessionMonitorTimer;
+
   /// Whether we're running on a desktop platform (Windows/macOS/Linux)
   bool get _isDesktop =>
       !kIsWeb && (Platform.isWindows || Platform.isMacOS || Platform.isLinux);
@@ -82,6 +87,7 @@ class ExamController extends GetxController with WidgetsBindingObserver {
     WidgetsBinding.instance.removeObserver(this);
     _timer?.cancel();
     _mobileExitCheckTimer?.cancel();
+    _sessionMonitorTimer?.cancel();
     _disableKioskMode();
     _stopAlarm();
     super.onClose();
@@ -260,6 +266,7 @@ class ExamController extends GetxController with WidgetsBindingObserver {
         
         timeRemaining.value = endTime.difference(now).inSeconds;
         _startTimer();
+        _startSessionMonitor();
         
         // Save ongoing exam id to detect abrupt termination (Ctrl+Alt+Del, taskkill)
         await prefs.setInt('ongoing_exam_id', examId);
@@ -276,6 +283,30 @@ class ExamController extends GetxController with WidgetsBindingObserver {
           AppToast.error(
             title: "Ujian Terkunci!",
             message: e.response?.data?['message'] ?? "Ujian ini masih terkunci. Silakan hubungi proktor/pengawas/guru untuk membuka kunci ujian Anda.",
+          );
+        });
+        return;
+      }
+      if (e.response?.data?['error'] == 'WAITING_SUPERVISOR') {
+        _isExamFinished = true;
+        await _disableKioskMode();
+        Get.offAllNamed(Routes.MAIN);
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          AppToast.info(
+            title: "Menunggu Pengawas",
+            message: e.response?.data?['message'] ?? "Ujian belum dimulai oleh guru pengawas ruang. Harap tunggu pengawas memulai sesi ujian.",
+          );
+        });
+        return;
+      }
+      if (e.response?.data?['error'] == 'EXAM_PAUSED') {
+        _isExamFinished = true;
+        await _disableKioskMode();
+        Get.offAllNamed(Routes.MAIN);
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          AppToast.warning(
+            title: "Ujian Dihentikan Sementara",
+            message: e.response?.data?['message'] ?? "Ujian sedang diberhentikan sementara oleh pengawas ruang.",
           );
         });
         return;
@@ -311,12 +342,51 @@ class ExamController extends GetxController with WidgetsBindingObserver {
 
   void _startTimer() {
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (isExamPaused.value) {
+        // Countdown dibekukan sementara saat pengawas menghentikan ujian
+        return;
+      }
       if (timeRemaining.value > 0) {
         timeRemaining.value--;
       } else {
         timer.cancel();
         _forceSubmitExam();
       }
+    });
+  }
+
+  void _startSessionMonitor() {
+    _sessionMonitorTimer?.cancel();
+    _sessionMonitorTimer = Timer.periodic(const Duration(seconds: 4), (_) async {
+      if (_isExamFinished || isExamLocked.value) return;
+      try {
+        final res = await _dio.get('/api/v1/student/exams/$examId/session');
+        if (res.statusCode == 200) {
+          final data = res.data;
+          final status = data['status']?.toString();
+          final reason = data['lock_reason']?.toString() ?? '';
+
+          if (status == 'PAUSED') {
+            if (!isExamPaused.value) {
+              isExamPaused.value = true;
+              pauseReason.value = reason.isNotEmpty 
+                  ? reason 
+                  : "Ujian diberhentikan sementara oleh pengawas karena suasana berisik.";
+            }
+          } else if (status == 'ONGOING') {
+            if (isExamPaused.value) {
+              isExamPaused.value = false;
+              pauseReason.value = '';
+              AppToast.success(
+                title: "Ujian Dilanjutkan",
+                message: "Pengawas telah melanjutkan kembali sesi ujian. Silakan lanjutkan pengerjaan Anda.",
+              );
+            }
+          } else if (status == 'LOCKED') {
+            _lockExamSession(reason.isNotEmpty ? reason : "Sesi ujian dikunci oleh pengawas.");
+          }
+        }
+      } catch (_) {}
     });
   }
 
@@ -354,6 +424,13 @@ class ExamController extends GetxController with WidgetsBindingObserver {
   }
 
   Future<void> selectAnswer(String answer) async {
+    if (isExamPaused.value) {
+      AppToast.warning(
+        title: "Ujian Dihentikan",
+        message: "Ujian sedang dihentikan sementara oleh pengawas. Anda tidak dapat mengisi jawaban saat ini.",
+      );
+      return;
+    }
     if (questions.isEmpty) return;
     final qId = questions[currentIndex.value]['id'];
     

@@ -128,6 +128,8 @@ func main() {
 			adminRoutes.GET("/exams/:id/export-grades", controllers.ExportExamGradesExcel)
 			adminRoutes.DELETE("/exams/:id/reset/:student_id", controllers.ResetStudentExam)
 			adminRoutes.POST("/exams/:id/unlock/:student_id", controllers.UnlockStudentExam)
+			adminRoutes.POST("/exams/:id/pause-students", controllers.PauseStudentsExam)
+			adminRoutes.POST("/exams/:id/resume-students", controllers.ResumeStudentsExam)
 			adminRoutes.DELETE("/exams/:id", controllers.DeleteExam)
 
 			// Supervisor Management
@@ -137,6 +139,10 @@ func main() {
 			adminRoutes.POST("/supervisors/import-excel", controllers.ImportSupervisorsExcel)
 			adminRoutes.POST("/supervisors", controllers.CreateSupervisor)
 			adminRoutes.PUT("/supervisors/:id", controllers.UpdateSupervisor)
+			adminRoutes.POST("/supervisors/:id/start", controllers.StartSupervisionSession)
+			adminRoutes.POST("/supervisors/:id/pause", controllers.PauseSupervisionSession)
+			adminRoutes.POST("/supervisors/:id/resume", controllers.ResumeSupervisionSession)
+			adminRoutes.POST("/supervisors/:id/finish", controllers.FinishSupervisionSession)
 			adminRoutes.DELETE("/supervisors/:id", controllers.DeleteSupervisor)
 
 			// User Management
