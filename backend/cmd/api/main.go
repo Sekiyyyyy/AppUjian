@@ -48,7 +48,7 @@ func main() {
 	r.Use(cors.New(cors.Config{
 		AllowAllOrigins:  true,
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization", "X-Device-ID"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization", "X-Device-ID", "X-App-Version", "X-App-Build"},
 		ExposeHeaders:    []string{"Content-Length"},
 		AllowCredentials: true,
 		MaxAge:           12 * time.Hour,
@@ -58,7 +58,7 @@ func main() {
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"status":  "healthy",
-			"version": "1.0.7",
+			"version": "1.0.8",
 		})
 	})
 
@@ -163,7 +163,7 @@ func main() {
 
 		// Student API Routes
 		studentRoutes := api.Group("/student")
-		studentRoutes.Use(auth.AuthMiddleware(cfg), auth.RoleMiddleware(string(models.RoleStudent)))
+		studentRoutes.Use(auth.AuthMiddleware(cfg), auth.RoleMiddleware(string(models.RoleStudent)), controllers.StudentVersionCheckMiddleware())
 		{
 			studentRoutes.GET("/exams", controllers.GetStudentExams)
 			studentRoutes.POST("/exams/:id/start", controllers.StartExam)

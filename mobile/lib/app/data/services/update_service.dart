@@ -3,64 +3,105 @@ import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../api_client.dart';
+import '../app_version.dart';
 import '../../theme/app_theme.dart';
 
 class UpdateService {
-  // Versi aplikasi yang sedang terpasang di perangkat saat ini
-  static const String currentVersion = "1.0.7";
-  static const int currentBuildNumber = 8;
+  // Versi aplikasi saat ini
+  static const String currentVersion = AppVersion.currentVersion;
+  static const int currentBuildNumber = AppVersion.currentBuildNumber;
 
-  static bool _hasChecked = false;
+  // Status reaktif apakah pembaruan wajib sedang aktif
+  static final RxBool isUpdateRequired = false.obs;
+  static final RxString latestVersion = currentVersion.obs;
+  static final RxInt latestBuild = currentBuildNumber.obs;
+  static final RxString updateTitle = 'Pembaruan Wajib Aplikasi CBT'.obs;
+  static final RxList<String> changelog = <String>[].obs;
+  static final RxString downloadUrl = 'https://ujian.tiksmkn1beringin.my.id/download'.obs;
+  static final RxBool isChecking = false.obs;
+
+  static bool _dialogShowing = false;
 
   /// Memeriksa pembaruan aplikasi ke backend
-  static Future<void> checkForUpdate({bool isManualCheck = false}) async {
-    // Hindari double check saat otomatis berjalan di startup
-    if (_hasChecked && !isManualCheck) return;
-    _hasChecked = true;
-
+  static Future<bool> checkForUpdate({bool isManualCheck = false}) async {
+    isChecking.value = true;
     try {
       final dio = ApiClient().dio;
       final response = await dio.get('/api/v1/app/version');
 
       if (response.statusCode == 200 && response.data != null) {
         final data = response.data;
-        final String latestVersion = data['latest_version'] ?? currentVersion;
+        final String remoteLatestVersion = data['latest_version']?.toString() ?? currentVersion;
+        final int remoteBuild = data['build_number'] is int ? data['build_number'] : int.tryParse(data['build_number']?.toString() ?? '') ?? currentBuildNumber;
+        final String remoteMinVersion = data['min_version']?.toString() ?? '1.0.0';
         final bool forceUpdate = data['force_update'] ?? false;
-        final String downloadUrl = data['download_url'] ?? 'https://ujian.tiksmkn1beringin.my.id/download';
-        final String title = data['title'] ?? 'Pembaruan Aplikasi Tersedia';
-        
-        List<String> changelog = [];
+        final String remoteDownloadUrl = data['download_url']?.toString() ?? 'https://ujian.tiksmkn1beringin.my.id/download';
+        final String remoteTitle = data['title']?.toString() ?? 'Pembaruan Wajib Aplikasi CBT';
+
+        List<String> remoteChangelog = [];
         if (data['changelog'] != null) {
-          changelog = List<String>.from(data['changelog']);
+          remoteChangelog = List<String>.from(data['changelog']);
         }
 
-        // Bandingkan apakah versi server lebih baru dari aplikasi saat ini
-        if (_isVersionNewer(latestVersion, currentVersion)) {
-          _showUpdateDialog(
-            latestVersion: latestVersion,
-            forceUpdate: forceUpdate,
-            downloadUrl: downloadUrl,
-            title: title,
-            changelog: changelog,
-          );
-        } else if (isManualCheck) {
-          Get.snackbar(
-            'Aplikasi Sudah Terbaru',
-            'Anda sedang menggunakan versi terbaru (v$currentVersion).',
-            backgroundColor: Colors.green.shade600,
-            colorText: Colors.white,
-            snackPosition: SnackPosition.BOTTOM,
-            margin: const EdgeInsets.all(16),
-            borderRadius: 12,
-          );
+        latestVersion.value = remoteLatestVersion;
+        latestBuild.value = remoteBuild;
+        downloadUrl.value = remoteDownloadUrl;
+        updateTitle.value = remoteTitle;
+        changelog.assignAll(remoteChangelog);
+
+        // Evaluasi apakah versi server lebih baru atau update diwajibkan
+        final bool hasNewerVersion = _isVersionNewer(remoteLatestVersion, currentVersion) || (remoteBuild > currentBuildNumber);
+        final bool isBelowMinVersion = _isVersionNewer(remoteMinVersion, currentVersion);
+        final bool shouldForce = hasNewerVersion || isBelowMinVersion || forceUpdate;
+
+        if (hasNewerVersion || shouldForce) {
+          isUpdateRequired.value = true;
+          _showUpdateDialog();
+          return true;
+        } else {
+          isUpdateRequired.value = false;
+          if (_dialogShowing && Get.isDialogOpen == true) {
+            Get.back();
+            _dialogShowing = false;
+          }
+          if (isManualCheck) {
+            Get.snackbar(
+              'Aplikasi Sudah Terbaru',
+              'Anda sedang menggunakan versi terbaru (v$currentVersion).',
+              backgroundColor: Colors.green.shade600,
+              colorText: Colors.white,
+              snackPosition: SnackPosition.BOTTOM,
+              margin: const EdgeInsets.all(16),
+              borderRadius: 12,
+              icon: const Icon(Icons.check_circle_outline, color: Colors.white),
+            );
+          }
+          return false;
         }
       }
     } catch (e) {
-      debugPrint('Gagal memeriksa pembaruan: $e');
+      debugPrint('Gagal memeriksa pembaruan aplikasi: $e');
+    } finally {
+      isChecking.value = false;
     }
+    return isUpdateRequired.value;
   }
 
-  /// Membandingkan semver string (contoh: "1.0.1" vs "1.0.0")
+  /// Dipanggil ketika backend merespons 426 Upgrade Required
+  static void onUpgradeRequired(Map<String, dynamic>? data) {
+    if (data != null) {
+      if (data['latest_version'] != null) {
+        latestVersion.value = data['latest_version'].toString();
+      }
+      if (data['download_url'] != null) {
+        downloadUrl.value = data['download_url'].toString();
+      }
+    }
+    isUpdateRequired.value = true;
+    _showUpdateDialog();
+  }
+
+  /// Membandingkan semver string (contoh: "1.0.8" vs "1.0.7")
   static bool _isVersionNewer(String remote, String local) {
     if (remote == local) return false;
     try {
@@ -79,31 +120,41 @@ class UpdateService {
     return false;
   }
 
-  /// Menampilkan popup dialog pembaruan aplikasi
-  static void _showUpdateDialog({
-    required String latestVersion,
-    required bool forceUpdate,
-    required String downloadUrl,
-    required String title,
-    required List<String> changelog,
-  }) {
+  /// Membuka tautan download installer / APK aplikasi
+  static Future<void> openDownloadUrl() async {
+    final uri = Uri.parse(downloadUrl.value);
+    try {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
+    } catch (e) {
+      debugPrint('Error membuka URL unduhan: $e');
+    }
+  }
+
+  /// Menampilkan popup dialog pembaruan wajib aplikasi (tidak bisa ditutup/dilewati)
+  static void _showUpdateDialog() {
+    if (_dialogShowing && Get.isDialogOpen == true) return;
+    _dialogShowing = true;
+
     Get.dialog(
       PopScope(
-        canPop: !forceUpdate, // Cegah tombol back jika update wajib
+        canPop: false, // TIDAK BISA DI-BACK/DITUTUP KARENA WAJIB UPDATE
         child: AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-          contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+          contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 20),
           title: Row(
             children: [
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: AppTheme.primaryColor.withOpacity(0.12),
+                  color: Colors.red.shade50,
                   shape: BoxShape.circle,
+                  border: Border.all(color: Colors.red.shade200),
                 ),
-                child: const Icon(
-                  Icons.system_update_rounded,
-                  color: AppTheme.primaryColor,
+                child: Icon(
+                  Icons.system_security_update_rounded,
+                  color: Colors.red.shade600,
                   size: 28,
                 ),
               ),
@@ -113,134 +164,201 @@ class UpdateService {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      title,
+                      'Pembaruan Wajib',
                       style: GoogleFonts.inter(
                         fontWeight: FontWeight.bold,
                         fontSize: 18,
-                        color: AppTheme.textPrimary,
+                        color: Colors.red.shade800,
                       ),
                     ),
-                    Text(
-                      'Versi v$latestVersion Tersedia',
+                    Obx(() => Text(
+                      'Versi v${latestVersion.value} Wajib Dipasang',
                       style: GoogleFonts.inter(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
                         color: AppTheme.primaryColor,
                       ),
-                    ),
+                    )),
                   ],
                 ),
               ),
             ],
           ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 8),
-              Text(
-                'Telah tersedia pembaruan untuk aplikasi CBT Anda. Perbarui sekarang untuk fitur terbaru dan kestabilan ujian.',
-                style: GoogleFonts.inter(
-                  fontSize: 13,
-                  color: AppTheme.textSecondary,
-                  height: 1.4,
-                ),
-              ),
-              if (changelog.isNotEmpty) ...[
-                const SizedBox(height: 16),
-                Text(
-                  'Catatan Perubahan:',
-                  style: GoogleFonts.inter(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12,
-                    color: AppTheme.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 8),
+          content: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 420),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Warning Banner
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.grey.shade50,
+                    color: Colors.red.shade50,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.grey.shade200),
+                    border: Border.all(color: Colors.red.shade200),
                   ),
-                  child: Column(
+                  child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    children: changelog.map((item) => Padding(
-                      padding: const EdgeInsets.only(bottom: 4),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('• ', style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.primaryColor)),
-                          Expanded(
-                            child: Text(
-                              item,
-                              style: GoogleFonts.inter(fontSize: 12, color: Colors.grey.shade700),
-                            ),
+                    children: [
+                      Icon(Icons.warning_amber_rounded, size: 20, color: Colors.red.shade700),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Demi keamanan, kestabilan, dan keadilan ujian, aplikasi versi ini WAJIB diperbarui sebelum dapat digunakan.',
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.red.shade900,
+                            height: 1.4,
                           ),
-                        ],
+                        ),
                       ),
-                    )).toList(),
+                    ],
                   ),
                 ),
+                const SizedBox(height: 14),
+
+                // Version Badge Comparison
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.grey.shade300),
+                      ),
+                      child: Text(
+                        'Versi Lama: v$currentVersion',
+                        style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.grey.shade600),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    const Icon(Icons.arrow_forward_rounded, size: 14, color: Colors.grey),
+                    const SizedBox(width: 8),
+                    Obx(() => Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.green.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.green.shade300),
+                      ),
+                      child: Text(
+                        'Versi Baru: v${latestVersion.value}',
+                        style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.green.shade700),
+                      ),
+                    )),
+                  ],
+                ),
+
+                // Changelog
+                Obx(() {
+                  if (changelog.isEmpty) return const SizedBox.shrink();
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 14),
+                      Text(
+                        'Catatan Pembaruan:',
+                        style: GoogleFonts.inter(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                          color: AppTheme.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Container(
+                        constraints: const BoxConstraints(maxHeight: 120),
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade50,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: Colors.grey.shade200),
+                        ),
+                        child: SingleChildScrollView(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: changelog.map((item) => Padding(
+                              padding: const EdgeInsets.only(bottom: 4),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text('• ', style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.primaryColor)),
+                                  Expanded(
+                                    child: Text(
+                                      item,
+                                      style: GoogleFonts.inter(fontSize: 11, color: Colors.grey.shade800),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )).toList(),
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                }),
               ],
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  const Icon(Icons.info_outline, size: 14, color: Colors.grey),
-                  const SizedBox(width: 6),
-                  Text(
-                    'Versi Anda saat ini: v$currentVersion',
-                    style: GoogleFonts.inter(fontSize: 11, color: Colors.grey),
-                  ),
-                ],
-              ),
-            ],
+            ),
           ),
           actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
           actions: [
-            if (!forceUpdate)
-              TextButton(
-                onPressed: () => Get.back(),
-                child: Text(
-                  'Nanti Saja',
-                  style: GoogleFonts.inter(color: Colors.grey.shade600, fontWeight: FontWeight.w600),
-                ),
-              ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primaryColor,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-              ),
-              onPressed: () async {
-                final uri = Uri.parse(downloadUrl);
-                try {
-                  if (await canLaunchUrl(uri)) {
-                    await launchUrl(uri, mode: LaunchMode.externalApplication);
-                  }
-                } catch (e) {
-                  debugPrint('Error membuka URL: $e');
-                }
-              },
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.download_rounded, size: 18),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Perbarui Sekarang',
-                    style: GoogleFonts.inter(fontWeight: FontWeight.bold),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      side: BorderSide(color: Colors.grey.shade300),
+                    ),
+                    onPressed: () => checkForUpdate(isManualCheck: true),
+                    icon: Obx(() => isChecking.value 
+                      ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Icon(Icons.refresh_rounded, size: 16)),
+                    label: Text(
+                      'Periksa Kembali',
+                      style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 12, color: Colors.grey.shade700),
+                    ),
                   ),
-                ],
-              ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  flex: 2,
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primaryColor,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    onPressed: openDownloadUrl,
+                    icon: const Icon(Icons.download_rounded, size: 18),
+                    label: Text(
+                      'Unduh Sekarang',
+                      style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
       ),
-      barrierDismissible: !forceUpdate,
-    );
+      barrierDismissible: false,
+    ).then((_) {
+      _dialogShowing = false;
+      // Jika masih required tapi dialog tertutup oleh sistem, trigger ulang
+      if (isUpdateRequired.value) {
+        Future.delayed(const Duration(milliseconds: 300), () {
+          if (isUpdateRequired.value) {
+            _showUpdateDialog();
+          }
+        });
+      }
+    });
   }
 }

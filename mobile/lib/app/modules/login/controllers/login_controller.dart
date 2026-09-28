@@ -18,10 +18,7 @@ class LoginController extends GetxController {
   @override
   void onReady() {
     super.onReady();
-    // Otomatis cek apakah ada pembaruan aplikasi saat layar login siap
-    Future.delayed(const Duration(milliseconds: 500), () {
-      UpdateService.checkForUpdate();
-    });
+    UpdateService.checkForUpdate();
   }
 
   @override
@@ -32,6 +29,12 @@ class LoginController extends GetxController {
   }
 
   Future<void> login() async {
+    if (UpdateService.isUpdateRequired.value) {
+      errorMessage.value = "Aplikasi Anda wajib diperbarui ke versi terbaru.";
+      UpdateService.checkForUpdate(isManualCheck: true);
+      return;
+    }
+
     if (nisnController.text.isEmpty || passwordController.text.isEmpty) {
       errorMessage.value = "NISN dan Password tidak boleh kosong";
       return;

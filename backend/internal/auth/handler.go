@@ -2,9 +2,11 @@ package auth
 
 import (
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/AppUjian/backend/config"
+	"github.com/AppUjian/backend/internal/controllers"
 	"github.com/AppUjian/backend/internal/models"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
@@ -41,6 +43,25 @@ func LoginHandler(cfg *config.Config) gin.HandlerFunc {
 		if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid username or password"})
 			return
+		}
+
+		// If user is student, enforce app version check to prevent bypass via old versions
+		if user.Role == models.RoleStudent {
+			clientVersion := c.GetHeader("X-App-Version")
+			clientBuildStr := c.GetHeader("X-App-Build")
+			clientBuild, _ := strconv.Atoi(clientBuildStr)
+
+			if controllers.IsVersionOutdated(clientVersion, clientBuild) {
+				c.JSON(http.StatusUpgradeRequired, gin.H{
+					"error":            "Versi aplikasi Anda sudah usang. Wajib memperbarui ke versi terbaru (v" + controllers.CurrentLatestAppVersion + ") sebelum dapat login!",
+					"upgrade_required": true,
+					"latest_version":   controllers.CurrentLatestAppVersion,
+					"build_number":     controllers.CurrentLatestBuildNumber,
+					"min_version":      controllers.CurrentMinAppVersion,
+					"download_url":     controllers.CurrentAppDownloadURL,
+				})
+				return
+			}
 		}
 
 		// Device Registration/Validation check could go here for Students

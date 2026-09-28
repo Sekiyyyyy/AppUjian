@@ -1,5 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'app_version.dart';
+import 'services/update_service.dart';
 
 class ApiClient {
   static final ApiClient _instance = ApiClient._internal();
@@ -18,6 +20,8 @@ class ApiClient {
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
+          'X-App-Version': AppVersion.currentVersion,
+          'X-App-Build': AppVersion.currentBuildNumber.toString(),
         },
       ),
     );
@@ -25,6 +29,9 @@ class ApiClient {
     dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
+          options.headers['X-App-Version'] = AppVersion.currentVersion;
+          options.headers['X-App-Build'] = AppVersion.currentBuildNumber.toString();
+
           if (_cachedToken != null && _cachedToken!.isNotEmpty) {
             options.headers['Authorization'] = 'Bearer $_cachedToken';
           } else {
@@ -38,6 +45,10 @@ class ApiClient {
           return handler.next(options);
         },
         onError: (DioException error, handler) {
+          if (error.response?.statusCode == 426 || 
+              (error.response?.data is Map && error.response?.data['upgrade_required'] == true)) {
+            UpdateService.onUpgradeRequired(error.response?.data is Map ? error.response?.data : null);
+          }
           return handler.next(error);
         },
       ),

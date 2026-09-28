@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../utils/app_toast.dart';
 import '../../../data/api_client.dart';
+import '../../../data/services/update_service.dart';
 
 class HomeController extends GetxController {
   final _dio = ApiClient().dio;
@@ -20,6 +21,7 @@ class HomeController extends GetxController {
   @override
   void onInit() {
     super.onInit();
+    UpdateService.checkForUpdate();
     fetchExams();
     loadProfile();
   }
@@ -124,7 +126,10 @@ class HomeController extends GetxController {
         }
       }
     } catch (e) {
-      if (e is DioException && (e.response?.statusCode == 401 || e.response?.statusCode == 403)) {
+      if (e is DioException && e.response?.statusCode == 426) {
+        // Upgrade required, UpdateService has already triggered the mandatory update UI
+        return;
+      } else if (e is DioException && (e.response?.statusCode == 401 || e.response?.statusCode == 403)) {
         logout();
         WidgetsBinding.instance.addPostFrameCallback((_) {
           AppToast.error(
@@ -146,6 +151,11 @@ class HomeController extends GetxController {
   }
 
   void startExam(dynamic exam) async {
+    if (UpdateService.isUpdateRequired.value) {
+      UpdateService.checkForUpdate(isManualCheck: true);
+      return;
+    }
+
     if (exam['session_status'] == 'MENUNGGU PENGAWAS' || exam['can_start'] == false) {
       AppToast.info(
         title: "Menunggu Pengawas",
