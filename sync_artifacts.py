@@ -96,30 +96,19 @@ def github_api(endpoint: str) -> dict:
 
 
 def download_artifact_zip(download_url: str, dest_path: Path):
-    """Download an artifact zip by following GitHub's redirect to Azure Blob Storage."""
-    # GitHub returns a 302 redirect to a pre-signed URL.
-    # We need to follow the redirect. urllib does this automatically,
-    # but we need the right Accept header for the initial request.
-    
-    class NoRedirectHandler(urllib.request.HTTPRedirectHandler):
-        def redirect_request(self, req, fp, code, msg, headers, newurl):
-            # Return a new request to the redirect URL WITHOUT auth headers
-            return urllib.request.Request(newurl)
-    
-    opener = urllib.request.build_opener(NoRedirectHandler)
-    
-    req = urllib.request.Request(download_url, headers={
-        "Authorization": f"Bearer {GITHUB_TOKEN}",
-        "Accept": "application/vnd.github+json",
-        "X-GitHub-Api-Version": "2022-11-28",
-    })
-    
-    try:
-        with opener.open(req, timeout=120) as resp:
-            dest_path.write_bytes(resp.read())
-    except urllib.error.HTTPError as e:
-        log.error(f"Download error {e.code}: {e.reason} for {download_url}")
-        raise
+    """Download an artifact zip using curl with IPv4 to avoid DNS/IPv6 redirect issues."""
+    import subprocess
+    cmd = [
+        "curl", "-4", "-s", "-L",
+        "-H", f"Authorization: Bearer {GITHUB_TOKEN}",
+        "-H", "Accept: application/vnd.github+json",
+        "-H", "X-GitHub-Api-Version: 2022-11-28",
+        download_url,
+        "-o", str(dest_path)
+    ]
+    res = subprocess.run(cmd, capture_output=True, text=True)
+    if res.returncode != 0 or not dest_path.exists() or dest_path.stat().st_size == 0:
+        raise RuntimeError(f"Curl failed to download {download_url}: {res.stderr}")
 
 
 def get_latest_successful_run() -> dict | None:
