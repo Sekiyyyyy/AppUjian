@@ -18,7 +18,9 @@ import {
   FileSpreadsheet,
   Download,
   Sparkles,
-  Tag
+  Tag,
+  Lock,
+  UserCheck
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { confirmAction, showSuccessToast, showErrorToast } from '../utils/alert';
@@ -77,11 +79,31 @@ interface ExamItem {
   pengawas?: string;
   classes?: ClassItem[];
   questions?: QuestionItem[];
+  teacher_id?: number;
+  teacher?: {
+    id: number;
+    name: string;
+    username: string;
+  };
   CreatedAt: string;
 }
 
 const Exams = () => {
   const { token, user: currentUser } = useAuth();
+
+  // Permission helpers: only creator teacher or admin can modify/download exam
+  const canModifyExam = (exam: ExamItem) => {
+    if (!currentUser) return false;
+    if (currentUser.role === 'ADMIN' || currentUser.role === 'SUPER_ADMIN') return true;
+    return exam.teacher_id === currentUser.id || exam.teacher?.id === currentUser.id;
+  };
+
+  const canDownloadExam = (exam: ExamItem) => {
+    if (!currentUser) return false;
+    if (currentUser.role === 'ADMIN' || currentUser.role === 'SUPER_ADMIN') return true;
+    return exam.teacher_id === currentUser.id || exam.teacher?.id === currentUser.id;
+  };
+
   const [searchParams] = useSearchParams();
   const [exams, setExams] = useState<ExamItem[]>([]);
   const [subjects, setSubjects] = useState<SubjectItem[]>([]);
@@ -220,7 +242,11 @@ const Exams = () => {
     } else if (actionParam === 'schedule' && examParam && exams.length > 0) {
       const found = exams.find(e => e.ID === Number(examParam));
       if (found) {
-        handleEditClick(found);
+        if (canModifyExam(found)) {
+          handleEditClick(found);
+        } else {
+          showErrorToast('Akses Ditolak: Hanya guru pembuat ujian yang berhak mengedit jadwal ujian ini.');
+        }
       }
     }
   }, [searchParams, exams]);
@@ -252,6 +278,10 @@ const Exams = () => {
   };
 
   const handleEditClick = (exam: ExamItem) => {
+    if (!canModifyExam(exam)) {
+      showErrorToast('Akses Ditolak: Hanya guru pembuat ujian yang berhak mengedit jadwal ujian ini.');
+      return;
+    }
     setEditingExam(exam);
     setEditingId(exam.ID);
     setTitle(exam.title);
@@ -345,6 +375,10 @@ const Exams = () => {
       }
 
       if (editingId) {
+        if (editingExam && !canModifyExam(editingExam)) {
+          showErrorToast('Akses Ditolak: Hanya guru pembuat ujian yang berhak mengedit jadwal ujian ini.');
+          return;
+        }
         await axios.put(`/api/v1/admin/exams/${editingId}`, payload, {
           headers: { Authorization: `Bearer ${token}` }
         });
@@ -367,6 +401,11 @@ const Exams = () => {
   };
 
   const handleDeleteExam = async (id: number, examTitle: string) => {
+    const targetExam = exams.find(e => e.ID === id);
+    if (targetExam && !canModifyExam(targetExam)) {
+      showErrorToast('Akses Ditolak: Hanya guru pembuat ujian yang berhak menghapus jadwal ujian ini.');
+      return;
+    }
     if (!(await confirmAction('Hapus Jadwal Ujian', `Yakin ingin menghapus jadwal ujian "${examTitle}"?`))) return;
 
     try {
@@ -381,6 +420,11 @@ const Exams = () => {
   };
 
   const handleToggleMakeup = async (id: number, currentStatus: boolean) => {
+    const targetExam = exams.find(e => e.ID === id);
+    if (targetExam && !canModifyExam(targetExam)) {
+      showErrorToast('Akses Ditolak: Hanya guru pembuat ujian yang berhak mengubah status susulan.');
+      return;
+    }
     const actionName = currentStatus ? "menutup" : "membuka";
     if (!(await confirmAction('Akses Ujian Susulan', `Yakin ingin ${actionName} akses ujian susulan?`))) return;
     try {
@@ -548,49 +592,75 @@ const Exams = () => {
                       </span>
                     </div>
 
-                    <div className="flex space-x-1">
-                      <button
-                        onClick={() => {
-                          setSelectedExamForDownload(exam);
-                          setSelectedClassForDownload('ALL');
-                          setIsDownloadModalOpen(true);
-                        }}
-                        className="text-slate-300 hover:text-emerald-600 hover:bg-emerald-50 p-1.5 rounded-lg transition-colors"
-                        title="Download Nilai Per Kelas (Excel)"
-                      >
-                        <FileSpreadsheet size={16} />
-                      </button>
+                    <div className="flex space-x-1 items-center">
+                      {canDownloadExam(exam) && (
+                        <button
+                          onClick={() => {
+                            setSelectedExamForDownload(exam);
+                            setSelectedClassForDownload('ALL');
+                            setIsDownloadModalOpen(true);
+                          }}
+                          className="text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 p-1.5 rounded-lg transition-colors"
+                          title="Download Nilai Per Kelas (Excel)"
+                        >
+                          <FileSpreadsheet size={16} />
+                        </button>
+                      )}
                       <button
                         onClick={() => {
                           setSelectedExamForParticipants({ id: exam.ID, title: exam.title });
                           setIsParticipantsModalOpen(true);
                         }}
-                        className="text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 p-1.5 rounded-lg transition-colors"
+                        className="text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 p-1.5 rounded-lg transition-colors"
                         title="Daftar Peserta"
                       >
                         <Users size={16} />
                       </button>
-                      <button
-                        onClick={() => handleEditClick(exam)}
-                        className="text-slate-300 hover:text-amber-600 hover:bg-amber-50 p-1.5 rounded-lg transition-colors"
-                        title="Edit Jadwal"
-                      >
-                        <Edit2 size={16} />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteExam(exam.ID, exam.title)}
-                        className="text-slate-300 hover:text-red-600 hover:bg-red-50 p-1.5 rounded-lg transition-colors"
-                        title="Hapus Jadwal"
-                      >
-                        <Trash2 size={16} />
-                      </button>
+                      {canModifyExam(exam) ? (
+                        <>
+                          <button
+                            onClick={() => handleEditClick(exam)}
+                            className="text-slate-400 hover:text-amber-600 hover:bg-amber-50 p-1.5 rounded-lg transition-colors"
+                            title="Edit Jadwal"
+                          >
+                            <Edit2 size={16} />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteExam(exam.ID, exam.title)}
+                            className="text-slate-400 hover:text-red-600 hover:bg-red-50 p-1.5 rounded-lg transition-colors"
+                            title="Hapus Jadwal"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </>
+                      ) : (
+                        <div
+                          className="px-2 py-1 bg-slate-100 text-slate-400 rounded-lg text-xs font-semibold flex items-center space-x-1 cursor-not-allowed ml-0.5"
+                          title={`Ujian dibuat oleh ${exam.teacher?.name || exam.teacher?.username || 'guru lain'}. Anda tidak dapat mengedit atau menghapus jadwal ini.`}
+                        >
+                          <Lock size={12} />
+                          <span>Hanya Baca</span>
+                        </div>
+                      )}
                     </div>
                   </div>
 
-                  {/* Title */}
-                  <h3 className="text-xl font-bold text-slate-800 mb-2 leading-snug">
+                  {/* Title & Creator */}
+                  <h3 className="text-xl font-bold text-slate-800 mb-1 leading-snug">
                     {exam.title}
                   </h3>
+
+                  <div className="flex items-center space-x-1.5 text-xs text-slate-500 mb-3">
+                    {exam.teacher_id === currentUser?.id ? (
+                      <span className="inline-flex items-center text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                        <UserCheck size={12} className="mr-1" /> Ujian Anda
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center text-xs text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">
+                        Pembuat: <strong className="ml-1 text-slate-700 font-semibold">{exam.teacher?.name || exam.teacher?.username || 'Admin'}</strong>
+                      </span>
+                    )}
+                  </div>
 
                   {/* Timing Details */}
                   <div className="space-y-1.5 text-xs text-slate-600 mb-4 bg-slate-50 p-3 rounded-xl border border-slate-100">
@@ -641,7 +711,7 @@ const Exams = () => {
                       <span>{exam.questions?.length || 0} Soal (Kelola)</span>
                     </Link>
 
-                    {exam.status === 'DRAFT' && (
+                    {exam.status === 'DRAFT' && canModifyExam(exam) && (
                       <button
                         onClick={() => handleEditClick(exam)}
                         className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold flex items-center space-x-1 shadow-2xs transition-all"
@@ -652,7 +722,7 @@ const Exams = () => {
                     )}
                   </div>
 
-                  {isExpired && currentUser?.role === 'ADMIN' ? (
+                  {isExpired && canModifyExam(exam) ? (
                     <button
                       onClick={() => handleToggleMakeup(exam.ID, exam.is_makeup_open)}
                       className={`px-3 py-1 text-white rounded font-bold shadow-sm transition-colors ${exam.is_makeup_open ? 'bg-red-500 hover:bg-red-600' : 'bg-amber-500 hover:bg-amber-600'

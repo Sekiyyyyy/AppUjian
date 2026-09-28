@@ -178,8 +178,8 @@ func DeleteExam(c *gin.Context) {
 	}
 
 	if exists && role == string(models.RoleTeacher) {
-		if exam.TeacherID != 0 && exam.TeacherID != currentUserID {
-			c.JSON(http.StatusForbidden, gin.H{"error": "Hanya guru pembuat ujian yang berhak menghapus ujian ini"})
+		if exam.TeacherID != currentUserID || exam.TeacherID == 0 {
+			c.JSON(http.StatusForbidden, gin.H{"error": "Hanya guru pembuat ujian ini yang berhak menghapus jadwal ujian ini"})
 			return
 		}
 	}
@@ -244,6 +244,24 @@ func ToggleMakeup(c *gin.Context) {
 		return
 	}
 
+	role, exists := c.Get("role")
+	userID, idExists := c.Get("userID")
+	var currentUserID uint
+	if idExists {
+		if idFloat, ok := userID.(float64); ok {
+			currentUserID = uint(idFloat)
+		} else if idUint, ok := userID.(uint); ok {
+			currentUserID = idUint
+		}
+	}
+
+	if exists && role == string(models.RoleTeacher) {
+		if exam.TeacherID != currentUserID || exam.TeacherID == 0 {
+			c.JSON(http.StatusForbidden, gin.H{"error": "Hanya guru pembuat ujian ini yang berhak mengubah status susulan"})
+			return
+		}
+	}
+
 	exam.IsMakeupOpen = !exam.IsMakeupOpen
 	if err := config.DB.Save(&exam).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengubah status susulan"})
@@ -288,8 +306,8 @@ func UpdateExam(c *gin.Context) {
 	}
 
 	if exists && role == string(models.RoleTeacher) {
-		if exam.TeacherID != 0 && exam.TeacherID != currentUserID {
-			c.JSON(http.StatusForbidden, gin.H{"error": "Hanya guru pembuat ujian yang berhak mengedit jadwal ujian ini"})
+		if exam.TeacherID != currentUserID || exam.TeacherID == 0 {
+			c.JSON(http.StatusForbidden, gin.H{"error": "Hanya guru pembuat ujian ini yang berhak mengedit jadwal ujian ini"})
 			return
 		}
 	}
@@ -335,7 +353,7 @@ func UpdateExam(c *gin.Context) {
 		return
 	}
 
-	config.DB.Preload("Subject").Preload("Category").Preload("Classes").Preload("Questions").First(&exam, exam.ID)
+	config.DB.Preload("Subject").Preload("Category").Preload("Classes").Preload("Questions").Preload("Teacher").First(&exam, exam.ID)
 	c.JSON(http.StatusOK, exam)
 }
 

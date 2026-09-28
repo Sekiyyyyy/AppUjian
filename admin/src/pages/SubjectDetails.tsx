@@ -160,8 +160,8 @@ const SubjectDetails: React.FC = () => {
   // Check if current user can edit/delete this exam
   const canModifyExam = (exam: ExamItem) => {
     if (!currentUser) return false;
-    if (currentUser.role === 'ADMIN') return true;
-    return exam.teacher_id === currentUser.id;
+    if (currentUser.role === 'ADMIN' || currentUser.role === 'SUPER_ADMIN') return true;
+    return exam.teacher_id === currentUser.id || exam.teacher?.id === currentUser.id;
   };
 
   // Open Create Exam Modal
