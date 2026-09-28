@@ -124,11 +124,23 @@ class UpdateService {
   static Future<void> openDownloadUrl() async {
     final uri = Uri.parse(downloadUrl.value);
     try {
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      final launched = await launchUrl(
+        uri,
+        mode: LaunchMode.externalApplication,
+      );
+      if (!launched) {
+        await launchUrl(
+          uri,
+          mode: LaunchMode.platformDefault,
+        );
       }
     } catch (e) {
-      debugPrint('Error membuka URL unduhan: $e');
+      debugPrint('Error membuka URL unduhan (external): $e');
+      try {
+        await launchUrl(uri);
+      } catch (err) {
+        debugPrint('Error membuka URL unduhan (fallback): $err');
+      }
     }
   }
 
