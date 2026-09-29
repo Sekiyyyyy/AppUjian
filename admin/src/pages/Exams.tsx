@@ -722,19 +722,22 @@ const Exams = () => {
                     )}
                   </div>
 
-                  {isExpired && canModifyExam(exam) ? (
-                    <button
-                      onClick={() => handleToggleMakeup(exam.ID, exam.is_makeup_open)}
-                      className={`px-3 py-1 text-white rounded font-bold shadow-sm transition-colors ${exam.is_makeup_open ? 'bg-red-500 hover:bg-red-600' : 'bg-amber-500 hover:bg-amber-600'
-                        }`}
-                    >
-                      {exam.is_makeup_open ? 'Tutup Susulan' : 'Buka Susulan'}
-                    </button>
-                  ) : (
-                    <span className="font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">
+                  <div className="flex items-center space-x-2">
+                    <span className="font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">
                       Total: {exam.total_points || 100} Poin
                     </span>
-                  )}
+
+                    {exam.status !== 'DRAFT' && canModifyExam(exam) && (exam.is_makeup_open || isExpired || new Date() >= startDate) && (
+                      <button
+                        onClick={() => handleToggleMakeup(exam.ID, exam.is_makeup_open)}
+                        className={`px-3 py-1 text-white rounded font-bold shadow-sm transition-colors ${
+                          exam.is_makeup_open ? 'bg-red-500 hover:bg-red-600' : 'bg-amber-500 hover:bg-amber-600'
+                        }`}
+                      >
+                        {exam.is_makeup_open ? 'Tutup Susulan' : 'Buka Susulan'}
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             );
