@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/AppUjian/backend/config"
 	"github.com/AppUjian/backend/internal/models"
@@ -90,7 +91,11 @@ func GetStudentExams(c *gin.Context) {
 
 		if status == "" || status == "BELUM MULAI" {
 			if !canStart && !exam.IsMakeupOpen {
-				status = "MENUNGGU PENGAWAS"
+				if time.Now().After(exam.EndTime) {
+					status = "BELUM MULAI"
+				} else {
+					status = "MENUNGGU PENGAWAS"
+				}
 			} else {
 				status = "BELUM MULAI"
 			}

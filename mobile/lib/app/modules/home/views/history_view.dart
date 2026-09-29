@@ -108,24 +108,39 @@ class HistoryView extends GetView<HomeController> {
 
   Widget _buildHistoryCard(BuildContext context, dynamic exam) {
     final status = exam['session_status']?.toString() ?? 'BELUM MULAI';
+    final isFinished = status == 'FINISHED' || status == 'SUBMITTED' || status == 'SELESAI';
     final isTimeout = status == 'TIMEOUT';
-    final isMissed = status == 'BELUM MULAI';
+    final isLocked = status == 'LOCKED';
 
-    Color bgColor = Colors.green.shade50;
-    Color borderColor = Colors.green.shade100;
-    Color textColor = Colors.green.shade700;
-    Color iconColor = Colors.green.shade600;
-    IconData statusIcon = Icons.check_circle_rounded;
-    String statusLabel = 'Selesai';
+    Color bgColor;
+    Color borderColor;
+    Color textColor;
+    Color iconColor;
+    IconData statusIcon;
+    String statusLabel;
 
-    if (isTimeout) {
+    if (isFinished) {
+      bgColor = Colors.green.shade50;
+      borderColor = Colors.green.shade100;
+      textColor = Colors.green.shade700;
+      iconColor = Colors.green.shade600;
+      statusIcon = Icons.check_circle_rounded;
+      statusLabel = 'Selesai';
+    } else if (isTimeout) {
       bgColor = Colors.red.shade50;
       borderColor = Colors.red.shade100;
       textColor = Colors.red.shade700;
       iconColor = Colors.red.shade600;
       statusIcon = Icons.timer_off_rounded;
       statusLabel = 'Waktu Habis';
-    } else if (isMissed) {
+    } else if (isLocked) {
+      bgColor = Colors.red.shade50;
+      borderColor = Colors.red.shade100;
+      textColor = Colors.red.shade700;
+      iconColor = Colors.red.shade600;
+      statusIcon = Icons.lock_rounded;
+      statusLabel = 'Terkunci';
+    } else {
       bgColor = Colors.amber.shade50;
       borderColor = Colors.amber.shade100;
       textColor = Colors.amber.shade800;
