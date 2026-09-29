@@ -35,6 +35,8 @@ android {
             storePassword = "appujianpassword2026"
             keyAlias = "appujian"
             keyPassword = "appujianpassword2026"
+            enableV1Signing = true
+            enableV2Signing = true
         }
     }
 

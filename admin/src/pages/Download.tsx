@@ -22,6 +22,7 @@ interface VersionInfo {
 
 const DownloadPage: React.FC = () => {
   const [versionInfo, setVersionInfo] = useState<VersionInfo | null>(null);
+  const [guideTab, setGuideTab] = useState<'android' | 'windows' | 'ios'>('android');
 
   useEffect(() => {
     axios.get('/api/v1/app/version')
@@ -243,20 +244,213 @@ const DownloadPage: React.FC = () => {
           </div>
         </div>
 
+        {/* Security Assurance Banner */}
+        <div className="mb-10 bg-gradient-to-r from-emerald-950/60 via-slate-900/80 to-sky-950/60 border border-emerald-500/30 rounded-2xl p-5 sm:p-6 backdrop-blur-md shadow-2xl relative overflow-hidden">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div className="flex items-start space-x-3.5">
+              <div className="w-12 h-12 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 flex-shrink-0 mt-0.5">
+                <ShieldCheck size={28} />
+              </div>
+              <div>
+                <div className="flex items-center space-x-2">
+                  <h4 className="font-bold text-white text-base sm:text-lg">Aplikasi Resmi & 100% Aman</h4>
+                  <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
+                    Terverifikasi
+                  </span>
+                </div>
+                <p className="text-slate-300 text-xs sm:text-sm mt-1 leading-relaxed">
+                  Aplikasi CBT SMKN 1 Beringin bebas virus dan malware. <b>Jangan mematikan proteksi perangkat</b> (Play Protect & Antivirus tetap aman aktif). Ikuti panduan 2 langkah di bawah jika muncul dialog konfirmasi instalasi.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Interactive Installation Guide */}
+        <div className="mb-10 bg-slate-900/70 border border-slate-700/80 rounded-2xl p-5 sm:p-7 backdrop-blur-md shadow-xl">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6 pb-4 border-b border-slate-800">
+            <div>
+              <h3 className="font-bold text-lg text-white flex items-center gap-2">
+                <span>Panduan Pemasangan Cepat (Bebas Blokir)</span>
+              </h3>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Pilih jenis perangkat Anda di bawah ini untuk melihat cara pasang tanpa mematikan proteksi:
+              </p>
+            </div>
+
+            {/* Platform Selector Tabs */}
+            <div className="flex items-center bg-slate-800/90 p-1 rounded-xl border border-slate-700 text-xs font-medium">
+              <button
+                type="button"
+                onClick={() => setGuideTab('android')}
+                className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg transition-all ${
+                  guideTab === 'android'
+                    ? 'bg-sky-600 text-white shadow-md font-semibold'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <Smartphone size={14} />
+                <span>Android</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setGuideTab('windows')}
+                className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg transition-all ${
+                  guideTab === 'windows'
+                    ? 'bg-emerald-600 text-white shadow-md font-semibold'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <Monitor size={14} />
+                <span>Windows</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setGuideTab('ios')}
+                className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg transition-all ${
+                  guideTab === 'ios'
+                    ? 'bg-violet-600 text-white shadow-md font-semibold'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <Apple size={14} />
+                <span>iOS / Mac</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Tab Content: Android */}
+          {guideTab === 'android' && (
+            <div className="space-y-4 animate-in fade-in duration-200">
+              <div className="grid md:grid-cols-2 gap-4">
+                {/* Step 1 */}
+                <div className="bg-slate-800/50 border border-slate-700/60 rounded-xl p-4 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center space-x-2 text-sky-400 font-bold text-sm mb-2">
+                      <span className="w-6 h-6 rounded-full bg-sky-500/20 border border-sky-500/40 flex items-center justify-center text-xs">1</span>
+                      <span>Saat Mengunduh di Google Chrome</span>
+                    </div>
+                    <p className="text-xs text-slate-300 leading-relaxed mb-3">
+                      Jika muncul pemberitahuan <i>"File mungkin berbahaya. Tetap download AppUjian.apk?"</i>:
+                    </p>
+                    <div className="bg-slate-900/80 border border-slate-700/80 rounded-lg p-3 text-xs text-slate-200">
+                      👉 Tekan tombol <b className="text-sky-400">"Tetap download"</b> / <b className="text-sky-400">"Download anyway"</b>.
+                    </div>
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-3 italic">
+                    *Pesan ini adalah peringatan bawaan Chrome untuk semua file .apk dari luar Play Store.
+                  </p>
+                </div>
+
+                {/* Step 2 */}
+                <div className="bg-slate-800/50 border border-slate-700/60 rounded-xl p-4 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center space-x-2 text-sky-400 font-bold text-sm mb-2">
+                      <span className="w-6 h-6 rounded-full bg-sky-500/20 border border-sky-500/40 flex items-center justify-center text-xs">2</span>
+                      <span>Saat Memasang (Google Play Protect)</span>
+                    </div>
+                    <p className="text-xs text-slate-300 leading-relaxed mb-3">
+                      Jika muncul dialog <i>"Aplikasi tidak dikenal"</i> atau <i>"Dicegah oleh Play Protect"</i>:
+                    </p>
+                    <div className="bg-slate-900/80 border border-slate-700/80 rounded-lg p-3 text-xs text-slate-200 space-y-1">
+                      <div>1. Klik teks kecil <b className="text-amber-400">"Rincian"</b> atau <b className="text-amber-400">"Detail"</b> (bukan tombol Batal).</div>
+                      <div>2. Lalu klik <b className="text-emerald-400">"Tetap instal (tidak aman)"</b>.</div>
+                    </div>
+                  </div>
+                  <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-2 mt-3 text-[11px] text-emerald-300">
+                    ✅ <b>Selesai!</b> Aplikasi langsung terpasang tanpa perlu mematikan Play Protect.
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Tab Content: Windows */}
+          {guideTab === 'windows' && (
+            <div className="space-y-4 animate-in fade-in duration-200">
+              <div className="grid md:grid-cols-2 gap-4">
+                {/* Step 1 */}
+                <div className="bg-slate-800/50 border border-slate-700/60 rounded-xl p-4 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center space-x-2 text-emerald-400 font-bold text-sm mb-2">
+                      <span className="w-6 h-6 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-xs">1</span>
+                      <span>Saat Mengunduh di Browser Edge / Chrome</span>
+                    </div>
+                    <p className="text-xs text-slate-300 leading-relaxed mb-3">
+                      Jika browser menampilkan peringatan <i>"File tidak umum diunduh"</i>:
+                    </p>
+                    <div className="bg-slate-900/80 border border-slate-700/80 rounded-lg p-3 text-xs text-slate-200">
+                      👉 Di daftar download, klik tanda titik tiga <b className="text-white">...</b> $\rightarrow$ pilih <b className="text-emerald-400">"Simpan / Keep"</b> $\rightarrow$ klik <b className="text-emerald-400">"Tetap simpan / Keep anyway"</b>.
+                    </div>
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-3 italic">
+                    *Browser Edge/Chrome secara otomatis menanyakan konfirmasi untuk semua file .exe baru.
+                  </p>
+                </div>
+
+                {/* Step 2 */}
+                <div className="bg-slate-800/50 border border-slate-700/60 rounded-xl p-4 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center space-x-2 text-emerald-400 font-bold text-sm mb-2">
+                      <span className="w-6 h-6 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-xs">2</span>
+                      <span>Saat Menjalankan Installer (SmartScreen)</span>
+                    </div>
+                    <p className="text-xs text-slate-300 leading-relaxed mb-3">
+                      Jika muncul layar biru Microsoft Defender <i>"Windows protected your PC"</i>:
+                    </p>
+                    <div className="bg-slate-900/80 border border-slate-700/80 rounded-lg p-3 text-xs text-slate-200 space-y-1">
+                      <div>1. Klik tautan teks <b className="text-sky-400">"More info"</b> (Info selengkapnya).</div>
+                      <div>2. Lalu klik tombol <b className="text-emerald-400">"Run anyway"</b> (Tetap jalankan).</div>
+                    </div>
+                  </div>
+                  <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-2 mt-3 text-[11px] text-emerald-300">
+                    ✅ <b>Selesai!</b> Installer akan berjalan dan membuat ikon aplikasi di Desktop.
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Tab Content: iOS */}
+          {guideTab === 'ios' && (
+            <div className="space-y-4 animate-in fade-in duration-200">
+              <div className="bg-slate-800/50 border border-slate-700/60 rounded-xl p-4 text-xs text-slate-300">
+                <p className="font-semibold text-white mb-2 flex items-center gap-1.5">
+                  <Apple size={16} className="text-violet-400" />
+                  <span>Pemasangan di iPhone, iPad & Mac Silicon</span>
+                </p>
+                <p className="leading-relaxed mb-3 text-slate-400">
+                  Perangkat Apple memerlukan sertifikasi profil atau aplikasi instalasi sideload mandiri karena tidak didistribusikan di App Store komersial:
+                </p>
+                <div className="grid sm:grid-cols-2 gap-3 text-slate-200">
+                  <div className="bg-slate-900/80 border border-slate-700/80 rounded-lg p-3">
+                    <p className="font-semibold text-violet-400 mb-1">iPhone / iPad:</p>
+                    <p className="text-slate-300">Gunakan komputer dengan aplikasi <b>Sideloadly</b> atau <b>AltStore</b> untuk menyuntikkan file .ipa ke perangkat menggunakan Apple ID Anda.</p>
+                  </div>
+                  <div className="bg-slate-900/80 border border-slate-700/80 rounded-lg p-3">
+                    <p className="font-semibold text-violet-400 mb-1">MacBook M1/M2/M3/M4:</p>
+                    <p className="text-slate-300">Cukup pasang <b>PlayCover</b> di macOS, lalu seret (drag-and-drop) file <b>AppUjian.ipa</b> langsung ke PlayCover untuk membukanya.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* Info & Changelog Banner */}
         <div className="grid sm:grid-cols-2 gap-4 text-xs text-slate-300">
           <div className="bg-slate-800/40 border border-slate-700/60 rounded-xl p-4 flex items-start space-x-3">
-            <Apple size={20} className="text-violet-400 flex-shrink-0 mt-0.5" />
+            <Info size={20} className="text-sky-400 flex-shrink-0 mt-0.5" />
             <div>
-              <p className="font-semibold text-white mb-0.5">Panduan Instalasi iOS (.ipa) & MacBook</p>
+              <p className="font-semibold text-white mb-0.5">Kenapa Peringatan Muncul?</p>
               <p className="text-slate-400 leading-relaxed">
-                Untuk memasang di iPhone/iPad, gunakan alat sideload seperti <b>Sideloadly</b>, <b>AltStore</b>, atau profil MDM sekolah. Untuk <b>MacBook Apple Silicon (M1/M2/M3/M4)</b>, file .ipa ini dapat dijalankan langsung menggunakan <b>PlayCover</b> atau Sideloadly.
+                Google dan Microsoft secara ketat menandai file installer yang didistribusikan dari server mandiri sekolah (bukan toko komersial Play Store/Microsoft Store). Ini adalah verifikasi standar dan bukan tanda bahaya.
               </p>
             </div>
           </div>
 
           <div className="bg-slate-800/40 border border-slate-700/60 rounded-xl p-4 flex items-start space-x-3">
-            <Info size={20} className="text-emerald-400 flex-shrink-0 mt-0.5" />
+            <Sparkles size={20} className="text-emerald-400 flex-shrink-0 mt-0.5" />
             <div>
               <p className="font-semibold text-white mb-0.5">Catatan Pembaruan v{version}</p>
               <ul className="list-disc list-inside text-slate-400 space-y-0.5">
