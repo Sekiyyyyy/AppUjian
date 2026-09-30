@@ -1076,7 +1076,28 @@ class ExamView extends GetView<ExamController> {
             
             Obx(() {
               if (controller.isLoading.value) {
-                return const Center(child: CircularProgressIndicator(color: AppTheme.primaryColor));
+                return Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24.0),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const CircularProgressIndicator(color: AppTheme.primaryColor),
+                        const SizedBox(height: 20),
+                        Text(
+                          "Menyiapkan Mode Ujian Aman...",
+                          style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 16, color: AppTheme.textPrimary),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          "Silakan setujui perizinan sematkan aplikasi (tekan Mengerti) jika muncul di layar.",
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.inter(fontSize: 12, color: AppTheme.textSecondary, height: 1.4),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
               }
               if (controller.errorMessage.isNotEmpty) {
                 return Center(
