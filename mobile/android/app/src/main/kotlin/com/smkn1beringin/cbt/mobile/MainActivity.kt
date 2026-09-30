@@ -32,6 +32,45 @@ class MainActivity : FlutterActivity() {
     private var isWaitingForPinApproval = false
     private var pinDialogAppeared = false
     private val pinningHandler = Handler(Looper.getMainLooper())
+    private var pinCheckRunnable: Runnable? = null
+
+    private fun isPinned(): Boolean {
+        return try {
+            val am = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                am.lockTaskModeState != ActivityManager.LOCK_TASK_MODE_NONE
+            } else {
+                false
+            }
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    private fun isLockToAppEnabled(): Boolean {
+        return try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                val enabled = android.provider.Settings.System.getInt(
+                    contentResolver,
+                    "lock_to_app_enabled",
+                    1
+                )
+                enabled != 0
+            } else {
+                true
+            }
+        } catch (_: Exception) {
+            true
+        }
+    }
+
+    private fun stopPinApprovalTracking() {
+        isWaitingForPinApproval = false
+        pinDialogAppeared = false
+        pinCheckRunnable?.let { pinningHandler.removeCallbacks(it) }
+        pinCheckRunnable = null
+        pinningHandler.removeCallbacksAndMessages(null)
+    }
 
     private val screenReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -75,31 +114,21 @@ class MainActivity : FlutterActivity() {
                 pinDialogAppeared = true
             }
         } else {
-            // Fokus kembali ke jendela aplikasi (dialog sistem selesai direspons / ditutup)
-            if (isWaitingForPinApproval) {
-                pinningHandler.removeCallbacksAndMessages(null)
-                // Beri jeda 350ms agar sistem Android menyelesaikan transisi LockTaskModeState
+            // Jendela aplikasi kembali mendapatkan fokus
+            // HANYA proses jika dialog sistem sebelumnya telah benar-benar muncul
+            if (isWaitingForPinApproval && pinDialogAppeared) {
                 pinningHandler.postDelayed({
                     if (isWaitingForPinApproval) {
-                        val am = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
-                        val mode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                            am.lockTaskModeState
-                        } else {
-                            ActivityManager.LOCK_TASK_MODE_NONE
-                        }
-                        if (mode != ActivityManager.LOCK_TASK_MODE_NONE) {
-                            // Siswa menekan "Mengerti" / "Sematkan" (ACC)
-                            isWaitingForPinApproval = false
-                            pinDialogAppeared = false
+                        if (isPinned()) {
+                            stopPinApprovalTracking()
                             methodChannel?.invokeMethod("onPinningAccepted", null)
                         } else {
-                            // Siswa menekan "Tidak, terima kasih" ("No thanks") atau membatalkan dialog!
-                            isWaitingForPinApproval = false
-                            pinDialogAppeared = false
+                            // Siswa menekan "Tidak, terima kasih" (No thanks) atau tombol Back pada dialog
+                            stopPinApprovalTracking()
                             methodChannel?.invokeMethod("onPinningRejected", "no_thanks")
                         }
                     }
-                }, 350)
+                }, 400)
             }
         }
     }
@@ -115,59 +144,59 @@ class MainActivity : FlutterActivity() {
             when (call.method) {
                 "startLockTask" -> {
                     try {
-                        val am = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
-                        val currentMode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                            am.lockTaskModeState
-                        } else {
-                            ActivityManager.LOCK_TASK_MODE_NONE
-                        }
-
-                        if (currentMode != ActivityManager.LOCK_TASK_MODE_NONE) {
-                            // Sudah dalam mode disematkan (pinned/locked)
-                            isWaitingForPinApproval = false
-                            pinDialogAppeared = false
+                        if (isPinned()) {
+                            stopPinApprovalTracking()
                             window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
                             result.success(true)
                             methodChannel?.invokeMethod("onPinningAccepted", null)
-                        } else {
-                            isWaitingForPinApproval = true
-                            pinDialogAppeared = false
-                            startLockTask()
-                            window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-                            result.success(true)
-
-                            // Safety watchdog: jika dialog tidak pernah muncul setelah 2.5 detik
-                            // (misal fitur sematkan aplikasi dimatikan di pengaturan sistem HP siswa)
-                            pinningHandler.removeCallbacksAndMessages(null)
-                            pinningHandler.postDelayed({
-                                if (isWaitingForPinApproval && !pinDialogAppeared) {
-                                    val checkAm = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
-                                    val mode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                                        checkAm.lockTaskModeState
-                                    } else {
-                                        ActivityManager.LOCK_TASK_MODE_NONE
-                                    }
-                                    if (mode == ActivityManager.LOCK_TASK_MODE_NONE) {
-                                        isWaitingForPinApproval = false
-                                        methodChannel?.invokeMethod("onPinningRejected", "pinning_not_active")
-                                    } else {
-                                        isWaitingForPinApproval = false
-                                        methodChannel?.invokeMethod("onPinningAccepted", null)
-                                    }
-                                }
-                            }, 2500)
+                            return@setMethodCallHandler
                         }
+
+                        if (!isLockToAppEnabled()) {
+                            stopPinApprovalTracking()
+                            result.success(false)
+                            methodChannel?.invokeMethod("onPinningRejected", "disabled_in_settings")
+                            return@setMethodCallHandler
+                        }
+
+                        stopPinApprovalTracking()
+                        isWaitingForPinApproval = true
+                        pinDialogAppeared = false
+                        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                        startLockTask()
+                        result.success(true)
+
+                        // Polling berkala (setiap 300ms): begitu siswa menekan "Mengerti" (ACC),
+                        // isPinned() langsung true seketika tanpa perlu menunggu event fokus!
+                        val startTime = System.currentTimeMillis()
+                        val checkRunnable = object : Runnable {
+                            override fun run() {
+                                if (!isWaitingForPinApproval) return
+                                if (isPinned()) {
+                                    stopPinApprovalTracking()
+                                    methodChannel?.invokeMethod("onPinningAccepted", null)
+                                    return
+                                }
+                                // Timeout 45 detik jika dialog dibiarkan tanpa respons
+                                if (System.currentTimeMillis() - startTime > 45000) {
+                                    stopPinApprovalTracking()
+                                    methodChannel?.invokeMethod("onPinningRejected", "timeout")
+                                    return
+                                }
+                                pinningHandler.postDelayed(this, 300)
+                            }
+                        }
+                        pinCheckRunnable = checkRunnable
+                        pinningHandler.postDelayed(checkRunnable, 300)
                     } catch (e: Exception) {
-                        isWaitingForPinApproval = false
+                        stopPinApprovalTracking()
                         result.success(false)
                         methodChannel?.invokeMethod("onPinningRejected", "exception: ${e.message}")
                     }
                 }
                 "stopLockTask" -> {
                     try {
-                        isWaitingForPinApproval = false
-                        pinDialogAppeared = false
-                        pinningHandler.removeCallbacksAndMessages(null)
+                        stopPinApprovalTracking()
                         stopLockTask()
                         window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
                         result.success(true)
@@ -313,7 +342,7 @@ class MainActivity : FlutterActivity() {
     }
 
     override fun onDestroy() {
-        pinningHandler.removeCallbacksAndMessages(null)
+        stopPinApprovalTracking()
         try {
             unregisterReceiver(screenReceiver)
         } catch (_: Exception) {}

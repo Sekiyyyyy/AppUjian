@@ -68,7 +68,6 @@ class ExamController extends GetxController with WidgetsBindingObserver {
     super.onInit();
     WidgetsBinding.instance.addObserver(this);
     _setupKioskChannel();
-    _enableKioskMode();
 
     final args = Get.arguments;
     if (args != null) {
@@ -76,7 +75,15 @@ class ExamController extends GetxController with WidgetsBindingObserver {
       examTitle = args['title'] ?? 'Ujian';
       duration = args['duration'] ?? 90;
       examData = args['exam_data'];
-      _startExamProcess();
+
+      if (!kIsWeb && Platform.isAndroid) {
+        // Android: Tampilkan perizinan sematkan aplikasi (App Pinning) DULU
+        // Sesi ujian di server dan countdown timer HANYA dimulai setelah siswa menekan "Mengerti" (ACC)!
+        _enableKioskMode();
+      } else {
+        // Desktop / iOS: Langsung mulai ujian
+        _startExamProcess();
+      }
     } else {
       errorMessage.value = "Data ujian tidak valid atau sesi kadaluarsa.";
       isLoading.value = false;
@@ -90,28 +97,47 @@ class ExamController extends GetxController with WidgetsBindingObserver {
   void _setupKioskChannel() {
     _kioskChannel.setMethodCallHandler((call) async {
       if (call.method == 'onPinningRejected') {
-        _handlePinningRejected();
+        _handlePinningRejected(call.arguments?.toString());
       } else if (call.method == 'onPinningAccepted') {
-        _isPinningApproved = true;
-        _isPinningPending = false;
+        if (!_isPinningApproved) {
+          _isPinningApproved = true;
+          _isPinningPending = false;
+          _startExamProcess();
+        }
       }
     });
   }
 
-  void _handlePinningRejected() async {
+  void _handlePinningRejected([String? reason]) async {
     if (_isExamFinished) return;
     _isExamFinished = true;
+    _isPinningPending = false;
+    _isPinningApproved = false;
     _mobileExitCheckTimer?.cancel();
     _sessionMonitorTimer?.cancel();
     _timer?.cancel();
     _stopAlarm();
+
+    // Pastikan ongoing_exam_id dihapus agar HomeController TIDAK mengira keluar aplikasi!
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('ongoing_exam_id');
+    } catch (_) {}
+
     await _disableKioskMode();
     Get.offAllNamed(Routes.MAIN);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      AppToast.error(
-        title: "Perizinan Layar Ditolak",
-        message: "Anda menolak perizinan sematkan aplikasi (No Thanks). Anda wajib mengizinkan sematan aplikasi untuk dapat mengerjakan ujian.",
-      );
+      if (reason == 'disabled_in_settings') {
+        AppToast.error(
+          title: "Fitur Sematkan Layar Nonaktif",
+          message: "Fitur 'Sematkan Aplikasi' (App Pinning) dinonaktifkan di pengaturan HP Anda. Harap aktifkan di menu Pengaturan Keamanan HP Anda agar dapat mengikuti ujian.",
+        );
+      } else {
+        AppToast.error(
+          title: "Perizinan Layar Ditolak",
+          message: "Anda menolak perizinan sematkan aplikasi (Tidak, terima kasih). Anda wajib menyetujui sematan aplikasi untuk dapat memulai ujian.",
+        );
+      }
     });
   }
 
@@ -152,7 +178,7 @@ class ExamController extends GetxController with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) async {
     _currentLifecycleState = state;
-    if (_isExamFinished || isLoading.value || questions.isEmpty || isExamLocked.value || _isHandlingInAppAction || _isPinningPending) {
+    if (_isExamFinished || isLoading.value || questions.isEmpty || isExamLocked.value || _isHandlingInAppAction || _isPinningPending || (!kIsWeb && Platform.isAndroid && !_isPinningApproved)) {
       return;
     }
 

@@ -254,7 +254,8 @@ class MandatoryUpdateWidget extends StatelessWidget {
             ),
           ),
         ),
-      );
-    });
-  }
+      ),
+    );
+  });
+}
 }
