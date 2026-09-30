@@ -141,6 +141,10 @@ class ExamController extends GetxController with WidgetsBindingObserver {
     });
   }
 
+  void cancelAndExitToMain() {
+    _handlePinningRejected('manual_cancel');
+  }
+
   @override
   void onClose() {
     WidgetsBinding.instance.removeObserver(this);

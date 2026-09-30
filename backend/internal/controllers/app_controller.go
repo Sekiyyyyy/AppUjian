@@ -20,9 +20,9 @@ type AppVersionResponse struct {
 }
 
 const (
-	CurrentLatestAppVersion  = "1.1.0"
-	CurrentLatestBuildNumber = 12
-	CurrentMinAppVersion     = "1.1.0"
+	CurrentLatestAppVersion  = "1.1.1"
+	CurrentLatestBuildNumber = 13
+	CurrentMinAppVersion     = "1.1.1"
 	CurrentAppDownloadURL    = "https://ujian.tiksmkn1beringin.my.id/download"
 )
 
@@ -103,8 +103,8 @@ func GetAppVersion(c *gin.Context) {
 		ForceUpdate:   isOutdated,
 		Title:         "Pembaruan Wajib Aplikasi CBT v" + CurrentLatestAppVersion,
 		Changelog: []string{
-			"Pembaruan wajib sematkan aplikasi (App Pinning v1.1.0): Menutup celah bypass tombol No Thanks.",
-			"Perbaikan bug deteksi keluar saat dialog izin sematkan aplikasi muncul.",
+			"Penanganan sematkan aplikasi (App Pinning v1.1.1): Langsung kembali ke Beranda jika menekan 'Tidak, terima kasih'.",
+			"Penambahan tombol 'Batalkan & Kembali' pada layar persiapan ujian.",
 			"Tampilan modal pembaruan dengan frosted glass blur yang elegan.",
 			"Peningkatan kestabilan dan keamanan anti-cheating ujian.",
 		},

@@ -1094,6 +1094,18 @@ class ExamView extends GetView<ExamController> {
                           textAlign: TextAlign.center,
                           style: GoogleFonts.inter(fontSize: 12, color: AppTheme.textSecondary, height: 1.4),
                         ),
+                        const SizedBox(height: 20),
+                        OutlinedButton.icon(
+                          onPressed: () => controller.cancelAndExitToMain(),
+                          icon: const Icon(Icons.arrow_back_rounded, size: 16),
+                          label: const Text("Batalkan & Kembali ke Beranda"),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.grey.shade700,
+                            side: BorderSide(color: Colors.grey.shade300),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          ),
+                        ),
                       ],
                     ),
                   ),

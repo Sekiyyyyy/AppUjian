@@ -30,13 +30,13 @@ const DownloadPage: React.FC = () => {
       .catch(() => {
         // Fallback default
         setVersionInfo({
-          latest_version: '1.1.0',
-          build_number: 12,
-          min_version: '1.1.0',
-          title: 'Pembaruan Wajib Aplikasi CBT v1.1.0',
+          latest_version: '1.1.1',
+          build_number: 13,
+          min_version: '1.1.1',
+          title: 'Pembaruan Wajib Aplikasi CBT v1.1.1',
           changelog: [
-            'Pembaruan wajib sematkan aplikasi (App Pinning v1.1.0): Menutup celah bypass tombol No Thanks.',
-            'Perbaikan bug deteksi keluar saat dialog izin sematkan aplikasi muncul.',
+            'Penanganan sematkan aplikasi (App Pinning v1.1.1): Langsung kembali ke Beranda jika menekan "Tidak, terima kasih".',
+            'Penambahan tombol "Batalkan & Kembali" pada layar persiapan ujian.',
             'Tampilan modal pembaruan dengan frosted glass blur yang elegan.',
             'Peningkatan keamanan anti-cheating, deteksi unpin otomatis, dan kestabilan ujian.',
           ],
