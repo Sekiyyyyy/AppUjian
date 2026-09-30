@@ -94,15 +94,21 @@ void FlutterWindow::OnDestroy() {
 // ============================================================================
 
 bool FlutterWindow::IsWindowForeground() {
-  if (external_focus_lost_) {
-    return false;
-  }
   HWND hwnd = GetHandle();
   if (!hwnd) return false;
   if (IsIconic(hwnd)) return false;
   HWND fg = GetForegroundWindow();
-  if (!fg) return false;
-  return (fg == hwnd || fg == flutter_child_hwnd_ || IsChild(hwnd, fg));
+  if (!fg) {
+    // Windows might momentarily have a NULL foreground during frame/mode transitions.
+    // Return true to avoid false-positive lockout.
+    return true;
+  }
+  bool isOurWindow = (fg == hwnd || fg == flutter_child_hwnd_ || IsChild(hwnd, fg));
+  if (isOurWindow) {
+    external_focus_lost_ = false;
+    return true;
+  }
+  return false;
 }
 
 void FlutterWindow::EnableKioskMode() {
@@ -148,6 +154,7 @@ void FlutterWindow::EnableKioskMode() {
   } else {
     SetFocus(hwnd);
   }
+  external_focus_lost_ = false;
 
   // Protect window against screen capture, OBS, AnyDesk, Discord, etc.
   SetWindowDisplayAffinity(hwnd, WDA_MONITOR);
@@ -327,7 +334,14 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
           if (other && other != hwnd && other != flutter_child_hwnd_ && !IsChild(hwnd, other)) {
             external_focus_lost_ = true;
           }
+        } else {
+          external_focus_lost_ = false;
         }
+        break;
+      }
+
+      case WM_SETFOCUS: {
+        external_focus_lost_ = false;
         break;
       }
 

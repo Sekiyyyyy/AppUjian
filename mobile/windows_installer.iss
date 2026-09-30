@@ -1,6 +1,6 @@
 ; Script Inno Setup untuk Aplikasi Ujian CBT SMKN 1 Beringin
 #define MyAppName "Aplikasi Ujian CBT"
-#define MyAppVersion "1.1.1"
+#define MyAppVersion "1.1.2"
 #define MyAppPublisher "SMKN 1 Beringin"
 #define MyAppExeName "mobile.exe"
 

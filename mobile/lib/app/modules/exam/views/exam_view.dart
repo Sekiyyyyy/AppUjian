@@ -1090,7 +1090,9 @@ class ExamView extends GetView<ExamController> {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          "Silakan setujui perizinan sematkan aplikasi (tekan Mengerti) jika muncul di layar.",
+                          (!kIsWeb && Platform.isAndroid)
+                              ? "Silakan setujui perizinan sematkan aplikasi (tekan Mengerti) jika muncul di layar."
+                              : "Memuat naskah soal dan mengaktifkan pengamanan layar penuh...",
                           textAlign: TextAlign.center,
                           style: GoogleFonts.inter(fontSize: 12, color: AppTheme.textSecondary, height: 1.4),
                         ),
@@ -1113,21 +1115,50 @@ class ExamView extends GetView<ExamController> {
               }
               if (controller.errorMessage.isNotEmpty) {
                 return Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.error_outline_rounded, color: Colors.red.shade400, size: 64),
-                      const SizedBox(height: 16),
-                      Text(controller.errorMessage.value, style: GoogleFonts.inter(color: Colors.red.shade600, fontSize: 16, fontWeight: FontWeight.w500)),
-                      const SizedBox(height: 24),
-                      ElevatedButton.icon(
-                        onPressed: () => Get.offAllNamed(Routes.MAIN),
-                        icon: const Icon(Icons.home_rounded),
-                        label: const Text("Kembali ke Beranda"),
-                        style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryColor, foregroundColor: Colors.white),
-                      )
-                    ],
-                  )
+                  child: Padding(
+                    padding: const EdgeInsets.all(24.0),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.error_outline_rounded, color: Colors.red.shade400, size: 64),
+                        const SizedBox(height: 16),
+                        Text(
+                          controller.errorMessage.value, 
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.inter(color: Colors.red.shade600, fontSize: 15, fontWeight: FontWeight.w500)
+                        ),
+                        const SizedBox(height: 24),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            ElevatedButton.icon(
+                              onPressed: () => controller.retryStartExam(),
+                              icon: const Icon(Icons.refresh_rounded),
+                              label: const Text("Coba Lagi"),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppTheme.primaryColor,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            OutlinedButton.icon(
+                              onPressed: () => controller.exitSafelyToMain(),
+                              icon: const Icon(Icons.home_rounded),
+                              label: const Text("Ke Beranda"),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: Colors.grey.shade700,
+                                side: BorderSide(color: Colors.grey.shade300),
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
                 );
               }
               if (controller.questions.isEmpty) {

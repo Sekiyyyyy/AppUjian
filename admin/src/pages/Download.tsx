@@ -30,22 +30,22 @@ const DownloadPage: React.FC = () => {
       .catch(() => {
         // Fallback default
         setVersionInfo({
-          latest_version: '1.1.1',
-          build_number: 13,
-          min_version: '1.1.1',
-          title: 'Pembaruan Wajib Aplikasi CBT v1.1.1',
+          latest_version: '1.1.2',
+          build_number: 14,
+          min_version: '1.1.2',
+          title: 'Pembaruan Aplikasi CBT v1.1.2',
           changelog: [
-            'Penanganan sematkan aplikasi (App Pinning v1.1.1): Langsung kembali ke Beranda jika menekan "Tidak, terima kasih".',
-            'Penambahan tombol "Batalkan & Kembali" pada layar persiapan ujian.',
-            'Tampilan modal pembaruan dengan frosted glass blur yang elegan.',
-            'Peningkatan keamanan anti-cheating, deteksi unpin otomatis, dan kestabilan ujian.',
+            'Perbaikan mode kunci di laptop/desktop Windows: langsung masuk mode layar penuh aman saat ujian dimulai.',
+            'Pencegahan deteksi keluar palsu (false-positive exit) pada laptop/desktop Windows.',
+            'Peningkatan ketahanan pengambilan naskah soal ujian dengan mekanisme auto-retry.',
+            'Pemberitahuan layar memuat soal yang disesuaikan untuk perangkat mobile dan laptop.',
           ],
           download_url: '/download'
         });
       });
   }, []);
 
-  const version = versionInfo?.latest_version || '1.0.9';
+  const version = versionInfo?.latest_version || '1.1.2';
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 text-white flex flex-col justify-between selection:bg-emerald-500 selection:text-white">

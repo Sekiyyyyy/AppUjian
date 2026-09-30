@@ -47,7 +47,8 @@ class ExamController extends GetxController with WidgetsBindingObserver {
   bool _isExamFinished = false;
   bool _wasInBackground = false;
   bool _isHandlingInAppAction = false;
-  Timer? _mobileExitCheckTimer;
+  bool _isStartingExam = false;
+  Timer? _exitCheckTimer;
   AppLifecycleState? _currentLifecycleState;
 
   // Supervisor Pause Tracking
@@ -81,7 +82,10 @@ class ExamController extends GetxController with WidgetsBindingObserver {
         // Sesi ujian di server dan countdown timer HANYA dimulai setelah siswa menekan "Mengerti" (ACC)!
         _enableKioskMode();
       } else {
-        // Desktop / iOS: Langsung mulai ujian
+        // Desktop / iOS: Aktifkan mode kunci (fullscreen kiosk) segera, lalu mulai proses ujian
+        if (_isDesktop) {
+          _enableKioskMode();
+        }
         _startExamProcess();
       }
     } else {
@@ -113,7 +117,7 @@ class ExamController extends GetxController with WidgetsBindingObserver {
     _isExamFinished = true;
     _isPinningPending = false;
     _isPinningApproved = false;
-    _mobileExitCheckTimer?.cancel();
+    _exitCheckTimer?.cancel();
     _sessionMonitorTimer?.cancel();
     _timer?.cancel();
     _stopAlarm();
@@ -145,11 +149,35 @@ class ExamController extends GetxController with WidgetsBindingObserver {
     _handlePinningRejected('manual_cancel');
   }
 
+  void exitSafelyToMain() async {
+    if (_isExamFinished) return;
+    _isExamFinished = true;
+    _isPinningPending = false;
+    _isPinningApproved = false;
+    _exitCheckTimer?.cancel();
+    _sessionMonitorTimer?.cancel();
+    _timer?.cancel();
+    _stopAlarm();
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('ongoing_exam_id');
+    } catch (_) {}
+
+    await _disableKioskMode();
+    Get.offAllNamed(Routes.MAIN);
+  }
+
+  void retryStartExam() {
+    errorMessage.value = '';
+    _startExamProcess();
+  }
+
   @override
   void onClose() {
     WidgetsBinding.instance.removeObserver(this);
     _timer?.cancel();
-    _mobileExitCheckTimer?.cancel();
+    _exitCheckTimer?.cancel();
     _sessionMonitorTimer?.cancel();
     _disableKioskMode();
     _stopAlarm();
@@ -162,7 +190,9 @@ class ExamController extends GetxController with WidgetsBindingObserver {
         _isPinningPending = true;
       }
       await _kioskChannel.invokeMethod('startLockTask');
-    } catch (_) {}
+    } catch (e) {
+      debugPrint("Kiosk enable error: $e");
+    }
   }
 
   Future<void> _disableKioskMode() async {
@@ -182,39 +212,56 @@ class ExamController extends GetxController with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) async {
     _currentLifecycleState = state;
-    if (_isExamFinished || isLoading.value || questions.isEmpty || isExamLocked.value || _isHandlingInAppAction || _isPinningPending || (!kIsWeb && Platform.isAndroid && !_isPinningApproved)) {
+    if (_isExamFinished || 
+        isLoading.value || 
+        questions.isEmpty || 
+        isExamLocked.value || 
+        _isHandlingInAppAction || 
+        _isPinningPending || 
+        (!kIsWeb && Platform.isAndroid && !_isPinningApproved) ||
+        _isStartingExam) {
       return;
     }
 
     if (state == AppLifecycleState.resumed) {
       // Kembali ke dalam aplikasi: batalkan timer cek keluar dan reset flag
-      _mobileExitCheckTimer?.cancel();
-      _mobileExitCheckTimer = null;
+      _exitCheckTimer?.cancel();
+      _exitCheckTimer = null;
       _wasInBackground = false;
       return;
     }
 
     if (_isDesktop) {
       // Desktop (Windows / macOS / Linux)
-      // Di desktop TIDAK ADA tombol power layar mati seperti di HP.
-      // Setiap kali aplikasi kehilangan fokus (inactive, paused, hidden) atau di-minimize / alt-tab:
-      // Ujian LANGSUNG DIKUNCI seketika tanpa celah!
+      // Gunakan toleransi timer 1.5 detik untuk menangani transisi layar/fokus Windows
       if (state == AppLifecycleState.inactive ||
           state == AppLifecycleState.paused ||
           state == AppLifecycleState.hidden) {
-        bool isFg = false;
-        try {
-          isFg = await _kioskChannel.invokeMethod<bool>('isWindowForeground') ?? false;
-        } catch (_) {
-          isFg = false;
-        }
-
-        if (!isFg) {
-          if (!_wasInBackground) {
-            _wasInBackground = true;
-            _lockExamSession("Terdeteksi keluar dari aplikasi ujian (Desktop)");
+        _exitCheckTimer?.cancel();
+        _exitCheckTimer = Timer(const Duration(milliseconds: 1500), () async {
+          if (_currentLifecycleState == AppLifecycleState.resumed || 
+              _isExamFinished || 
+              isExamLocked.value || 
+              isLoading.value || 
+              questions.isEmpty ||
+              _isStartingExam) {
+            return;
           }
-        }
+
+          bool isFg = false;
+          try {
+            isFg = await _kioskChannel.invokeMethod<bool>('isWindowForeground') ?? false;
+          } catch (_) {
+            isFg = true; // Jangan kunci jika channel gagal/tidak tersedia
+          }
+
+          if (!isFg && !_isExamFinished && !isExamLocked.value) {
+            if (!_wasInBackground) {
+              _wasInBackground = true;
+              _lockExamSession("Terdeteksi keluar dari aplikasi ujian (Desktop)");
+            }
+          }
+        });
       }
       return;
     }
@@ -223,11 +270,11 @@ class ExamController extends GetxController with WidgetsBindingObserver {
     // Hanya periksa ketika aplikasi masuk background (paused atau hidden)
     // Abaikan state 'inactive' di mobile karena terjadi sesaat ketika tombol power dipencet
     if (state == AppLifecycleState.paused || state == AppLifecycleState.hidden) {
-      _mobileExitCheckTimer?.cancel();
+      _exitCheckTimer?.cancel();
       // Beri jeda 1.2 detik untuk memastikan transisi layar mati (tombol power) selesai.
       // Jika layar mati (tombol power dipencet), isScreenInteractive bernilai false -> TIDAK dikunci.
       // Hanya kunci ujian jika layar masih hidup dan siswa benar-benar berada di luar aplikasi ujian!
-      _mobileExitCheckTimer = Timer(const Duration(milliseconds: 1200), () async {
+      _exitCheckTimer = Timer(const Duration(milliseconds: 1200), () async {
         if (_currentLifecycleState == AppLifecycleState.resumed || _isExamFinished || isExamLocked.value) {
           return;
         }
@@ -259,6 +306,7 @@ class ExamController extends GetxController with WidgetsBindingObserver {
     lockReason.value = reason;
     violationCount.value++;
     _timer?.cancel();
+    _exitCheckTimer?.cancel();
     if (!_isDesktop) _stopAlarm();
 
     // Clear ongoing exam tracking
@@ -294,6 +342,7 @@ class ExamController extends GetxController with WidgetsBindingObserver {
   Future<void> _startExamProcess() async {
     isLoading.value = true;
     errorMessage.value = '';
+    _isStartingExam = true;
     
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -301,6 +350,11 @@ class ExamController extends GetxController with WidgetsBindingObserver {
       if (token == null) {
         Get.offAllNamed('/login');
         return;
+      }
+
+      // Pastikan mode kiosk (layar penuh) aktif di Desktop
+      if (_isDesktop) {
+        await _enableKioskMode();
       }
 
       // 1. Start Exam Session
@@ -330,21 +384,40 @@ class ExamController extends GetxController with WidgetsBindingObserver {
         if (now.isAfter(endTime)) {
           errorMessage.value = "Waktu ujian telah habis.";
           isLoading.value = false;
+          _isStartingExam = false;
           return;
         }
         
         timeRemaining.value = endTime.difference(now).inSeconds;
+
+        // 2. Fetch Questions (dengan toleransi auto-retry)
+        if (_isExamFinished) return;
+        await _fetchQuestionsWithRetry();
+
+        if (questions.isEmpty) {
+          errorMessage.value = "Naskah soal belum tersedia untuk ujian ini.";
+          isLoading.value = false;
+          _isStartingExam = false;
+          return;
+        }
+
+        // 3. HANYA setelah soal berhasil dimuat:
+        // Catat ongoing_exam_id dan aktifkan countdown timer serta monitor sesi!
+        await prefs.setInt('ongoing_exam_id', examId);
         _startTimer();
         _startSessionMonitor();
-        
-        // Save ongoing exam id to detect abrupt termination (Ctrl+Alt+Del, taskkill)
-        await prefs.setInt('ongoing_exam_id', examId);
 
-        // 2. Fetch Questions
-        if (_isExamFinished) return;
-        await _fetchQuestions();
+        // Berikan buffer 3 detik setelah soal tampil agar stabil dari transisi fokus OS
+        Future.delayed(const Duration(seconds: 3), () {
+          _isStartingExam = false;
+        });
       }
     } on DioException catch (e) {
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.remove('ongoing_exam_id');
+      } catch (_) {}
+
       if (e.response?.data?['error'] == 'LOCKED') {
         _isExamFinished = true;
         await _disableKioskMode();
@@ -381,11 +454,29 @@ class ExamController extends GetxController with WidgetsBindingObserver {
         });
         return;
       }
-      errorMessage.value = e.response?.data?['error'] ?? "Gagal memulai ujian.";
+      errorMessage.value = e.response?.data?['error'] ?? "Gagal memuat soal ujian. Periksa koneksi internet Anda.";
     } catch (e) {
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.remove('ongoing_exam_id');
+      } catch (_) {}
       errorMessage.value = "Error: $e";
     } finally {
       isLoading.value = false;
+    }
+  }
+
+  Future<void> _fetchQuestionsWithRetry({int maxRetries = 2}) async {
+    int attempts = 0;
+    while (attempts <= maxRetries) {
+      try {
+        await _fetchQuestions();
+        if (questions.isNotEmpty) return;
+      } catch (e) {
+        attempts++;
+        if (attempts > maxRetries) rethrow;
+        await Future.delayed(const Duration(milliseconds: 1000));
+      }
     }
   }
   
