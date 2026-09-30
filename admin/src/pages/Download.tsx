@@ -8,7 +8,11 @@ import {
   CheckCircle2, 
   ShieldCheck, 
   Sparkles, 
-  Info
+  Info,
+  AlertTriangle,
+  Trash2,
+  Settings,
+  ShieldAlert
 } from 'lucide-react';
 
 interface VersionInfo {
@@ -322,43 +326,131 @@ const DownloadPage: React.FC = () => {
           {/* Tab Content: Android */}
           {guideTab === 'android' && (
             <div className="space-y-4 animate-in fade-in duration-200">
-              <div className="grid md:grid-cols-2 gap-4">
+              {/* 3 Main Steps */}
+              <div className="grid md:grid-cols-3 gap-4">
                 {/* Step 1 */}
                 <div className="bg-slate-800/50 border border-slate-700/60 rounded-xl p-4 flex flex-col justify-between">
                   <div>
                     <div className="flex items-center space-x-2 text-sky-400 font-bold text-sm mb-2">
                       <span className="w-6 h-6 rounded-full bg-sky-500/20 border border-sky-500/40 flex items-center justify-center text-xs">1</span>
-                      <span>Saat Mengunduh di Google Chrome</span>
+                      <span>Saat Mengunduh (Chrome)</span>
                     </div>
                     <p className="text-xs text-slate-300 leading-relaxed mb-3">
-                      Jika muncul pemberitahuan <i>"File mungkin berbahaya. Tetap download AppUjian.apk?"</i>:
+                      Jika muncul peringatan <i>"File mungkin berbahaya. Tetap download AppUjian.apk?"</i>:
                     </p>
                     <div className="bg-slate-900/80 border border-slate-700/80 rounded-lg p-3 text-xs text-slate-200">
                       👉 Tekan tombol <b className="text-sky-400">"Tetap download"</b> / <b className="text-sky-400">"Download anyway"</b>.
                     </div>
                   </div>
                   <p className="text-[11px] text-slate-400 mt-3 italic">
-                    *Pesan ini adalah peringatan bawaan Chrome untuk semua file .apk dari luar Play Store.
+                    *Peringatan wajar untuk semua file .apk yang didistribusikan dari luar Play Store.
                   </p>
                 </div>
 
                 {/* Step 2 */}
                 <div className="bg-slate-800/50 border border-slate-700/60 rounded-xl p-4 flex flex-col justify-between">
                   <div>
-                    <div className="flex items-center space-x-2 text-sky-400 font-bold text-sm mb-2">
-                      <span className="w-6 h-6 rounded-full bg-sky-500/20 border border-sky-500/40 flex items-center justify-center text-xs">2</span>
-                      <span>Saat Memasang (Google Play Protect)</span>
+                    <div className="flex items-center space-x-2 text-amber-400 font-bold text-sm mb-2">
+                      <span className="w-6 h-6 rounded-full bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-xs">2</span>
+                      <span>Izin Sumber Tak Dikenal</span>
                     </div>
                     <p className="text-xs text-slate-300 leading-relaxed mb-3">
-                      Jika muncul dialog <i>"Aplikasi tidak dikenal"</i> atau <i>"Dicegah oleh Play Protect"</i>:
+                      Jika muncul dialog <i>"Ponsel tidak diizinkan memasang aplikasi dari sumber ini"</i>:
                     </p>
                     <div className="bg-slate-900/80 border border-slate-700/80 rounded-lg p-3 text-xs text-slate-200 space-y-1">
-                      <div>1. Klik teks kecil <b className="text-amber-400">"Rincian"</b> atau <b className="text-amber-400">"Detail"</b> (bukan tombol Batal).</div>
+                      <div>1. Klik <b className="text-amber-400">"Setelan / Pengaturan"</b>.</div>
+                      <div>2. Aktifkan toggle <b className="text-emerald-400">"Izinkan dari sumber ini"</b>.</div>
+                      <div>3. Tekan Kembali lalu klik <b className="text-sky-400">"Instal"</b>.</div>
+                    </div>
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-3 italic">
+                    *Khusus Xiaomi/POCO: Centang 'Saya menyadari risiko' lalu tekan Oke setelah 10 detik.
+                  </p>
+                </div>
+
+                {/* Step 3 */}
+                <div className="bg-slate-800/50 border border-slate-700/60 rounded-xl p-4 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center space-x-2 text-emerald-400 font-bold text-sm mb-2">
+                      <span className="w-6 h-6 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-xs">3</span>
+                      <span>Google Play Protect</span>
+                    </div>
+                    <p className="text-xs text-slate-300 leading-relaxed mb-3">
+                      Jika muncul dialog <i>"Dicegah oleh Play Protect"</i> atau <i>"Aplikasi tidak dikenal"</i>:
+                    </p>
+                    <div className="bg-slate-900/80 border border-slate-700/80 rounded-lg p-3 text-xs text-slate-200 space-y-1">
+                      <div>1. Klik teks kecil <b className="text-amber-400">"Rincian"</b> / <b className="text-amber-400">"Detail"</b> (bukan Batal).</div>
                       <div>2. Lalu klik <b className="text-emerald-400">"Tetap instal (tidak aman)"</b>.</div>
                     </div>
                   </div>
                   <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-2 mt-3 text-[11px] text-emerald-300">
-                    ✅ <b>Selesai!</b> Aplikasi langsung terpasang tanpa perlu mematikan Play Protect.
+                    ✅ <b>Selesai!</b> Aplikasi langsung terpasang dan siap dibuka.
+                  </div>
+                </div>
+              </div>
+
+              {/* Troubleshooting: Solusi Mengapa Gagal Pasang / Aplikasi Tidak Terinstal */}
+              <div className="bg-gradient-to-r from-red-950/40 via-amber-950/20 to-slate-900 border border-amber-500/30 rounded-xl p-4">
+                <div className="flex items-start space-x-3 mb-3">
+                  <AlertTriangle className="text-amber-400 flex-shrink-0 mt-0.5" size={20} />
+                  <div>
+                    <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                      <span>Solusi Mengatasi "Aplikasi Tidak Terinstal" (Gagal Pasang di Android)</span>
+                      <span className="text-[10px] uppercase font-bold bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded border border-amber-500/30">Wajib Tahu</span>
+                    </h4>
+                    <p className="text-xs text-slate-300 mt-1">
+                      Jika saat Anda menekan tombol "Instal" aplikasi langsung gagal atau muncul pesan "Aplikasi tidak terinstal", lakukan langkah perbaikan berikut:
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid md:grid-cols-3 gap-3 text-xs">
+                  {/* Problem 1: Uninstall old version */}
+                  <div className="bg-slate-900/80 border border-slate-700/80 rounded-lg p-3 flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center space-x-2 text-rose-400 font-semibold mb-1.5">
+                        <Trash2 size={15} />
+                        <span>1. Hapus Versi Lama Dulu</span>
+                      </div>
+                      <p className="text-slate-300 leading-relaxed text-[11px]">
+                        Jika di HP Anda sudah pernah terpasang aplikasi ujian versi sebelumnya, Android modern otomatis menolak instalasi karena konflik tanda tangan pembaruan.
+                      </p>
+                    </div>
+                    <div className="mt-2 bg-rose-500/10 border border-rose-500/30 rounded p-1.5 text-rose-300 text-[11px] font-medium">
+                      👉 <b>Uninstall / Hapus</b> aplikasi AppUjian versi lama dari menu HP, baru buka file APK baru untuk diinstal.
+                    </div>
+                  </div>
+
+                  {/* Problem 2: Samsung Auto Blocker */}
+                  <div className="bg-slate-900/80 border border-slate-700/80 rounded-lg p-3 flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center space-x-2 text-sky-400 font-semibold mb-1.5">
+                        <ShieldAlert size={15} />
+                        <span>2. Khusus Samsung (One UI 6+)</span>
+                      </div>
+                      <p className="text-slate-300 leading-relaxed text-[11px]">
+                        HP Samsung Android 14+ memiliki fitur baru bernama <b>"Pemblokir Otomatis" (Auto Blocker)</b> yang mematikan semua instalasi file APK dari luar.
+                      </p>
+                    </div>
+                    <div className="mt-2 bg-sky-500/10 border border-sky-500/30 rounded p-1.5 text-sky-300 text-[11px] font-medium">
+                      👉 Buka <b>Pengaturan</b> → <b>Keamanan dan Privasi</b> → <b>Pemblokir Otomatis (Auto Blocker)</b> → <b>Matikan sementara</b>.
+                    </div>
+                  </div>
+
+                  {/* Problem 3: Play Protect Hard Block */}
+                  <div className="bg-slate-900/80 border border-slate-700/80 rounded-lg p-3 flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center space-x-2 text-amber-400 font-semibold mb-1.5">
+                        <Settings size={15} />
+                        <span>3. Play Protect Memblokir Keras</span>
+                      </div>
+                      <p className="text-slate-300 leading-relaxed text-[11px]">
+                        Jika Play Protect langsung memblokir tanpa memberi pilihan "Tetap instal", nonaktifkan pemindaian sementara saat pemasangan.
+                      </p>
+                    </div>
+                    <div className="mt-2 bg-amber-500/10 border border-amber-500/30 rounded p-1.5 text-amber-300 text-[11px] font-medium">
+                      👉 Buka <b>Play Store</b> → Profil (kanan atas) → <b>Play Protect</b> → Ikon ⚙️ (kanan atas) → Matikan <b>"Pindai aplikasi"</b>.
+                    </div>
                   </div>
                 </div>
               </div>
@@ -380,7 +472,7 @@ const DownloadPage: React.FC = () => {
                       Jika browser menampilkan peringatan <i>"File tidak umum diunduh"</i>:
                     </p>
                     <div className="bg-slate-900/80 border border-slate-700/80 rounded-lg p-3 text-xs text-slate-200">
-                      👉 Di daftar download, klik tanda titik tiga <b className="text-white">...</b> $\rightarrow$ pilih <b className="text-emerald-400">"Simpan / Keep"</b> $\rightarrow$ klik <b className="text-emerald-400">"Tetap simpan / Keep anyway"</b>.
+                      👉 Di daftar download, klik tanda titik tiga <b className="text-white">...</b> → pilih <b className="text-emerald-400">"Simpan / Keep"</b> → klik <b className="text-emerald-400">"Tetap simpan / Keep anyway"</b>.
                     </div>
                   </div>
                   <p className="text-[11px] text-slate-400 mt-3 italic">
