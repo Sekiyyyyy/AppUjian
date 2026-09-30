@@ -30,22 +30,21 @@ const DownloadPage: React.FC = () => {
       .catch(() => {
         // Fallback default
         setVersionInfo({
-          latest_version: '1.0.8',
-          build_number: 9,
-          min_version: '1.0.8',
-          title: 'Pembaruan Wajib Aplikasi CBT v1.0.8',
+          latest_version: '1.0.9',
+          build_number: 10,
+          min_version: '1.0.9',
+          title: 'Pembaruan Wajib Aplikasi CBT v1.0.9',
           changelog: [
-            'Pembaruan keamanan sistem ujian terbaru dan peningkatan integritas ujian.',
-            'Pembaruan Wajib: Menutup seluruh celah keamanan dan kecurangan pada versi terdahulu.',
-            'Sinkronisasi ketat live room pengawas ujian dan kontrol siswa.',
-            'Optimalisasi performa, kestabilan koneksi, dan responsivitas pengerjaan soal.',
+            'Pembaruan wajib sematkan aplikasi (App Pinning): Menutup celah bypass dan menolak akses jika perizinan ditolak.',
+            'Perbaikan tampilan responsif card persiapan ujian dan navigasi soal pada Desktop & Mobile.',
+            'Peningkatan keamanan anti-cheating, deteksi unpin otomatis, dan kestabilan ujian.',
           ],
           download_url: '/download'
         });
       });
   }, []);
 
-  const version = versionInfo?.latest_version || '1.0.8';
+  const version = versionInfo?.latest_version || '1.0.9';
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 text-white flex flex-col justify-between selection:bg-emerald-500 selection:text-white">

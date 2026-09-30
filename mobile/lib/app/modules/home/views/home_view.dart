@@ -1,4 +1,6 @@
+import 'dart:io' show Platform;
 import 'dart:ui';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
@@ -668,278 +670,332 @@ class HomeView extends GetView<HomeController> {
   }) {
     final isLocked = exam['session_status'] == 'LOCKED';
     final isUpcoming = DateTime.parse(exam['start_time']).toLocal().isAfter(DateTime.now());
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (context) => DraggableScrollableSheet(
-        initialChildSize: 0.65,
-        minChildSize: 0.4,
-        maxChildSize: 0.9,
-        expand: false,
-        builder: (context, scrollController) => Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 580),
-          child: Container(
-        padding: const EdgeInsets.all(32),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-        ),
-        child: SingleChildScrollView(
-          controller: scrollController,
-          child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isDesktopPlatform = !kIsWeb && (Platform.isWindows || Platform.isMacOS || Platform.isLinux);
+    final isDesktopOrWide = isDesktopPlatform || screenWidth >= 650;
+
+    Widget buildModalContent({required BuildContext modalContext, required bool isDesktop}) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (!isDesktop) ...[
             Center(
               child: Container(
-                width: 40,
-                height: 4,
-                margin: const EdgeInsets.only(bottom: 24),
-                decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)),
+                width: 44,
+                height: 5,
+                margin: const EdgeInsets.only(bottom: 20),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(3),
+                ),
               ),
             ),
-            Row(
-              children: [
-                Container(
-                  width: 52,
-                  height: 52,
-                  decoration: BoxDecoration(
+          ],
+          Row(
+            children: [
+              Container(
+                width: isDesktop ? 52 : 48,
+                height: isDesktop ? 52 : 48,
+                decoration: BoxDecoration(
+                  color: isLocked 
+                      ? Colors.red.shade50 
+                      : (isPaused || isWaitingSupervisor ? Colors.amber.shade50 : AppTheme.primaryColor.withValues(alpha: 0.1)),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Center(
+                  child: Icon(
+                    isLocked 
+                        ? Icons.lock_rounded 
+                        : (isPaused 
+                            ? Icons.pause_circle_filled_rounded 
+                            : (isWaitingSupervisor ? Icons.hourglass_top_rounded : Icons.assignment_rounded)),
                     color: isLocked 
-                        ? Colors.red.shade50 
-                        : (isPaused || isWaitingSupervisor ? Colors.amber.shade50 : AppTheme.primaryColor.withValues(alpha: 0.1)),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Center(
-                    child: Icon(
-                      isLocked 
-                          ? Icons.lock_rounded 
-                          : (isPaused 
-                              ? Icons.pause_circle_filled_rounded 
-                              : (isWaitingSupervisor ? Icons.hourglass_top_rounded : Icons.assignment_rounded)),
-                      color: isLocked 
-                          ? Colors.red.shade700 
-                          : (isPaused || isWaitingSupervisor ? Colors.amber.shade800 : AppTheme.primaryColor),
-                      size: 28,
-                    ),
+                        ? Colors.red.shade700 
+                        : (isPaused || isWaitingSupervisor ? Colors.amber.shade800 : AppTheme.primaryColor),
+                    size: isDesktop ? 28 : 26,
                   ),
                 ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text("Persiapan Ujian", style: GoogleFonts.inter(color: AppTheme.textSecondary, fontSize: 13, fontWeight: FontWeight.bold)),
-                      Text(exam['title']?.toString() ?? 'Ujian', style: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
-                    ],
-                  ),
-                )
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text("Persiapan Ujian", style: GoogleFonts.inter(color: AppTheme.textSecondary, fontSize: 13, fontWeight: FontWeight.bold)),
+                    Text(exam['title']?.toString() ?? 'Ujian', style: GoogleFonts.inter(fontSize: isDesktop ? 20 : 18, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
+                  ],
+                ),
+              ),
+              if (isDesktop) ...[
+                IconButton(
+                  onPressed: () => Navigator.of(modalContext).pop(),
+                  icon: const Icon(Icons.close_rounded, color: Colors.grey, size: 22),
+                  tooltip: "Tutup",
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 20),
+          Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade50,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.grey.shade200),
+            ),
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text("Mata Pelajaran", style: GoogleFonts.inter(color: AppTheme.textSecondary, fontSize: 14)),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        exam['subject']?['name']?.toString() ?? 'Umum',
+                        textAlign: TextAlign.right,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
+                      ),
+                    ),
+                  ],
+                ),
+                const Padding(padding: EdgeInsets.symmetric(vertical: 12), child: Divider(height: 1)),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text("Waktu Pengerjaan", style: GoogleFonts.inter(color: AppTheme.textSecondary, fontSize: 14)),
+                    Text("${exam['duration']} Menit", style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
+                  ],
+                ),
+                const Padding(padding: EdgeInsets.symmetric(vertical: 12), child: Divider(height: 1)),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text("Status", style: GoogleFonts.inter(color: AppTheme.textSecondary, fontSize: 14)),
+                    const SizedBox(width: 12),
+                    Flexible(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: isLocked
+                              ? Colors.red.shade100
+                              : (isPaused
+                                  ? Colors.orange.shade100
+                                  : (isWaitingSupervisor
+                                      ? Colors.amber.shade100
+                                      : (isOngoing ? Colors.amber.shade100 : (isUpcoming ? Colors.blue.shade100 : Colors.green.shade100)))),
+                          borderRadius: BorderRadius.circular(12)
+                        ),
+                        child: Text(
+                          isLocked
+                              ? "Terkunci (Hubungi Pengawas)"
+                              : (isPaused
+                                  ? "Dihentikan Pengawas"
+                                  : (isWaitingSupervisor
+                                      ? "Menunggu Pengawas"
+                                      : (isOngoing ? "Sedang Dikerjakan" : (isUpcoming ? "Segera" : "Tersedia")))),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.inter(
+                            color: isLocked
+                                ? Colors.red.shade800
+                                : (isPaused
+                                    ? Colors.orange.shade800
+                                    : (isWaitingSupervisor
+                                        ? Colors.amber.shade900
+                                        : (isOngoing ? Colors.amber.shade800 : (isUpcoming ? Colors.blue.shade800 : Colors.green.shade800)))),
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
-            const SizedBox(height: 24),
+          ),
+          if (isWaitingSupervisor) ...[
+            const SizedBox(height: 16),
             Container(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.grey.shade50,
+                color: Colors.amber.shade50,
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.grey.shade200),
+                border: Border.all(color: Colors.amber.shade200),
               ),
-              child: Column(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text("Mata Pelajaran", style: GoogleFonts.inter(color: AppTheme.textSecondary, fontSize: 14)),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          exam['subject']?['name']?.toString() ?? 'Umum',
-                          textAlign: TextAlign.right,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const Padding(padding: EdgeInsets.symmetric(vertical: 12), child: Divider(height: 1)),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text("Waktu Pengerjaan", style: GoogleFonts.inter(color: AppTheme.textSecondary, fontSize: 14)),
-                      Text("${exam['duration']} Menit", style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
-                    ],
-                  ),
-                  const Padding(padding: EdgeInsets.symmetric(vertical: 12), child: Divider(height: 1)),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text("Status", style: GoogleFonts.inter(color: AppTheme.textSecondary, fontSize: 14)),
-                      const SizedBox(width: 12),
-                      Flexible(
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: isLocked
-                                ? Colors.red.shade100
-                                : (isPaused
-                                    ? Colors.orange.shade100
-                                    : (isWaitingSupervisor
-                                        ? Colors.amber.shade100
-                                        : (isOngoing ? Colors.amber.shade100 : (isUpcoming ? Colors.blue.shade100 : Colors.green.shade100)))),
-                            borderRadius: BorderRadius.circular(12)
-                          ),
-                          child: Text(
-                            isLocked
-                                ? "Terkunci (Hubungi Pengawas)"
-                                : (isPaused
-                                    ? "Dihentikan Pengawas"
-                                    : (isWaitingSupervisor
-                                        ? "Menunggu Pengawas"
-                                        : (isOngoing ? "Sedang Dikerjakan" : (isUpcoming ? "Segera" : "Tersedia")))),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.inter(
-                              color: isLocked
-                                  ? Colors.red.shade800
-                                  : (isPaused
-                                      ? Colors.orange.shade800
-                                      : (isWaitingSupervisor
-                                          ? Colors.amber.shade900
-                                          : (isOngoing ? Colors.amber.shade800 : (isUpcoming ? Colors.blue.shade800 : Colors.green.shade800)))),
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
+                  Icon(Icons.hourglass_top_rounded, color: Colors.amber.shade800, size: 22),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      "Ujian belum dimulai oleh pengawas ruang. Harap tunggu pengawas di ruangan memulai sesi ujian sebelum Anda dapat mengerjakan.",
+                      style: GoogleFonts.inter(fontSize: 13, color: Colors.amber.shade900, height: 1.4, fontWeight: FontWeight.w500),
+                    ),
                   ),
                 ],
               ),
             ),
-            if (isWaitingSupervisor) ...[
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.amber.shade50,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: Colors.amber.shade200),
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Icon(Icons.hourglass_top_rounded, color: Colors.amber.shade800, size: 22),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        "Ujian belum dimulai oleh pengawas ruang. Harap tunggu pengawas di ruangan memulai sesi ujian sebelum Anda dapat mengerjakan.",
-                        style: GoogleFonts.inter(fontSize: 13, color: Colors.amber.shade900, height: 1.4, fontWeight: FontWeight.w500),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-            if (isPaused) ...[
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.orange.shade50,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: Colors.orange.shade200),
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Icon(Icons.pause_circle_filled_rounded, color: Colors.orange.shade800, size: 22),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        "Ujian saat ini sedang dihentikan sementara oleh pengawas ruang (misal suasana kelas berisik). Harap tertib dan tunggu pengawas melanjutkan ujian.",
-                        style: GoogleFonts.inter(fontSize: 13, color: Colors.orange.shade900, height: 1.4, fontWeight: FontWeight.w500),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-            if (isLocked) ...[
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.red.shade50,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: Colors.red.shade200),
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Icon(Icons.lock_rounded, color: Colors.red.shade700, size: 22),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        "Ujian ini terkunci karena Anda terdeteksi keluar dari aplikasi. Seluruh jawaban Anda sebelumnya tetap aman tersimpan. Silakan hubungi proktor, pengawas, atau guru di ruangan untuk membuka kunci ujian Anda sebelum melanjutkan.",
-                        style: GoogleFonts.inter(fontSize: 13, color: Colors.red.shade900, height: 1.4, fontWeight: FontWeight.w500),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-            const SizedBox(height: 32),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => Get.back(),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      side: BorderSide(color: Colors.grey.shade300)
-                    ),
-                    child: Text("Batal", style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: AppTheme.textSecondary)),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: (isUpcoming || isLocked || isWaitingSupervisor || isPaused) ? null : () {
-                      Get.back(); // close modal
-                      controller.startExam(exam); // Start exam
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: (isUpcoming || isLocked || isWaitingSupervisor || isPaused) ? Colors.grey.shade400 : AppTheme.primaryColor,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      elevation: (isUpcoming || isLocked || isWaitingSupervisor || isPaused) ? 0 : 4,
-                      shadowColor: AppTheme.primaryColor.withValues(alpha: 0.4)
-                    ),
-                    child: Text(
-                      isLocked
-                          ? "Ujian Terkunci"
-                          : (isPaused
-                              ? "Ujian Dihentikan"
-                              : (isWaitingSupervisor
-                                  ? "Menunggu Pengawas"
-                                  : (isOngoing ? "Lanjutkan" : (isUpcoming ? "Belum Waktunya" : "Mulai Ujian")))),
-                      style: GoogleFonts.inter(fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                )
-              ],
-            )
           ],
+          if (isPaused) ...[
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.orange.shade50,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.orange.shade200),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.pause_circle_filled_rounded, color: Colors.orange.shade800, size: 22),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      "Ujian saat ini sedang dihentikan sementara oleh pengawas ruang (misal suasana kelas berisik). Harap tertib dan tunggu pengawas melanjutkan ujian.",
+                      style: GoogleFonts.inter(fontSize: 13, color: Colors.orange.shade900, height: 1.4, fontWeight: FontWeight.w500),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          if (isLocked) ...[
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.red.shade50,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.red.shade200),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.lock_rounded, color: Colors.red.shade700, size: 22),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      "Ujian ini terkunci karena Anda terdeteksi keluar dari aplikasi. Seluruh jawaban Anda sebelumnya tetap aman tersimpan. Silakan hubungi proktor, pengawas, atau guru di ruangan untuk membuka kunci ujian Anda sebelum melanjutkan.",
+                      style: GoogleFonts.inter(fontSize: 13, color: Colors.red.shade900, height: 1.4, fontWeight: FontWeight.w500),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          const SizedBox(height: 24),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => Navigator.of(modalContext).pop(),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    side: BorderSide(color: Colors.grey.shade300)
+                  ),
+                  child: Text("Batal", style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: AppTheme.textSecondary)),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: (isUpcoming || isLocked || isWaitingSupervisor || isPaused) ? null : () {
+                    Navigator.of(modalContext).pop();
+                    controller.startExam(exam);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: (isUpcoming || isLocked || isWaitingSupervisor || isPaused) ? Colors.grey.shade400 : AppTheme.primaryColor,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    elevation: (isUpcoming || isLocked || isWaitingSupervisor || isPaused) ? 0 : 3,
+                    shadowColor: AppTheme.primaryColor.withValues(alpha: 0.3)
+                  ),
+                  child: Text(
+                    isLocked
+                        ? "Ujian Terkunci"
+                        : (isPaused
+                            ? "Ujian Dihentikan"
+                            : (isWaitingSupervisor
+                                ? "Menunggu Pengawas"
+                                : (isOngoing ? "Lanjutkan" : (isUpcoming ? "Belum Waktunya" : "Mulai Ujian")))),
+                    style: GoogleFonts.inter(fontWeight: FontWeight.bold),
+                  ),
+                ),
+              )
+            ],
+          )
+        ],
+      );
+    }
+
+    if (isDesktopOrWide) {
+      showDialog(
+        context: context,
+        barrierDismissible: true,
+        builder: (dialogContext) => Dialog(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 520),
+            child: Container(
+              padding: const EdgeInsets.all(28),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(28),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.14),
+                    blurRadius: 28,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
+              ),
+              child: SingleChildScrollView(
+                child: buildModalContent(modalContext: dialogContext, isDesktop: true),
+              ),
+            ),
+          ),
         ),
-      ),
-    ),
-  ),
-)),
-);
-}
+      );
+    } else {
+      showModalBottomSheet(
+        context: context,
+        backgroundColor: Colors.transparent,
+        isScrollControlled: true,
+        builder: (sheetContext) => Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.12),
+                blurRadius: 24,
+                offset: const Offset(0, -4),
+              ),
+            ],
+          ),
+          padding: EdgeInsets.fromLTRB(
+            24, 
+            16, 
+            24, 
+            24 + MediaQuery.of(sheetContext).padding.bottom
+          ),
+          child: SingleChildScrollView(
+            child: buildModalContent(modalContext: sheetContext, isDesktop: false),
+          ),
+        ),
+      );
+    }
+  }
 }

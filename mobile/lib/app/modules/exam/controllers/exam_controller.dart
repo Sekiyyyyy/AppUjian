@@ -55,6 +55,10 @@ class ExamController extends GetxController with WidgetsBindingObserver {
   final pauseReason = ''.obs;
   Timer? _sessionMonitorTimer;
 
+  // App Pinning Tracking
+  bool _isPinningApproved = false;
+  bool _isPinningPending = false;
+
   /// Whether we're running on a desktop platform (Windows/macOS/Linux)
   bool get _isDesktop =>
       !kIsWeb && (Platform.isWindows || Platform.isMacOS || Platform.isLinux);
@@ -63,6 +67,7 @@ class ExamController extends GetxController with WidgetsBindingObserver {
   void onInit() {
     super.onInit();
     WidgetsBinding.instance.addObserver(this);
+    _setupKioskChannel();
     _enableKioskMode();
 
     final args = Get.arguments;
@@ -82,6 +87,34 @@ class ExamController extends GetxController with WidgetsBindingObserver {
     }
   }
 
+  void _setupKioskChannel() {
+    _kioskChannel.setMethodCallHandler((call) async {
+      if (call.method == 'onPinningRejected') {
+        _handlePinningRejected();
+      } else if (call.method == 'onPinningAccepted') {
+        _isPinningApproved = true;
+        _isPinningPending = false;
+      }
+    });
+  }
+
+  void _handlePinningRejected() async {
+    if (_isExamFinished) return;
+    _isExamFinished = true;
+    _mobileExitCheckTimer?.cancel();
+    _sessionMonitorTimer?.cancel();
+    _timer?.cancel();
+    _stopAlarm();
+    await _disableKioskMode();
+    Get.offAllNamed(Routes.MAIN);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      AppToast.error(
+        title: "Perizinan Layar Ditolak",
+        message: "Anda menolak perizinan sematkan aplikasi (No Thanks). Anda wajib mengizinkan sematan aplikasi untuk dapat mengerjakan ujian.",
+      );
+    });
+  }
+
   @override
   void onClose() {
     WidgetsBinding.instance.removeObserver(this);
@@ -95,12 +128,17 @@ class ExamController extends GetxController with WidgetsBindingObserver {
 
   Future<void> _enableKioskMode() async {
     try {
+      if (!kIsWeb && Platform.isAndroid) {
+        _isPinningPending = true;
+      }
       await _kioskChannel.invokeMethod('startLockTask');
     } catch (_) {}
   }
 
   Future<void> _disableKioskMode() async {
     try {
+      _isPinningApproved = false;
+      _isPinningPending = false;
       await _kioskChannel.invokeMethod('stopLockTask');
     } catch (_) {}
   }
@@ -114,7 +152,7 @@ class ExamController extends GetxController with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) async {
     _currentLifecycleState = state;
-    if (_isExamFinished || isLoading.value || questions.isEmpty || isExamLocked.value || _isHandlingInAppAction) {
+    if (_isExamFinished || isLoading.value || questions.isEmpty || isExamLocked.value || _isHandlingInAppAction || _isPinningPending) {
       return;
     }
 
@@ -237,6 +275,7 @@ class ExamController extends GetxController with WidgetsBindingObserver {
 
       // 1. Start Exam Session
       final startRes = await _dio.post('/api/v1/student/exams/$examId/start');
+      if (_isExamFinished) return;
       if (startRes.statusCode == 201 || startRes.statusCode == 200) {
         final session = startRes.data;
         
@@ -272,6 +311,7 @@ class ExamController extends GetxController with WidgetsBindingObserver {
         await prefs.setInt('ongoing_exam_id', examId);
 
         // 2. Fetch Questions
+        if (_isExamFinished) return;
         await _fetchQuestions();
       }
     } on DioException catch (e) {
@@ -359,6 +399,18 @@ class ExamController extends GetxController with WidgetsBindingObserver {
     _sessionMonitorTimer?.cancel();
     _sessionMonitorTimer = Timer.periodic(const Duration(seconds: 4), (_) async {
       if (_isExamFinished || isExamLocked.value) return;
+
+      // Anti-Cheating: Pada perangkat Android, pastikan mode semat (App Pinning) tetap aktif
+      if (!kIsWeb && Platform.isAndroid) {
+        try {
+          final isPinned = await _kioskChannel.invokeMethod<bool>('isLockTaskActive') ?? false;
+          if (!isPinned && _isPinningApproved && !_isPinningPending) {
+            _lockExamSession("Terdeteksi melepas sematan aplikasi (Unpin) saat ujian");
+            return;
+          }
+        } catch (_) {}
+      }
+
       try {
         final res = await _dio.get('/api/v1/student/exams/$examId/session');
         if (res.statusCode == 200) {

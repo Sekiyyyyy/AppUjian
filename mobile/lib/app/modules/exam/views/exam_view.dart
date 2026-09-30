@@ -1,4 +1,6 @@
+import 'dart:io' show Platform;
 import 'dart:ui';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -12,120 +14,172 @@ class ExamView extends GetView<ExamController> {
   const ExamView({super.key});
 
   void _showQuestionGrid(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (context) => Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 580),
-          child: Container(
-            height: MediaQuery.of(context).size.height * 0.7,
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-            ),
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isDesktopPlatform = !kIsWeb && (Platform.isWindows || Platform.isMacOS || Platform.isLinux);
+    final isDesktopOrWide = isDesktopPlatform || screenWidth >= 650;
+
+    Widget buildGridContent({required BuildContext gridContext, required bool isDesktop}) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (!isDesktop) ...[
             Center(
               child: Container(
-                width: 40,
-                height: 4,
-                margin: const EdgeInsets.only(bottom: 24),
+                width: 44,
+                height: 5,
+                margin: const EdgeInsets.only(bottom: 20),
                 decoration: BoxDecoration(
                   color: Colors.grey.shade300,
-                  borderRadius: BorderRadius.circular(2),
+                  borderRadius: BorderRadius.circular(3),
                 ),
               ),
             ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text("Navigasi Soal", style: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
-                IconButton(
-                  icon: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(color: Colors.grey.shade100, shape: BoxShape.circle),
-                    child: const Icon(Icons.close_rounded, size: 20),
-                  ),
-                  onPressed: () => Get.back()
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Wrap(
-              alignment: WrapAlignment.spaceEvenly,
-              spacing: 12,
-              runSpacing: 8,
-              children: [
-                _buildLegend(AppTheme.primaryColor, "Terjawab"),
-                _buildLegend(Colors.amber.shade500, "Ragu-ragu"),
-                _buildLegend(Colors.grey.shade200, "Belum", textColor: Colors.grey.shade600),
-              ],
-            ),
-            const SizedBox(height: 20),
-            Expanded(
-              child: Obx(() => GridView.builder(
-                physics: const BouncingScrollPhysics(),
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: MediaQuery.of(context).size.width < 360 ? 4 : 5,
-                  crossAxisSpacing: 10,
-                  mainAxisSpacing: 10,
-                ),
-                itemCount: controller.questions.length,
-                itemBuilder: (context, index) {
-                  final qId = controller.questions[index]['id'];
-                  final isAnswered = controller.answers.containsKey(qId);
-                  final isFlagged = controller.flagged[qId] ?? false;
-                  final isCurrent = controller.currentIndex.value == index;
-
-                  Color bgColor = Colors.grey.shade100;
-                  Color textColor = AppTheme.textPrimary;
-                  
-                  if (isFlagged) {
-                    bgColor = Colors.amber.shade500;
-                    textColor = Colors.white;
-                  } else if (isAnswered) {
-                    bgColor = AppTheme.primaryColor;
-                    textColor = Colors.white;
-                  }
-
-                  return InkWell(
-                    onTap: () {
-                      controller.jumpToQuestion(index);
-                      Get.back(); // close bottom sheet
-                    },
-                    borderRadius: BorderRadius.circular(16),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 300),
-                      curve: Curves.easeOutCubic,
-                      decoration: BoxDecoration(
-                        color: bgColor,
-                        borderRadius: BorderRadius.circular(16),
-                        border: isCurrent ? Border.all(color: AppTheme.secondaryColor, width: 3) : null,
-                        boxShadow: isCurrent 
-                          ? [BoxShadow(color: AppTheme.secondaryColor.withValues(alpha: 0.4), blurRadius: 12, spreadRadius: 2)]
-                          : (isAnswered || isFlagged ? [BoxShadow(color: bgColor.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 4))] : []),
-                      ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        "${index + 1}",
-                        style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 16, color: textColor),
-                      ),
-                    ),
-                  );
-                },
-              )),
-            ),
           ],
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text("Navigasi Soal", style: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
+              IconButton(
+                icon: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(color: Colors.grey.shade100, shape: BoxShape.circle),
+                  child: const Icon(Icons.close_rounded, size: 20),
+                ),
+                onPressed: () => Navigator.of(gridContext).pop(),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Wrap(
+            alignment: WrapAlignment.spaceEvenly,
+            spacing: 12,
+            runSpacing: 8,
+            children: [
+              _buildLegend(AppTheme.primaryColor, "Terjawab"),
+              _buildLegend(Colors.amber.shade500, "Ragu-ragu"),
+              _buildLegend(Colors.grey.shade200, "Belum", textColor: Colors.grey.shade600),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Expanded(
+            child: Obx(() => GridView.builder(
+              physics: const BouncingScrollPhysics(),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: MediaQuery.of(gridContext).size.width < 360 ? 4 : (isDesktop ? 6 : 5),
+                crossAxisSpacing: 10,
+                mainAxisSpacing: 10,
+              ),
+              itemCount: controller.questions.length,
+              itemBuilder: (context, index) {
+                final qId = controller.questions[index]['id'];
+                final isAnswered = controller.answers.containsKey(qId);
+                final isFlagged = controller.flagged[qId] ?? false;
+                final isCurrent = controller.currentIndex.value == index;
+
+                Color bgColor = Colors.grey.shade100;
+                Color textColor = AppTheme.textPrimary;
+                
+                if (isFlagged) {
+                  bgColor = Colors.amber.shade500;
+                  textColor = Colors.white;
+                } else if (isAnswered) {
+                  bgColor = AppTheme.primaryColor;
+                  textColor = Colors.white;
+                }
+
+                return InkWell(
+                  onTap: () {
+                    controller.jumpToQuestion(index);
+                    Navigator.of(gridContext).pop();
+                  },
+                  borderRadius: BorderRadius.circular(16),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeOutCubic,
+                    decoration: BoxDecoration(
+                      color: bgColor,
+                      borderRadius: BorderRadius.circular(16),
+                      border: isCurrent ? Border.all(color: AppTheme.secondaryColor, width: 3) : null,
+                      boxShadow: isCurrent 
+                        ? [BoxShadow(color: AppTheme.secondaryColor.withValues(alpha: 0.4), blurRadius: 12, spreadRadius: 2)]
+                        : (isAnswered || isFlagged ? [BoxShadow(color: bgColor.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 4))] : []),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      "${index + 1}",
+                      style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 16, color: textColor),
+                    ),
+                  ),
+                );
+              },
+            )),
+          ),
+        ],
+      );
+    }
+
+    if (isDesktopOrWide) {
+      showDialog(
+        context: context,
+        barrierDismissible: true,
+        builder: (dialogContext) => Dialog(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: 540,
+              maxHeight: MediaQuery.of(context).size.height * 0.75,
+            ),
+            child: Container(
+              padding: const EdgeInsets.all(28),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(28),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.14),
+                    blurRadius: 28,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
+              ),
+              child: buildGridContent(gridContext: dialogContext, isDesktop: true),
+            ),
+          ),
         ),
-      ),
-    ),
-  ),
-);
-}
+      );
+    } else {
+      showModalBottomSheet(
+        context: context,
+        backgroundColor: Colors.transparent,
+        isScrollControlled: true,
+        builder: (sheetContext) => Container(
+          width: double.infinity,
+          height: MediaQuery.of(sheetContext).size.height * 0.72,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.12),
+                blurRadius: 24,
+                offset: const Offset(0, -4),
+              ),
+            ],
+          ),
+          padding: EdgeInsets.fromLTRB(
+            20, 
+            14, 
+            20, 
+            16 + MediaQuery.of(sheetContext).padding.bottom
+          ),
+          child: buildGridContent(gridContext: sheetContext, isDesktop: false),
+        ),
+      );
+    }
+  }
 
   Widget _buildLegend(Color color, String label, {Color? textColor}) {
     return Row(
@@ -146,72 +200,121 @@ class ExamView extends GetView<ExamController> {
   }
 
   void _showExamInfoSheet(BuildContext context, Map<String, dynamic> exam) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (context) => SafeArea(
-        child: Center(
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isDesktopPlatform = !kIsWeb && (Platform.isWindows || Platform.isMacOS || Platform.isLinux);
+    final isDesktopOrWide = isDesktopPlatform || screenWidth >= 650;
+
+    Widget buildInfoContent({required BuildContext infoContext, required bool isDesktop}) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (!isDesktop) ...[
+            Center(
+              child: Container(
+                width: 44,
+                height: 5,
+                margin: const EdgeInsets.only(bottom: 20),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(3),
+                ),
+              ),
+            ),
+          ],
+          Center(
+            child: Text(
+              "Informasi Ujian",
+              style: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.bold, color: AppTheme.textPrimary, letterSpacing: -0.5),
+            ),
+          ),
+          const SizedBox(height: 24),
+          _buildInfoRow(Icons.verified_user_outlined, "Proktor Utama", exam['proktor'] ?? '-'),
+          _buildInfoRow(Icons.people_outline_rounded, "Pengawas Ruang", exam['pengawas'] ?? '-'),
+          _buildInfoRow(Icons.school_outlined, "Tahun / Semester", "${exam['tahun'] ?? '-'} / ${exam['semester'] ?? '-'}"),
+          _buildInfoRow(Icons.timer_outlined, "Lama Ujian", "${exam['duration']} Menit"),
+          const SizedBox(height: 24),
+          SizedBox(
+            width: double.infinity,
+            height: 52,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primaryColor,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                elevation: 4,
+                shadowColor: AppTheme.primaryColor.withValues(alpha: 0.4),
+              ),
+              onPressed: () => Navigator.of(infoContext).pop(),
+              child: Text("Tutup", style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.bold)),
+            ),
+          )
+        ],
+      );
+    }
+
+    if (isDesktopOrWide) {
+      showDialog(
+        context: context,
+        barrierDismissible: true,
+        builder: (dialogContext) => Dialog(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 580),
+            constraints: const BoxConstraints(maxWidth: 500),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-              decoration: const BoxDecoration(
+              padding: const EdgeInsets.all(28),
+              decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+                borderRadius: BorderRadius.circular(28),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.14),
+                    blurRadius: 28,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
               ),
               child: SingleChildScrollView(
                 physics: const BouncingScrollPhysics(),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Center(
-                      child: Container(
-                        width: 40,
-                        height: 4,
-                        margin: const EdgeInsets.only(bottom: 20),
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade300,
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      ),
-                    ),
-                    Center(
-                      child: Text(
-                        "Informasi Ujian",
-                        style: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.bold, color: AppTheme.textPrimary, letterSpacing: -0.5),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    _buildInfoRow(Icons.verified_user_outlined, "Proktor Utama", exam['proktor'] ?? '-'),
-                    _buildInfoRow(Icons.people_outline_rounded, "Pengawas Ruang", exam['pengawas'] ?? '-'),
-                    _buildInfoRow(Icons.school_outlined, "Tahun / Semester", "${exam['tahun'] ?? '-'} / ${exam['semester'] ?? '-'}"),
-                    _buildInfoRow(Icons.timer_outlined, "Lama Ujian", "${exam['duration']} Menit"),
-                    const SizedBox(height: 24),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 52,
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppTheme.primaryColor,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                          elevation: 4,
-                          shadowColor: AppTheme.primaryColor.withValues(alpha: 0.4),
-                        ),
-                        onPressed: () => Get.back(),
-                        child: Text("Tutup", style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.bold)),
-                      ),
-                    )
-                  ],
-                ),
+                child: buildInfoContent(infoContext: dialogContext, isDesktop: true),
               ),
             ),
           ),
         ),
-      ),
-    );
+      );
+    } else {
+      showModalBottomSheet(
+        context: context,
+        backgroundColor: Colors.transparent,
+        isScrollControlled: true,
+        builder: (sheetContext) => Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.12),
+                blurRadius: 24,
+                offset: const Offset(0, -4),
+              ),
+            ],
+          ),
+          padding: EdgeInsets.fromLTRB(
+            24, 
+            16, 
+            24, 
+            24 + MediaQuery.of(sheetContext).padding.bottom
+          ),
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            child: buildInfoContent(infoContext: sheetContext, isDesktop: false),
+          ),
+        ),
+      );
+    }
   }
 
   Widget _buildInfoRow(IconData icon, String label, String value) {

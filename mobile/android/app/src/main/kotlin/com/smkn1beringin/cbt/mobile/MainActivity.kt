@@ -1,5 +1,6 @@
 package com.smkn1beringin.cbt.mobile
 
+import android.app.ActivityManager
 import android.app.KeyguardManager
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -10,6 +11,8 @@ import android.media.AudioManager
 import android.media.MediaPlayer
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.os.PowerManager
 import android.os.VibrationEffect
 import android.os.Vibrator
@@ -20,9 +23,15 @@ import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
     private val CHANNEL = "com.smkn1beringin.cbt/kiosk"
+    private var methodChannel: MethodChannel? = null
     private var mediaPlayer: MediaPlayer? = null
     private var isScreenOff = false
     private var isActivityResumed = false
+
+    // App Pinning Tracking (Screen Pinning / LockTaskMode)
+    private var isWaitingForPinApproval = false
+    private var pinDialogAppeared = false
+    private val pinningHandler = Handler(Looper.getMainLooper())
 
     private val screenReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -58,25 +67,107 @@ class MainActivity : FlutterActivity() {
         isActivityResumed = false
     }
 
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (!hasFocus) {
+            // Dialog sistem "Sematkan Aplikasi" muncul dan mengambil fokus jendela
+            if (isWaitingForPinApproval) {
+                pinDialogAppeared = true
+            }
+        } else {
+            // Fokus kembali ke jendela aplikasi (dialog sistem selesai direspons / ditutup)
+            if (isWaitingForPinApproval) {
+                pinningHandler.removeCallbacksAndMessages(null)
+                // Beri jeda 350ms agar sistem Android menyelesaikan transisi LockTaskModeState
+                pinningHandler.postDelayed({
+                    if (isWaitingForPinApproval) {
+                        val am = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+                        val mode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                            am.lockTaskModeState
+                        } else {
+                            ActivityManager.LOCK_TASK_MODE_NONE
+                        }
+                        if (mode != ActivityManager.LOCK_TASK_MODE_NONE) {
+                            // Siswa menekan "Mengerti" / "Sematkan" (ACC)
+                            isWaitingForPinApproval = false
+                            pinDialogAppeared = false
+                            methodChannel?.invokeMethod("onPinningAccepted", null)
+                        } else {
+                            // Siswa menekan "Tidak, terima kasih" ("No thanks") atau membatalkan dialog!
+                            isWaitingForPinApproval = false
+                            pinDialogAppeared = false
+                            methodChannel?.invokeMethod("onPinningRejected", "no_thanks")
+                        }
+                    }
+                }, 350)
+            }
+        }
+    }
+
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         // Anti-Cheating: Blokir Screenshot dan Screen Recording secara native di Android
         window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
 
         // Anti-Cheating: Kiosk Mode dan Emergency Siren Alarm
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler { call, result ->
+        methodChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL)
+        methodChannel?.setMethodCallHandler { call, result ->
             when (call.method) {
                 "startLockTask" -> {
                     try {
-                        startLockTask()
-                        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-                        result.success(true)
+                        val am = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+                        val currentMode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                            am.lockTaskModeState
+                        } else {
+                            ActivityManager.LOCK_TASK_MODE_NONE
+                        }
+
+                        if (currentMode != ActivityManager.LOCK_TASK_MODE_NONE) {
+                            // Sudah dalam mode disematkan (pinned/locked)
+                            isWaitingForPinApproval = false
+                            pinDialogAppeared = false
+                            window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                            result.success(true)
+                            methodChannel?.invokeMethod("onPinningAccepted", null)
+                        } else {
+                            isWaitingForPinApproval = true
+                            pinDialogAppeared = false
+                            startLockTask()
+                            window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                            result.success(true)
+
+                            // Safety watchdog: jika dialog tidak pernah muncul setelah 2.5 detik
+                            // (misal fitur sematkan aplikasi dimatikan di pengaturan sistem HP siswa)
+                            pinningHandler.removeCallbacksAndMessages(null)
+                            pinningHandler.postDelayed({
+                                if (isWaitingForPinApproval && !pinDialogAppeared) {
+                                    val checkAm = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+                                    val mode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                                        checkAm.lockTaskModeState
+                                    } else {
+                                        ActivityManager.LOCK_TASK_MODE_NONE
+                                    }
+                                    if (mode == ActivityManager.LOCK_TASK_MODE_NONE) {
+                                        isWaitingForPinApproval = false
+                                        methodChannel?.invokeMethod("onPinningRejected", "pinning_not_active")
+                                    } else {
+                                        isWaitingForPinApproval = false
+                                        methodChannel?.invokeMethod("onPinningAccepted", null)
+                                    }
+                                }
+                            }, 2500)
+                        }
                     } catch (e: Exception) {
+                        isWaitingForPinApproval = false
                         result.success(false)
+                        methodChannel?.invokeMethod("onPinningRejected", "exception: ${e.message}")
                     }
                 }
                 "stopLockTask" -> {
                     try {
+                        isWaitingForPinApproval = false
+                        pinDialogAppeared = false
+                        pinningHandler.removeCallbacksAndMessages(null)
                         stopLockTask()
                         window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
                         result.success(true)
@@ -84,8 +175,26 @@ class MainActivity : FlutterActivity() {
                         result.success(false)
                     }
                 }
+                "isLockTaskActive" -> {
+                    try {
+                        val am = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+                        val mode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                            am.lockTaskModeState
+                        } else {
+                            ActivityManager.LOCK_TASK_MODE_NONE
+                        }
+                        result.success(mode != ActivityManager.LOCK_TASK_MODE_NONE)
+                    } catch (e: Exception) {
+                        result.success(false)
+                    }
+                }
                 "isScreenInteractive" -> {
                     try {
+                        // Jangan anggap keluar aplikasi jika sedang menunggu siswa merespons dialog pin
+                        if (isWaitingForPinApproval) {
+                            result.success(false)
+                            return@setMethodCallHandler
+                        }
                         val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
                         val km = getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager
                         val isInteractive = pm.isInteractive && !isScreenOff
@@ -204,6 +313,7 @@ class MainActivity : FlutterActivity() {
     }
 
     override fun onDestroy() {
+        pinningHandler.removeCallbacksAndMessages(null)
         try {
             unregisterReceiver(screenReceiver)
         } catch (_: Exception) {}
