@@ -19,27 +19,17 @@ class MandatoryUpdateWidget extends StatelessWidget {
         canPop: false, // Blokir tombol back Android sepenuhnya
         child: Material(
           color: Colors.transparent,
-          child: Container(
-            width: double.infinity,
-            height: double.infinity,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  const Color(0xFF0F172A).withValues(alpha: 0.96), // Dark slate
-                  const Color(0xFF1E293B).withValues(alpha: 0.98),
-                ],
-              ),
-            ),
+          child: SizedBox.expand(
             child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-              child: SafeArea(
-                child: Center(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 480),
+              filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+              child: Container(
+                color: Colors.black.withValues(alpha: 0.32),
+                child: SafeArea(
+                  child: Center(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 480),
                       child: Container(
                         padding: const EdgeInsets.all(28),
                         decoration: BoxDecoration(
