@@ -23,7 +23,8 @@ import {
   RefreshCw,
   Play,
   Pause,
-  Square
+  LayoutGrid,
+  List
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { confirmAction, showSuccessToast, showErrorToast } from '../utils/alert';
@@ -95,6 +96,21 @@ const Supervisors = () => {
   const [selectedExamId, setSelectedExamId] = useState<string>('ALL');
   const [selectedClassId, setSelectedClassId] = useState<string>('ALL');
   const [selectedTeacherId, setSelectedTeacherId] = useState<string>('ALL');
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('supervisors_view_mode') as 'grid' | 'table' | null;
+      if (saved === 'grid' || saved === 'table') return saved;
+      return window.innerWidth < 1024 ? 'grid' : 'table';
+    }
+    return 'grid';
+  });
+
+  const handleSetViewMode = (mode: 'grid' | 'table') => {
+    setViewMode(mode);
+    try {
+      localStorage.setItem('supervisors_view_mode', mode);
+    } catch (_) {}
+  };
 
   // Manual Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -617,45 +633,282 @@ const Supervisors = () => {
         </div>
       </div>
 
-      {/* Main Table Card */}
-      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm text-slate-600">
-            <thead className="bg-slate-50/80 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200">
-              <tr>
-                <th className="px-6 py-4">Jadwal Ujian</th>
-                <th className="px-6 py-4">Kelas / Rombel</th>
-                <th className="px-6 py-4">Guru Pengawas</th>
-                <th className="px-6 py-4">Ruangan</th>
-                <th className="px-6 py-4">Status Sesi</th>
-                <th className="px-6 py-4">Keterangan</th>
-                <th className="px-6 py-4 text-right">Kontrol & Aksi</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {isLoading ? (
-                <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center text-slate-400">
-                    <div className="flex flex-col items-center justify-center space-y-2">
-                      <RefreshCw className="w-6 h-6 animate-spin text-indigo-600" />
-                      <span>Memuat data jadwal pengawas...</span>
+      {/* View Mode Toggle & Active Results Info */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-1">
+        <div className="flex items-center space-x-2 text-xs text-slate-500 font-medium">
+          <span>Menampilkan <strong className="text-slate-800 font-semibold">{filteredSupervisors.length}</strong> jadwal penugasan</span>
+        </div>
+        <div className="flex items-center self-end sm:self-auto bg-slate-100 p-1 rounded-xl border border-slate-200/80 shadow-2xs">
+          <button
+            type="button"
+            onClick={() => handleSetViewMode('grid')}
+            className={`inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              viewMode === 'grid' 
+                ? 'bg-white text-indigo-700 shadow-xs' 
+                : 'text-slate-500 hover:text-slate-800'
+            }`}
+            title="Tampilan Kartu (Mudah dilihat di HP & Tablet, tidak perlu geser tabel)"
+          >
+            <LayoutGrid className="w-3.5 h-3.5" />
+            <span>Kartu (Mudah)</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => handleSetViewMode('table')}
+            className={`inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              viewMode === 'table' 
+                ? 'bg-white text-indigo-700 shadow-xs' 
+                : 'text-slate-500 hover:text-slate-800'
+            }`}
+            title="Tampilan Tabel Lengkap"
+          >
+            <List className="w-3.5 h-3.5" />
+            <span>Tabel Lengkap</span>
+          </button>
+        </div>
+      </div>
+
+      {isLoading ? (
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-12 text-center text-slate-400">
+          <div className="flex flex-col items-center justify-center space-y-2">
+            <RefreshCw className="w-7 h-7 animate-spin text-indigo-600" />
+            <span className="text-sm font-medium text-slate-600">Memuat data jadwal pengawas...</span>
+          </div>
+        </div>
+      ) : filteredSupervisors.length === 0 ? (
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-12 text-center text-slate-400">
+          <div className="flex flex-col items-center justify-center space-y-2 max-w-sm mx-auto">
+            <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mb-1">
+              <UserCheck className="w-6 h-6 text-slate-400" />
+            </div>
+            <p className="font-bold text-slate-700 text-base">Tidak ada jadwal pengawas</p>
+            <p className="text-xs text-slate-400">
+              {isAdmin ? 'Tambahkan pengawas secara manual atau unggah file Excel' : 'Anda belum memiliki jadwal tugas pengawasan yang sesuai dengan filter'}
+            </p>
+          </div>
+        </div>
+      ) : viewMode === 'grid' ? (
+        /* ================= KARTU VIEW (SUPER RAMAH MOBILE & GURU) ================= */
+        <div className={`grid gap-5 ${
+          filteredSupervisors.length === 1 
+            ? 'grid-cols-1 max-w-xl' 
+            : filteredSupervisors.length === 2 
+              ? 'grid-cols-1 lg:grid-cols-2 max-w-4xl' 
+              : 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3'
+        }`}>
+          {filteredSupervisors.map((s) => {
+            const examTitle = s.exam?.title || 'Ujian Tanpa Judul';
+            const subjectName = s.exam?.subject?.name || '-';
+            const className = s.class?.name || `Kelas #${s.class_id}`;
+            const teacherName = s.teacher?.name || `Guru #${s.teacher_id}`;
+            const teacherUser = s.teacher?.username || '';
+            const ruangan = s.ruangan || '-';
+            const notes = s.notes || '';
+            const sessionStatus = s.status || 'WAITING';
+
+            return (
+              <div 
+                key={s.ID} 
+                className="bg-white rounded-2xl border border-slate-200/80 shadow-xs hover:shadow-md transition-all duration-200 flex flex-col justify-between overflow-hidden"
+              >
+                {/* Bagian Atas Kartu */}
+                <div className="p-4 sm:p-5 space-y-3.5">
+                  {/* Badges Bar: Kelas, Ruangan & Status */}
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 font-bold text-xs border border-indigo-200/80 shadow-2xs">
+                        <School className="w-3.5 h-3.5 mr-1 text-indigo-600" />
+                        {className}
+                      </span>
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 font-medium text-xs border border-slate-200/80">
+                        <MapPin className="w-3.5 h-3.5 mr-1 text-slate-500" />
+                        {ruangan}
+                      </span>
                     </div>
-                  </td>
-                </tr>
-              ) : filteredSupervisors.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center text-slate-400">
-                    <div className="flex flex-col items-center justify-center space-y-2">
-                      <UserCheck className="w-8 h-8 text-slate-300" />
-                      <p className="font-medium text-slate-600">Tidak ada jadwal pengawas yang ditemukan</p>
-                      <p className="text-xs text-slate-400">
-                        {isAdmin ? 'Tambahkan pengawas secara manual atau unggah file Excel' : 'Anda belum memiliki jadwal tugas pengawasan'}
-                      </p>
+
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {/* Status Sesi Badge */}
+                      {sessionStatus === 'STARTED' ? (
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/80 shadow-2xs">
+                          <span className="relative flex h-2 w-2 mr-1.5">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                          </span>
+                          Berlangsung
+                        </span>
+                      ) : sessionStatus === 'PAUSED' ? (
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-800 border border-amber-300 shadow-2xs">
+                          <Pause className="w-3 h-3 mr-1 text-amber-600 fill-current" />
+                          Dihentikan
+                        </span>
+                      ) : sessionStatus === 'FINISHED' ? (
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-600 border border-slate-200">
+                          <CheckCircle2 className="w-3.5 h-3.5 mr-1 text-slate-500" />
+                          Selesai
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200/80 shadow-2xs">
+                          <Clock className="w-3.5 h-3.5 mr-1 text-blue-500" />
+                          Menunggu
+                        </span>
+                      )}
+
+                      {/* Admin CRUD Actions (Header Corner) */}
+                      {isAdmin && (
+                        <div className="flex items-center ml-1 pl-1.5 border-l border-slate-200">
+                          <button
+                            onClick={() => handleOpenEdit(s)}
+                            className="p-1 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                            title="Edit Penugasan"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteSupervisor(s.ID, teacherName, className)}
+                            className="p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Hapus Penugasan"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      )}
                     </div>
-                  </td>
+                  </div>
+
+                  {/* Judul Ujian & Mapel */}
+                  <div className="space-y-1.5">
+                    <h3 className="font-bold text-slate-900 text-base leading-snug line-clamp-2" title={examTitle}>
+                      {examTitle}
+                    </h3>
+                    <div className="flex flex-wrap items-center gap-2 text-xs">
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 font-medium border border-slate-200/60">
+                        <BookOpen className="w-3.5 h-3.5 mr-1.5 text-indigo-500" />
+                        <span className="truncate max-w-[200px]" title={subjectName}>{subjectName}</span>
+                      </span>
+                      {s.exam?.duration && (
+                        <span className="inline-flex items-center px-2 py-1 rounded-lg bg-slate-50 text-slate-600 font-medium border border-slate-200/50">
+                          <Clock className="w-3.5 h-3.5 mr-1 text-slate-400" />
+                          {s.exam.duration} mnt
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Pengawas & Keterangan */}
+                  <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+                    <div className="flex items-center space-x-2.5 min-w-0">
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-indigo-700 text-white flex items-center justify-center font-bold text-xs uppercase shadow-2xs shrink-0">
+                        {teacherName.charAt(0)}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-bold text-slate-800 truncate" title={teacherName}>
+                          {teacherName}
+                        </p>
+                        <p className="text-[11px] text-slate-400 truncate">
+                          {teacherUser ? `@${teacherUser}` : 'Pengawas Ruang'}
+                        </p>
+                      </div>
+                    </div>
+                    {notes && notes !== '-' && (
+                      <span className="text-[11px] text-slate-600 bg-amber-50/80 border border-amber-200/60 px-2.5 py-1 rounded-lg max-w-[130px] truncate" title={notes}>
+                        💬 {notes}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Bagian Bawah Kartu: Tombol Aksi Ramah Sentuhan (Thumb-friendly & No Overflow) */}
+                <div className="p-3.5 sm:p-4 bg-slate-50/90 border-t border-slate-100 flex flex-col gap-2">
+                  {/* Baris 1: Tombol Operasi Sesi & Pantau Siswa (Grid 2 Kolom Seimbang) */}
+                  <div className="grid grid-cols-2 gap-2 w-full">
+                    {/* Kontrol Sesi Ujian */}
+                    {sessionStatus === 'WAITING' && (
+                      <button
+                        onClick={() => handleStartSession(s)}
+                        className="inline-flex items-center justify-center space-x-1.5 px-3 py-2.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 active:scale-95 rounded-xl shadow-xs transition-all w-full"
+                        title="Mulai sesi ujian untuk rombel ini"
+                      >
+                        <Play className="w-3.5 h-3.5 fill-current shrink-0" />
+                        <span className="truncate">Mulai Ujian</span>
+                      </button>
+                    )}
+
+                    {sessionStatus === 'STARTED' && (
+                      <button
+                        onClick={() => handlePauseSession(s)}
+                        className="inline-flex items-center justify-center space-x-1.5 px-3 py-2.5 text-xs font-bold text-amber-900 bg-amber-100 hover:bg-amber-200 active:scale-95 border border-amber-300 rounded-xl shadow-xs transition-all w-full"
+                        title="Hentikan sementara ujian untuk seluruh siswa"
+                      >
+                        <Pause className="w-3.5 h-3.5 fill-current shrink-0" />
+                        <span className="truncate">Hentikan Ujian</span>
+                      </button>
+                    )}
+
+                    {sessionStatus === 'PAUSED' && (
+                      <button
+                        onClick={() => handleResumeSession(s)}
+                        className="inline-flex items-center justify-center space-x-1.5 px-3 py-2.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 active:scale-95 rounded-xl shadow-xs transition-all w-full"
+                        title="Lanjutkan kembali ujian"
+                      >
+                        <Play className="w-3.5 h-3.5 fill-current shrink-0" />
+                        <span className="truncate">Lanjutkan Ujian</span>
+                      </button>
+                    )}
+
+                    {sessionStatus === 'FINISHED' && (
+                      <div className="inline-flex items-center justify-center space-x-1.5 px-3 py-2.5 text-xs font-bold text-slate-500 bg-slate-100 rounded-xl border border-slate-200 w-full cursor-not-allowed">
+                        <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-slate-400" />
+                        <span className="truncate">Sesi Selesai</span>
+                      </div>
+                    )}
+
+                    {/* Tombol Pantau Siswa & Kontrol (Modal) */}
+                    <button
+                      onClick={() => handleOpenMonitor(s.exam_id, examTitle, s.class_id)}
+                      className="inline-flex items-center justify-center space-x-1.5 px-3 py-2.5 text-xs font-bold text-indigo-700 bg-white hover:bg-indigo-50 active:scale-95 rounded-xl border border-indigo-200 shadow-2xs transition-all w-full"
+                      title="Pantau peserta ujian, buka kunci, dan kontrol siswa"
+                    >
+                      <Eye className="w-3.5 h-3.5 shrink-0 text-indigo-600" />
+                      <span className="truncate">Pantau Siswa</span>
+                    </button>
+                  </div>
+
+                  {/* Baris 2: Tombol Selesaikan Sesi Pengawasan (Hanya Jika Sesi Aktif atau Dihentikan) */}
+                  {(sessionStatus === 'STARTED' || sessionStatus === 'PAUSED') && (
+                    <button
+                      onClick={() => handleFinishSession(s)}
+                      className="w-full inline-flex items-center justify-center space-x-1.5 py-2 px-3 text-xs font-semibold text-slate-600 hover:text-red-700 bg-white hover:bg-red-50 border border-slate-200 hover:border-red-200 rounded-xl transition-all shadow-2xs active:scale-95"
+                      title="Tutup dan selesaikan sesi pengawasan ujian ini"
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5 text-slate-400" />
+                      <span>Selesaikan Sesi Pengawasan</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        /* ================= TABEL VIEW (DENGAN STICKY ACTION COLUMN) ================= */
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm text-slate-600 border-collapse">
+              <thead className="bg-slate-50/90 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200">
+                <tr>
+                  <th className="px-5 py-4 min-w-[220px]">Jadwal Ujian</th>
+                  <th className="px-5 py-4 min-w-[130px]">Kelas / Rombel</th>
+                  <th className="px-5 py-4 min-w-[170px]">Guru Pengawas</th>
+                  <th className="px-5 py-4 min-w-[120px]">Ruangan</th>
+                  <th className="px-5 py-4 min-w-[130px]">Status Sesi</th>
+                  <th className="px-5 py-4 min-w-[120px]">Keterangan</th>
+                  <th className="px-5 py-4 text-right min-w-[200px] md:sticky md:right-0 bg-slate-50 shadow-[-6px_0_10px_-3px_rgba(0,0,0,0.06)] z-10">
+                    Kontrol & Aksi
+                  </th>
                 </tr>
-              ) : (
-                filteredSupervisors.map((s) => {
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filteredSupervisors.map((s) => {
                   const examTitle = s.exam?.title || 'Ujian Tanpa Judul';
                   const subjectName = s.exam?.subject?.name || '-';
                   const className = s.class?.name || `Kelas #${s.class_id}`;
@@ -666,18 +919,18 @@ const Supervisors = () => {
                   const sessionStatus = s.status || 'WAITING';
 
                   return (
-                    <tr key={s.ID} className="hover:bg-slate-50/60 transition-colors">
+                    <tr key={s.ID} className="group hover:bg-slate-50/80 transition-colors">
                       {/* Exam Column */}
-                      <td className="px-6 py-4">
+                      <td className="px-5 py-4">
                         <div className="space-y-1">
-                          <p className="font-semibold text-slate-800 leading-snug">{examTitle}</p>
+                          <p className="font-semibold text-slate-900 leading-snug">{examTitle}</p>
                           <div className="flex items-center space-x-2 text-xs text-slate-500">
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 font-medium">
-                              <BookOpen className="w-3 h-3 mr-1" />
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-medium">
+                              <BookOpen className="w-3 h-3 mr-1 text-slate-400" />
                               {subjectName}
                             </span>
                             {s.exam?.duration && (
-                              <span className="inline-flex items-center text-slate-500">
+                              <span className="inline-flex items-center text-slate-400">
                                 <Clock className="w-3 h-3 mr-1" />
                                 {s.exam.duration} mnt
                               </span>
@@ -687,36 +940,43 @@ const Supervisors = () => {
                       </td>
 
                       {/* Class Column */}
-                      <td className="px-6 py-4">
-                        <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 font-semibold text-xs border border-indigo-200">
-                          <School className="w-3.5 h-3.5 mr-1" />
+                      <td className="px-5 py-4">
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 font-semibold text-xs border border-slate-200">
+                          <School className="w-3.5 h-3.5 mr-1 text-slate-500" />
                           {className}
                         </span>
                       </td>
 
-                      {/* Teacher Column */}
-                      <td className="px-6 py-4">
-                        <div>
-                          <p className="font-medium text-slate-900">{teacherName}</p>
-                          {teacherUser && (
-                            <p className="text-xs text-slate-400">@{teacherUser}</p>
-                          )}
+                      {/* Teacher Column with Avatar */}
+                      <td className="px-5 py-4">
+                        <div className="flex items-center space-x-2.5">
+                          <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 text-slate-700 flex items-center justify-center font-bold text-xs uppercase shrink-0">
+                            {teacherName.charAt(0)}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-semibold text-slate-900 text-sm leading-snug truncate">
+                              {teacherName}
+                            </p>
+                            {teacherUser && (
+                              <p className="text-xs text-slate-400 font-mono truncate">@{teacherUser}</p>
+                            )}
+                          </div>
                         </div>
                       </td>
 
                       {/* Room Column */}
-                      <td className="px-6 py-4">
+                      <td className="px-5 py-4">
                         <div className="flex items-center space-x-1.5 text-slate-700 font-medium text-xs">
-                          <MapPin className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                          <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                           <span>{ruangan}</span>
                         </div>
                       </td>
 
                       {/* Session Status Column */}
-                      <td className="px-6 py-4">
+                      <td className="px-5 py-4">
                         {sessionStatus === 'STARTED' ? (
                           <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-xs">
-                            <span className="w-2 h-2 mr-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                            <span className="w-2 h-2 mr-1.5 rounded-full bg-emerald-500"></span>
                             Berlangsung
                           </span>
                         ) : sessionStatus === 'PAUSED' ? (
@@ -738,19 +998,19 @@ const Supervisors = () => {
                       </td>
 
                       {/* Notes Column */}
-                      <td className="px-6 py-4 text-xs text-slate-500">
+                      <td className="px-5 py-4 text-xs text-slate-500">
                         {notes}
                       </td>
 
-                      {/* Action Column */}
-                      <td className="px-6 py-4 text-right">
+                      {/* Action Column (STICKY RIGHT) */}
+                      <td className="px-5 py-4 text-right md:sticky md:right-0 bg-white group-hover:bg-slate-50 shadow-[-6px_0_10px_-3px_rgba(0,0,0,0.06)] z-10">
                         <div className="flex items-center justify-end space-x-1.5">
                           {/* Sesi Control Buttons */}
                           {sessionStatus === 'WAITING' && (
                             <button
                               onClick={() => handleStartSession(s)}
-                              className="inline-flex items-center space-x-1 px-3 py-1.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-xs transition-colors"
-                              title="Mulai sesi ujian di kelas ini agar siswa dapat mengerjakan ujian"
+                              className="inline-flex items-center space-x-1 px-3 py-1.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-xs transition-colors shrink-0"
+                              title="Mulai sesi ujian di kelas ini"
                             >
                               <Play className="w-3.5 h-3.5 fill-current" />
                               <span>Mulai Ujian</span>
@@ -760,8 +1020,8 @@ const Supervisors = () => {
                           {sessionStatus === 'STARTED' && (
                             <button
                               onClick={() => handlePauseSession(s)}
-                              className="inline-flex items-center space-x-1 px-3 py-1.5 text-xs font-bold text-amber-900 bg-amber-100 hover:bg-amber-200 border border-amber-300 rounded-lg shadow-xs transition-colors"
-                              title="Hentikan sementara ujian untuk seluruh siswa jika kelas berisik"
+                              className="inline-flex items-center space-x-1 px-3 py-1.5 text-xs font-bold text-amber-900 bg-amber-100 hover:bg-amber-200 border border-amber-300 rounded-lg shadow-xs transition-colors shrink-0"
+                              title="Hentikan sementara ujian untuk seluruh siswa"
                             >
                               <Pause className="w-3.5 h-3.5 fill-current" />
                               <span>Hentikan Ujian</span>
@@ -771,8 +1031,8 @@ const Supervisors = () => {
                           {sessionStatus === 'PAUSED' && (
                             <button
                               onClick={() => handleResumeSession(s)}
-                              className="inline-flex items-center space-x-1 px-3 py-1.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-xs transition-colors"
-                              title="Lanjutkan kembali ujian untuk seluruh siswa di kelas ini"
+                              className="inline-flex items-center space-x-1 px-3 py-1.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-xs transition-colors shrink-0"
+                              title="Lanjutkan kembali ujian untuk seluruh siswa"
                             >
                               <Play className="w-3.5 h-3.5 fill-current" />
                               <span>Lanjutkan Ujian</span>
@@ -782,7 +1042,7 @@ const Supervisors = () => {
                           {/* Pantau & Buka Kunci Modal */}
                           <button
                             onClick={() => handleOpenMonitor(s.exam_id, examTitle, s.class_id)}
-                            className="inline-flex items-center space-x-1 px-3 py-1.5 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-lg border border-indigo-200 transition-colors shadow-xs"
+                            className="inline-flex items-center space-x-1 px-3 py-1.5 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-lg border border-indigo-200 transition-colors shadow-xs shrink-0"
                             title="Pantau peserta ujian, kontrol per siswa & buka kunci"
                           >
                             <Eye className="w-3.5 h-3.5" />
@@ -792,10 +1052,11 @@ const Supervisors = () => {
                           {(sessionStatus === 'STARTED' || sessionStatus === 'PAUSED') && (
                             <button
                               onClick={() => handleFinishSession(s)}
-                              className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+                              className="inline-flex items-center space-x-1 px-2 py-1.5 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 hover:text-slate-900 rounded-lg transition-colors shrink-0"
                               title="Selesaikan Sesi Pengawasan"
                             >
-                              <Square className="w-3.5 h-3.5" />
+                              <CheckCircle2 className="w-3.5 h-3.5 text-slate-500" />
+                              <span>Selesai</span>
                             </button>
                           )}
 
@@ -803,14 +1064,14 @@ const Supervisors = () => {
                             <>
                               <button
                                 onClick={() => handleOpenEdit(s)}
-                                className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors"
+                                className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors shrink-0"
                                 title="Edit Penugasan"
                               >
                                 <Edit2 className="w-3.5 h-3.5" />
                               </button>
                               <button
                                 onClick={() => handleDeleteSupervisor(s.ID, teacherName, className)}
-                                className="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+                                className="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors shrink-0"
                                 title="Hapus Penugasan"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
@@ -821,12 +1082,12 @@ const Supervisors = () => {
                       </td>
                     </tr>
                   );
-                })
-              )}
-            </tbody>
-          </table>
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Modal Manual Create/Edit */}
       {isModalOpen && (

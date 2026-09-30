@@ -77,21 +77,23 @@ log = logging.getLogger("sync_artifacts")
 # ─── GitHub API Helpers ────────────────────────────────────────────────────
 
 def github_api(endpoint: str) -> dict:
-    """Make an authenticated JSON request to the GitHub API."""
+    """Make an authenticated JSON request to the GitHub API via curl -4."""
+    import subprocess
     url = f"{GITHUB_API}/{endpoint}" if not endpoint.startswith("http") else endpoint
-    req = urllib.request.Request(url, headers={
-        "Authorization": f"Bearer {GITHUB_TOKEN}",
-        "Accept": "application/vnd.github+json",
-        "X-GitHub-Api-Version": "2022-11-28",
-    })
+    cmd = [
+        "curl", "-4", "-s",
+        "-H", f"Authorization: Bearer {GITHUB_TOKEN}",
+        "-H", "Accept: application/vnd.github+json",
+        "-H", "X-GitHub-Api-Version: 2022-11-28",
+        url
+    ]
+    res = subprocess.run(cmd, capture_output=True, text=True)
+    if res.returncode != 0:
+        raise RuntimeError(f"Curl failed for {url}: {res.stderr}")
     try:
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            return json.loads(resp.read())
-    except urllib.error.HTTPError as e:
-        log.error(f"GitHub API error {e.code}: {e.reason} for {url}")
-        raise
-    except urllib.error.URLError as e:
-        log.error(f"Network error: {e.reason}")
+        return json.loads(res.stdout)
+    except Exception as e:
+        log.error(f"Failed to parse JSON from {url}: {res.stdout[:200]}")
         raise
 
 
@@ -99,7 +101,9 @@ def download_artifact_zip(download_url: str, dest_path: Path):
     """Download an artifact zip using curl with IPv4 to avoid DNS/IPv6 redirect issues."""
     import subprocess
     cmd = [
-        "curl", "-4", "-s", "-L",
+        "curl", "-4", "-s", "-S", "-L",
+        "--retry", "3",
+        "--connect-timeout", "30",
         "-H", f"Authorization: Bearer {GITHUB_TOKEN}",
         "-H", "Accept: application/vnd.github+json",
         "-H", "X-GitHub-Api-Version: 2022-11-28",
@@ -107,8 +111,9 @@ def download_artifact_zip(download_url: str, dest_path: Path):
         "-o", str(dest_path)
     ]
     res = subprocess.run(cmd, capture_output=True, text=True)
-    if res.returncode != 0 or not dest_path.exists() or dest_path.stat().st_size == 0:
-        raise RuntimeError(f"Curl failed to download {download_url}: {res.stderr}")
+    size = dest_path.stat().st_size if dest_path.exists() else 0
+    if res.returncode != 0 or size == 0:
+        raise RuntimeError(f"Curl failed (code {res.returncode}, size {size}) for {download_url}: {res.stderr}")
 
 
 def get_latest_successful_run() -> dict | None:
