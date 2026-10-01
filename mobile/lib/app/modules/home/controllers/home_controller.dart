@@ -24,6 +24,12 @@ class HomeController extends GetxController {
   @override
   void onInit() {
     super.onInit();
+    // Pastikan jika ada sisa mode kunci (terutama di Desktop), segera lepaskan saat berada di Beranda
+    try {
+      const kioskChannel = MethodChannel('com.smkn1beringin.cbt/kiosk');
+      kioskChannel.invokeMethod('stopLockTask');
+      kioskChannel.invokeMethod('setExamActive', {'active': false});
+    } catch (_) {}
     UpdateService.checkForUpdate();
     fetchExams();
     loadProfile();

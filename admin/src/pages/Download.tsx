@@ -34,21 +34,21 @@ const DownloadPage: React.FC = () => {
       .catch(() => {
         // Fallback default
         setVersionInfo({
-          latest_version: '1.1.4',
-          build_number: 16,
-          min_version: '1.1.4',
-          title: 'Pembaruan Aplikasi CBT v1.1.4',
+          latest_version: '1.1.5',
+          build_number: 17,
+          min_version: '1.1.5',
+          title: 'Pembaruan Aplikasi CBT v1.1.5',
           changelog: [
-            'Fitur Pelindung Jendela Mengambang (Floating Window Guard): Deteksi seketika saat jendela mengambang/AI disentuh dan kunci otomatis sesi ujian.',
-            'Dialog Peringatan Pra-Ujian: Memastikan siswa menutup semua jendela mengambang (AI) sebelum memulai ujian.',
-            'Perbaikan deteksi fokus jendela (Window Focus Tracking) dan monitor lifecycle di perangkat Android.',
+            'Perbaikan Kunci Windows Desktop: Mode kiosk, layar penuh, dan pengait keyboard dipastikan lepas seketika saat ujian selesai atau terkunci.',
+            'Pembaruan Langsung Tanpa Uninstall: Standarisasi skema penandatanganan APK v1+v2 untuk mendukung update instan tanpa perlu mencopot aplikasi lama.',
+            'Pelindung Jendela Mengambang (Floating Window Guard): Deteksi dan kunci otomatis ujian saat menyentuh jendela mengambang di Android (Infinix, Xiaomi, Samsung, dsb).',
           ],
           download_url: '/download'
         });
       });
   }, []);
 
-  const version = versionInfo?.latest_version || '1.1.4';
+  const version = versionInfo?.latest_version || '1.1.5';
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 text-white flex flex-col justify-between selection:bg-emerald-500 selection:text-white">

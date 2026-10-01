@@ -209,11 +209,15 @@ class ExamController extends GetxController with WidgetsBindingObserver {
   }
 
   Future<void> _disableKioskMode() async {
+    _isPinningApproved = false;
+    _isPinningPending = false;
     try {
-      _isPinningApproved = false;
-      _isPinningPending = false;
-      await _kioskChannel.invokeMethod('setExamActive', {'active': false});
       await _kioskChannel.invokeMethod('stopLockTask');
+    } catch (e) {
+      debugPrint("stopLockTask error: $e");
+    }
+    try {
+      await _kioskChannel.invokeMethod('setExamActive', {'active': false});
     } catch (_) {}
   }
 
@@ -928,7 +932,7 @@ class ExamController extends GetxController with WidgetsBindingObserver {
           await prefs.remove('ongoing_exam_id');
         } catch (_) {}
         _isExamFinished = true;
-        _disableKioskMode();
+        await _disableKioskMode();
         _timer?.cancel();
         Get.offAllNamed(Routes.MAIN);
         WidgetsBinding.instance.addPostFrameCallback((_) {

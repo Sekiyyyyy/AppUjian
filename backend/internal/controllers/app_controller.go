@@ -20,9 +20,9 @@ type AppVersionResponse struct {
 }
 
 const (
-	CurrentLatestAppVersion  = "1.1.4"
-	CurrentLatestBuildNumber = 16
-	CurrentMinAppVersion     = "1.1.4"
+	CurrentLatestAppVersion  = "1.1.5"
+	CurrentLatestBuildNumber = 17
+	CurrentMinAppVersion     = "1.1.5"
 	CurrentAppDownloadURL    = "https://ujian.tiksmkn1beringin.my.id/download"
 )
 
@@ -103,9 +103,9 @@ func GetAppVersion(c *gin.Context) {
 		ForceUpdate:   isOutdated,
 		Title:         "Pembaruan Wajib Aplikasi CBT v" + CurrentLatestAppVersion,
 		Changelog: []string{
-			"Fitur Pelindung Jendela Mengambang (Floating Window Guard): Deteksi seketika saat jendela mengambang/AI disentuh dan kunci otomatis sesi ujian.",
-			"Dialog Peringatan Pra-Ujian: Memastikan siswa menutup semua jendela mengambang (AI) sebelum memulai ujian.",
-			"Perbaikan deteksi fokus jendela (Window Focus Tracking) dan monitor lifecycle di perangkat Android.",
+			"Perbaikan Kunci Windows Desktop: Mode kiosk, layar penuh, dan pengait keyboard dipastikan lepas seketika saat ujian selesai atau terkunci.",
+			"Pembaruan Langsung Tanpa Uninstall: Standarisasi skema penandatanganan APK v1+v2 untuk mendukung update instan tanpa perlu mencopot aplikasi lama.",
+			"Pelindung Jendela Mengambang (Floating Window Guard): Deteksi dan kunci otomatis ujian saat menyentuh jendela mengambang di Android (Infinix, Xiaomi, Samsung, dsb).",
 		},
 		DownloadURL: CurrentAppDownloadURL,
 	})

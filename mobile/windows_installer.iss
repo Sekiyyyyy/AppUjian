@@ -1,6 +1,6 @@
 ; Script Inno Setup untuk Aplikasi Ujian CBT SMKN 1 Beringin
 #define MyAppName "Aplikasi Ujian CBT"
-#define MyAppVersion "1.1.4"
+#define MyAppVersion "1.1.5"
 #define MyAppPublisher "SMKN 1 Beringin"
 #define MyAppExeName "mobile.exe"
 
@@ -18,6 +18,8 @@ Compression=lzma2/ultra64
 SolidCompression=yes
 WizardStyle=modern
 PrivilegesRequired=lowest
+CloseApplications=yes
+RestartApplications=no
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"

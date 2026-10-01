@@ -48,19 +48,40 @@ bool FlutterWindow::OnCreate() {
   channel->SetMethodCallHandler(
       [self](const flutter::MethodCall<flutter::EncodableValue>& call,
              std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
-        if (call.method_name() == "startLockTask") {
+        const std::string& method = call.method_name();
+        if (method == "startLockTask") {
           self->EnableKioskMode();
           result->Success(flutter::EncodableValue(true));
-        } else if (call.method_name() == "stopLockTask") {
+        } else if (method == "stopLockTask") {
           self->DisableKioskMode();
           result->Success(flutter::EncodableValue(true));
-        } else if (call.method_name() == "isScreenInteractive") {
-          // On desktop, always return true (screen is always interactive)
+        } else if (method == "setExamActive") {
+          const auto* args = std::get_if<flutter::EncodableMap>(call.arguments());
+          if (args) {
+            auto it = args->find(flutter::EncodableValue("active"));
+            if (it != args->end() && std::holds_alternative<bool>(it->second)) {
+              bool active = std::get<bool>(it->second);
+              if (!active) {
+                self->DisableKioskMode();
+              }
+            }
+          }
           result->Success(flutter::EncodableValue(true));
-        } else if (call.method_name() == "isWindowForeground") {
+        } else if (method == "isLockTaskActive") {
+          result->Success(flutter::EncodableValue(self->IsKioskActive()));
+        } else if (method == "isScreenInteractive") {
+          // On desktop, screen is always interactive
+          result->Success(flutter::EncodableValue(true));
+        } else if (method == "isWindowForeground") {
           bool fg = self->IsWindowForeground();
           self->ResetExternalFocusLost();
           result->Success(flutter::EncodableValue(fg));
+        } else if (method == "hideOverlayWindows" ||
+                   method == "hasWindowFocus" ||
+                   method == "isMultiWindowActive" ||
+                   method == "startAlarm" ||
+                   method == "stopAlarm") {
+          result->Success(flutter::EncodableValue(true));
         } else {
           result->NotImplemented();
         }
@@ -114,14 +135,19 @@ bool FlutterWindow::IsWindowForeground() {
 void FlutterWindow::EnableKioskMode() {
   if (kiosk_active_) return;
 
-  external_focus_lost_ = false;
   HWND hwnd = GetHandle();
   if (!hwnd) return;
 
-  // 1. Save current window state for restoration later
-  original_style_ = GetWindowLong(hwnd, GWL_STYLE);
-  original_ex_style_ = GetWindowLong(hwnd, GWL_EXSTYLE);
-  GetWindowRect(hwnd, &original_rect_);
+  // 1. Save original window styles and bounds
+  if (original_style_ == 0) {
+    original_style_ = GetWindowLong(hwnd, GWL_STYLE);
+    original_ex_style_ = GetWindowLong(hwnd, GWL_EXSTYLE);
+    GetWindowRect(hwnd, &original_rect_);
+    original_style_ |= (WS_CAPTION | WS_THICKFRAME | WS_MINIMIZEBOX |
+                        WS_MAXIMIZEBOX | WS_SYSMENU);
+  }
+
+  external_focus_lost_ = false;
 
   // 2. Remove window decorations (title bar, borders, resize handles)
   LONG new_style = original_style_;
@@ -176,36 +202,52 @@ void FlutterWindow::DisableKioskMode() {
 
   HWND hwnd = GetHandle();
 
-  // 1. Remove keyboard hook
+  // 1. Remove keyboard hook IMMEDIATELY so Alt+Tab, Win key, Alt+F4 work again
   if (keyboard_hook_ != nullptr) {
     UnhookWindowsHookEx(keyboard_hook_);
     keyboard_hook_ = nullptr;
   }
 
-  if (!hwnd) {
-    kiosk_active_ = false;
+  kiosk_active_ = false;
+  external_focus_lost_ = false;
+
+  if (!hwnd || !IsWindow(hwnd)) {
     return;
   }
 
-  // Remove display protection
+  // 2. Remove display protection
   SetWindowDisplayAffinity(hwnd, WDA_NONE);
 
-  // 2. Restore original window styles
-  SetWindowLong(hwnd, GWL_STYLE, original_style_);
-  SetWindowLong(hwnd, GWL_EXSTYLE, original_ex_style_);
+  // 3. Restore standard window styles with title bar and buttons
+  LONG style = (original_style_ != 0) ? original_style_ : (WS_OVERLAPPEDWINDOW | WS_VISIBLE);
+  style |= (WS_CAPTION | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SYSMENU | WS_VISIBLE);
+  SetWindowLong(hwnd, GWL_STYLE, style);
 
-  // 3. Remove TOPMOST and restore original position/size
-  SetWindowPos(hwnd, HWND_NOTOPMOST,
-               original_rect_.left, original_rect_.top,
-               original_rect_.right - original_rect_.left,
-               original_rect_.bottom - original_rect_.top,
-               SWP_FRAMECHANGED | SWP_NOACTIVATE);
+  LONG ex_style = (original_ex_style_ != 0) ? original_ex_style_ : WS_EX_APPWINDOW;
+  ex_style &= ~WS_EX_TOPMOST;
+  SetWindowLong(hwnd, GWL_EXSTYLE, ex_style);
 
-  // 4. Redraw
+  // 4. Restore window bounds (not topmost, normal window)
+  int x = original_rect_.left;
+  int y = original_rect_.top;
+  int w = original_rect_.right - original_rect_.left;
+  int h = original_rect_.bottom - original_rect_.top;
+
+  if (w < 400 || h < 300) {
+    x = 100;
+    y = 100;
+    w = 1280;
+    h = 720;
+  }
+
+  SetWindowPos(hwnd, HWND_NOTOPMOST, x, y, w, h,
+               SWP_FRAMECHANGED | SWP_SHOWWINDOW);
+
+  // 5. Restore normal window state, show, and repaint
   ShowWindow(hwnd, SW_SHOWNORMAL);
+  SetForegroundWindow(hwnd);
   InvalidateRect(hwnd, nullptr, TRUE);
-
-  kiosk_active_ = false;
+  UpdateWindow(hwnd);
 }
 
 // ============================================================================
