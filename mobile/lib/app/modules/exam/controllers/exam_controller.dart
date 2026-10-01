@@ -212,6 +212,7 @@ class ExamController extends GetxController with WidgetsBindingObserver {
     try {
       _isPinningApproved = false;
       _isPinningPending = false;
+      await _kioskChannel.invokeMethod('setExamActive', {'active': false});
       await _kioskChannel.invokeMethod('stopLockTask');
     } catch (_) {}
   }
@@ -280,14 +281,15 @@ class ExamController extends GetxController with WidgetsBindingObserver {
     }
 
     // Mobile (Android & iOS)
-    // Hanya periksa ketika aplikasi masuk background (paused atau hidden)
-    // Abaikan state 'inactive' di mobile karena terjadi sesaat ketika tombol power dipencet
-    if (state == AppLifecycleState.paused || state == AppLifecycleState.hidden) {
+    // Pantau ketika aplikasi masuk inactive (fokus diambil jendela mengambang/AI), paused, atau hidden
+    if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused ||
+        state == AppLifecycleState.hidden) {
       _exitCheckTimer?.cancel();
-      // Beri jeda 1.2 detik untuk memastikan transisi layar mati (tombol power) selesai.
+      // Beri jeda 800ms untuk memastikan transisi layar mati (tombol power) selesai.
       // Jika layar mati (tombol power dipencet), isScreenInteractive bernilai false -> TIDAK dikunci.
-      // Hanya kunci ujian jika layar masih hidup dan siswa benar-benar berada di luar aplikasi ujian!
-      _exitCheckTimer = Timer(const Duration(milliseconds: 1200), () async {
+      // Jika layar hidup dan siswa berinteraksi dengan jendela mengambang AI -> isScreenInteractive bernilai true -> DIKUNCI!
+      _exitCheckTimer = Timer(const Duration(milliseconds: 800), () async {
         if (_currentLifecycleState == AppLifecycleState.resumed || _isExamFinished || isExamLocked.value) {
           return;
         }
@@ -300,13 +302,13 @@ class ExamController extends GetxController with WidgetsBindingObserver {
             isTrulyOutside = false;
           }
         } else {
-          // iOS: jika 1.2 detik tetap paused/hidden, berarti keluar aplikasi
+          // iOS: jika 800ms tetap paused/hidden/inactive, berarti keluar aplikasi
           isTrulyOutside = true;
         }
 
         if (isTrulyOutside) {
-          // Siswa terdeteksi benar-benar keluar ke Home / aplikasi lain saat layar menyala
-          _lockExamSession("Terdeteksi keluar dari aplikasi ke beranda/aplikasi lain");
+          // Siswa terdeteksi berada di luar aplikasi atau berinteraksi dengan jendela mengambang saat layar menyala
+          _lockExamSession("Terdeteksi menggunakan jendela mengambang / keluar dari aplikasi ujian");
         }
       });
     }
@@ -421,8 +423,11 @@ class ExamController extends GetxController with WidgetsBindingObserver {
         _startSessionMonitor();
 
         // Berikan buffer 3 detik setelah soal tampil agar stabil dari transisi fokus OS
-        Future.delayed(const Duration(seconds: 3), () {
+        Future.delayed(const Duration(seconds: 3), () async {
           _isStartingExam = false;
+          try {
+            await _kioskChannel.invokeMethod('setExamActive', {'active': true});
+          } catch (_) {}
         });
       }
     } on DioException catch (e) {

@@ -175,18 +175,72 @@ class HomeController extends GetxController {
     }
 
     if (!kIsWeb && Platform.isAndroid) {
-      try {
-        const kioskChannel = MethodChannel('com.smkn1beringin.cbt/kiosk');
-        await kioskChannel.invokeMethod('hideOverlayWindows');
-        final isMulti = await kioskChannel.invokeMethod<bool>('isMultiWindowActive') ?? false;
-        if (isMulti) {
-          AppToast.error(
-            title: "Tutup Jendela Mengambang",
-            message: "Terdeteksi jendela mengambang (floating window) atau split-screen aktif. Harap tutup semua aplikasi mengambang sebelum memulai ujian.",
-          );
-          return;
-        }
-      } catch (_) {}
+      Get.dialog(
+        AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(
+            children: const [
+              Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 28),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  "Peringatan Ujian",
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: const [
+              Text(
+                "Sebelum memulai ujian, pastikan:",
+                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+              ),
+              SizedBox(height: 8),
+              Text(
+                "1. Tutup SEMUA jendela mengambang (floating window / tab AI seperti ChatGPT) dengan menekan tanda [X] pada jendela tersebut.",
+                style: TextStyle(fontSize: 13, height: 1.4),
+              ),
+              SizedBox(height: 6),
+              Text(
+                "2. Jangan membuka aplikasi lain, notifikasi, atau menu pintasan selama ujian.",
+                style: TextStyle(fontSize: 13, height: 1.4),
+              ),
+              SizedBox(height: 10),
+              Text(
+                "⚠️ Jika jendela mengambang disentuh atau fokus keluar saat ujian, sistem akan OTOMATIS MENGUNCI ujian dan Anda langsung dikeluarkan!",
+                style: TextStyle(fontSize: 12, color: Colors.red, fontWeight: FontWeight.w600),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Get.back(),
+              child: const Text("Batal", style: TextStyle(color: Colors.grey)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF10B981),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              onPressed: () {
+                Get.back();
+                Get.toNamed('/exam', arguments: {
+                  'exam_id': exam['ID'],
+                  'title': exam['title']?.toString() ?? 'Ujian',
+                  'duration': exam['duration'] ?? 0,
+                  'exam_data': exam,
+                });
+              },
+              child: const Text("Saya Mengerti, Mulai", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+        barrierDismissible: false,
+      );
+      return;
     }
 
     Get.toNamed('/exam', arguments: {

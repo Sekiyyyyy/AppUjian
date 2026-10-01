@@ -37,6 +37,11 @@ class MainActivity : FlutterActivity() {
     private val pinningHandler = Handler(Looper.getMainLooper())
     private var pinCheckRunnable: Runnable? = null
 
+    // Exam Mode & Window Focus Tracking
+    private var isExamModeActive = false
+    private val focusLossHandler = Handler(Looper.getMainLooper())
+    private var focusLossRunnable: Runnable? = null
+
     private fun applyHideOverlayWindows() {
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -170,18 +175,36 @@ class MainActivity : FlutterActivity() {
         super.onWindowFocusChanged(hasFocus)
         if (hasFocus) {
             applyHideOverlayWindows()
-        }
-        if (!hasFocus) {
+            focusLossRunnable?.let { focusLossHandler.removeCallbacks(it) }
+            focusLossRunnable = null
+        } else {
             // Dialog sistem "Sematkan Aplikasi" muncul dan mengambil fokus jendela
             if (isWaitingForPinApproval) {
                 pinDialogAppeared = true
+            } else if (isPinned() || isExamModeActive) {
+                // Sesi ujian sedang aktif dan fokus jendela hilang saat layar menyala!
+                // Ini terjadi jika siswa menyentuh jendela mengambang (AI / ChatGPT), status bar / notifikasi, dll.
+                focusLossRunnable?.let { focusLossHandler.removeCallbacks(it) }
+                focusLossRunnable = Runnable {
+                    val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
+                    val km = getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager
+                    val isInteractive = pm.isInteractive && !isScreenOff
+                    val isKeyguardLocked = km?.isKeyguardLocked ?: false
+                    if (!hasWindowFocus() && isInteractive && !isKeyguardLocked && (isPinned() || isExamModeActive) && !isWaitingForPinApproval) {
+                        methodChannel?.invokeMethod("onOverlayDetected", "floating_window_touch")
+                    }
+                }
+                focusLossHandler.postDelayed(focusLossRunnable!!, 400)
             }
-        } else {
+        }
+
+        if (hasFocus) {
             // Jendela aplikasi kita kembali mendapatkan fokus
             if (isWaitingForPinApproval) {
                 if (isPinned()) {
                     // Siswa menekan "Mengerti / ACC"
                     stopPinApprovalTracking()
+                    isExamModeActive = true
                     methodChannel?.invokeMethod("onPinningAccepted", null)
                 } else if (pinDialogAppeared && (System.currentTimeMillis() - pinRequestTimestamp > 700)) {
                     // Dialog sistem sebelumnya muncul, dan sekarang telah ditutup oleh siswa TANPA ACC
@@ -191,10 +214,12 @@ class MainActivity : FlutterActivity() {
                         if (isWaitingForPinApproval) {
                             if (isPinned()) {
                                 stopPinApprovalTracking()
+                                isExamModeActive = true
                                 methodChannel?.invokeMethod("onPinningAccepted", null)
                             } else {
                                 // Benar-benar menolak sematan! Langsung tendang ke Beranda!
                                 stopPinApprovalTracking()
+                                isExamModeActive = false
                                 methodChannel?.invokeMethod("onPinningRejected", "no_thanks")
                             }
                         }
@@ -218,14 +243,28 @@ class MainActivity : FlutterActivity() {
                     applyHideOverlayWindows()
                     result.success(true)
                 }
+                "setExamActive" -> {
+                    val active = call.argument<Boolean>("active") ?: false
+                    isExamModeActive = active
+                    result.success(true)
+                }
+                "hasWindowFocus" -> {
+                    result.success(hasWindowFocus())
+                }
                 "isMultiWindowActive" -> {
                     result.success(isMultiWindowActive() || isPipActive())
                 }
                 "startLockTask" -> {
                     try {
                         applyHideOverlayWindows()
+                        try {
+                            @Suppress("DEPRECATION")
+                            sendBroadcast(Intent(Intent.ACTION_CLOSE_SYSTEM_DIALOGS))
+                        } catch (_: Exception) {}
+
                         if (isMultiWindowActive() || isPipActive()) {
                             stopPinApprovalTracking()
+                            isExamModeActive = false
                             result.success(false)
                             methodChannel?.invokeMethod("onPinningRejected", "floating_window_active")
                             return@setMethodCallHandler
@@ -233,6 +272,7 @@ class MainActivity : FlutterActivity() {
 
                         if (isPinned()) {
                             stopPinApprovalTracking()
+                            isExamModeActive = true
                             window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
                             result.success(true)
                             methodChannel?.invokeMethod("onPinningAccepted", null)
@@ -255,12 +295,14 @@ class MainActivity : FlutterActivity() {
                                 if (!isWaitingForPinApproval) return
                                 if (isPinned()) {
                                     stopPinApprovalTracking()
+                                    isExamModeActive = true
                                     methodChannel?.invokeMethod("onPinningAccepted", null)
                                     return
                                 }
                                 // Timeout 15 detik jika dialog dibiarkan tanpa respons
                                 if (System.currentTimeMillis() - startTime > 15000) {
                                     stopPinApprovalTracking()
+                                    isExamModeActive = false
                                     methodChannel?.invokeMethod("onPinningRejected", "timeout")
                                     return
                                 }
@@ -271,12 +313,16 @@ class MainActivity : FlutterActivity() {
                         pinningHandler.postDelayed(checkRunnable, 200)
                     } catch (e: Exception) {
                         stopPinApprovalTracking()
+                        isExamModeActive = false
                         result.success(false)
                         methodChannel?.invokeMethod("onPinningRejected", "exception: ${e.message}")
                     }
                 }
                 "stopLockTask" -> {
                     try {
+                        isExamModeActive = false
+                        focusLossRunnable?.let { focusLossHandler.removeCallbacks(it) }
+                        focusLossRunnable = null
                         stopPinApprovalTracking()
                         stopLockTask()
                         window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
@@ -309,8 +355,8 @@ class MainActivity : FlutterActivity() {
                         val km = getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager
                         val isInteractive = pm.isInteractive && !isScreenOff
                         val isKeyguardLocked = km?.isKeyguardLocked ?: false
-                        // Hanya anggap keluar jika layar hidup, tidak di lockscreen, dan aplikasi kita tidak aktif di layar
-                        val isOutside = isInteractive && !isKeyguardLocked && !isActivityResumed
+                        // Hanya anggap keluar jika layar hidup, tidak di lockscreen, dan aplikasi kita tidak aktif di layar atau kehilangan fokus jendela
+                        val isOutside = isInteractive && !isKeyguardLocked && (!isActivityResumed || !hasWindowFocus())
                         result.success(isOutside)
                     } catch (e: Exception) {
                         result.success(false)
@@ -423,6 +469,9 @@ class MainActivity : FlutterActivity() {
     }
 
     override fun onDestroy() {
+        isExamModeActive = false
+        focusLossRunnable?.let { focusLossHandler.removeCallbacks(it) }
+        focusLossRunnable = null
         stopPinApprovalTracking()
         try {
             unregisterReceiver(screenReceiver)
