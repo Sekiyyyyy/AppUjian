@@ -1,3 +1,6 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:dio/dio.dart';
@@ -169,6 +172,21 @@ class HomeController extends GetxController {
         message: "Ujian saat ini sedang diberhentikan sementara oleh pengawas ruang (misal suasana kelas berisik).",
       );
       return;
+    }
+
+    if (!kIsWeb && Platform.isAndroid) {
+      try {
+        const kioskChannel = MethodChannel('com.smkn1beringin.cbt/kiosk');
+        await kioskChannel.invokeMethod('hideOverlayWindows');
+        final isMulti = await kioskChannel.invokeMethod<bool>('isMultiWindowActive') ?? false;
+        if (isMulti) {
+          AppToast.error(
+            title: "Tutup Jendela Mengambang",
+            message: "Terdeteksi jendela mengambang (floating window) atau split-screen aktif. Harap tutup semua aplikasi mengambang sebelum memulai ujian.",
+          );
+          return;
+        }
+      } catch (_) {}
     }
 
     Get.toNamed('/exam', arguments: {

@@ -108,6 +108,14 @@ class ExamController extends GetxController with WidgetsBindingObserver {
           _isPinningPending = false;
           _startExamProcess();
         }
+      } else if (call.method == 'onMultiWindowDetected') {
+        if (!_isExamFinished && !isExamLocked.value) {
+          _lockExamSession("Terdeteksi membuka jendela mengambang / multi-window saat ujian");
+        }
+      } else if (call.method == 'onOverlayDetected') {
+        if (!_isExamFinished && !isExamLocked.value) {
+          _lockExamSession("Terdeteksi aplikasi mengambang aktif di atas layar ujian");
+        }
       }
     });
   }
@@ -131,7 +139,12 @@ class ExamController extends GetxController with WidgetsBindingObserver {
     await _disableKioskMode();
     Get.offAllNamed(Routes.MAIN);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (reason == 'disabled_in_settings') {
+      if (reason == 'floating_window_active') {
+        AppToast.error(
+          title: "Aplikasi Mengambang Terdeteksi",
+          message: "Terdeteksi jendela mengambang (floating window) atau split-screen aktif. Harap tutup semua aplikasi mengambang sebelum memulai ujian.",
+        );
+      } else if (reason == 'disabled_in_settings') {
         AppToast.error(
           title: "Fitur Sematkan Layar Nonaktif",
           message: "Fitur 'Sematkan Aplikasi' (App Pinning) dinonaktifkan di pengaturan HP Anda. Harap aktifkan di menu Pengaturan Keamanan HP Anda agar dapat mengikuti ujian.",

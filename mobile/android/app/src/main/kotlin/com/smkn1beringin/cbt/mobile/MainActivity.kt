@@ -6,6 +6,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.res.Configuration
 import android.media.AudioAttributes
 import android.media.AudioManager
 import android.media.MediaPlayer
@@ -16,6 +17,7 @@ import android.os.Looper
 import android.os.PowerManager
 import android.os.VibrationEffect
 import android.os.Vibrator
+import android.view.MotionEvent
 import android.view.WindowManager
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -34,6 +36,74 @@ class MainActivity : FlutterActivity() {
     private var pinRequestTimestamp = 0L
     private val pinningHandler = Handler(Looper.getMainLooper())
     private var pinCheckRunnable: Runnable? = null
+
+    private fun applyHideOverlayWindows() {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                window.setHideOverlayWindows(true)
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                // Fallback untuk Android 8.0 - 11 via privateFlags
+                val params = window.attributes
+                val field = params.javaClass.getDeclaredField("privateFlags")
+                field.isAccessible = true
+                val currentFlags = field.getInt(params)
+                val flagValue = 0x00080000 // SYSTEM_FLAG_HIDE_NON_SYSTEM_OVERLAY_WINDOWS
+                field.setInt(params, currentFlags or flagValue)
+                window.attributes = params
+            }
+        } catch (_: Exception) {}
+    }
+
+    private fun isMultiWindowActive(): Boolean {
+        return try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                isInMultiWindowMode
+            } else {
+                false
+            }
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    private fun isPipActive(): Boolean {
+        return try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                isInPictureInPictureMode
+            } else {
+                false
+            }
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    override fun onMultiWindowModeChanged(isInMultiWindowMode: Boolean, newConfig: Configuration?) {
+        super.onMultiWindowModeChanged(isInMultiWindowMode, newConfig)
+        if (isInMultiWindowMode) {
+            methodChannel?.invokeMethod("onMultiWindowDetected", null)
+        }
+    }
+
+    override fun onPictureInPictureModeChanged(isInPictureInPictureMode: Boolean, newConfig: Configuration?) {
+        super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
+        if (isInPictureInPictureMode) {
+            methodChannel?.invokeMethod("onMultiWindowDetected", null)
+        }
+    }
+
+    override fun dispatchTouchEvent(ev: MotionEvent?): Boolean {
+        if (ev != null) {
+            val isObscured = (ev.flags and MotionEvent.FLAG_WINDOW_IS_OBSCURED) != 0 ||
+                             (ev.flags and MotionEvent.FLAG_WINDOW_IS_PARTIALLY_OBSCURED) != 0
+            if (isObscured) {
+                // Sentuhan terhalang atau berasal dari overlay/jendela mengambang
+                methodChannel?.invokeMethod("onOverlayDetected", null)
+                return false
+            }
+        }
+        return super.dispatchTouchEvent(ev)
+    }
 
     private fun isPinned(): Boolean {
         return try {
@@ -73,6 +143,10 @@ class MainActivity : FlutterActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        applyHideOverlayWindows()
+        try {
+            window.decorView.filterTouchesWhenObscured = true
+        } catch (_: Exception) {}
         val filter = IntentFilter().apply {
             addAction(Intent.ACTION_SCREEN_OFF)
             addAction(Intent.ACTION_SCREEN_ON)
@@ -84,6 +158,7 @@ class MainActivity : FlutterActivity() {
     override fun onResume() {
         super.onResume()
         isActivityResumed = true
+        applyHideOverlayWindows()
     }
 
     override fun onPause() {
@@ -93,6 +168,9 @@ class MainActivity : FlutterActivity() {
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) {
+            applyHideOverlayWindows()
+        }
         if (!hasFocus) {
             // Dialog sistem "Sematkan Aplikasi" muncul dan mengambil fokus jendela
             if (isWaitingForPinApproval) {
@@ -130,13 +208,29 @@ class MainActivity : FlutterActivity() {
         super.configureFlutterEngine(flutterEngine)
         // Anti-Cheating: Blokir Screenshot dan Screen Recording secara native di Android
         window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+        applyHideOverlayWindows()
 
         // Anti-Cheating: Kiosk Mode dan Emergency Siren Alarm
         methodChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL)
         methodChannel?.setMethodCallHandler { call, result ->
             when (call.method) {
+                "hideOverlayWindows" -> {
+                    applyHideOverlayWindows()
+                    result.success(true)
+                }
+                "isMultiWindowActive" -> {
+                    result.success(isMultiWindowActive() || isPipActive())
+                }
                 "startLockTask" -> {
                     try {
+                        applyHideOverlayWindows()
+                        if (isMultiWindowActive() || isPipActive()) {
+                            stopPinApprovalTracking()
+                            result.success(false)
+                            methodChannel?.invokeMethod("onPinningRejected", "floating_window_active")
+                            return@setMethodCallHandler
+                        }
+
                         if (isPinned()) {
                             stopPinApprovalTracking()
                             window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)

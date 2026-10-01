@@ -34,22 +34,21 @@ const DownloadPage: React.FC = () => {
       .catch(() => {
         // Fallback default
         setVersionInfo({
-          latest_version: '1.1.2',
-          build_number: 14,
-          min_version: '1.1.2',
-          title: 'Pembaruan Aplikasi CBT v1.1.2',
+          latest_version: '1.1.3',
+          build_number: 15,
+          min_version: '1.1.3',
+          title: 'Pembaruan Aplikasi CBT v1.1.3',
           changelog: [
-            'Perbaikan mode kunci di laptop/desktop Windows: langsung masuk mode layar penuh aman saat ujian dimulai.',
-            'Pencegahan deteksi keluar palsu (false-positive exit) pada laptop/desktop Windows.',
-            'Peningkatan ketahanan pengambilan naskah soal ujian dengan mekanisme auto-retry.',
-            'Pemberitahuan layar memuat soal yang disesuaikan untuk perangkat mobile dan laptop.',
+            'Penutupan dan pemblokiran otomatis aplikasi mengambang (floating window / AI assistant overlay / multi-window) saat ujian dimulai.',
+            'Pencegahan tapjacking dan blokir sentuhan yang terhalang overlay di perangkat Android.',
+            'Peningkatan keamanan sematkan aplikasi (kiosk mode) dan pencegahan kecurangan berbasis jendela mengambang.',
           ],
           download_url: '/download'
         });
       });
   }, []);
 
-  const version = versionInfo?.latest_version || '1.1.2';
+  const version = versionInfo?.latest_version || '1.1.3';
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 text-white flex flex-col justify-between selection:bg-emerald-500 selection:text-white">
