@@ -25,7 +25,11 @@ func SyncWebhook(c *gin.Context) {
 
 	// Run the sync script in the background
 	go func() {
-		cmd := exec.Command("python3", "/home/server/AppUjian/sync_artifacts.py", "--force")
+		scriptPath := "/www/wwwroot/AppUjian/sync_artifacts.py"
+		if _, err := os.Stat(scriptPath); os.IsNotExist(err) {
+			scriptPath = "/home/server/AppUjian/sync_artifacts.py"
+		}
+		cmd := exec.Command("python3", scriptPath, "--force")
 		cmd.Env = append(os.Environ(), "GITHUB_TOKEN="+os.Getenv("GITHUB_TOKEN"))
 		output, err := cmd.CombinedOutput()
 		if err != nil {
