@@ -134,16 +134,18 @@ class UpdateService {
 
   /// Mendapatkan URL download langsung sesuai sistem operasi perangkat
   static String getPlatformDownloadUrl() {
+    final v = latestVersion.value.trim().isNotEmpty ? latestVersion.value.trim() : currentVersion;
+    final ts = DateTime.now().millisecondsSinceEpoch;
     if (!kIsWeb && Platform.isAndroid) {
-      return 'https://ujian.tiksmkn1beringin.my.id/downloads/AppUjian.apk';
+      return 'https://ujian.tiksmkn1beringin.my.id/downloads/AppUjian_v$v.apk?t=$ts';
     }
     if (!kIsWeb && Platform.isWindows) {
-      return 'https://ujian.tiksmkn1beringin.my.id/downloads/AppUjian_Setup.exe';
+      return 'https://ujian.tiksmkn1beringin.my.id/downloads/AppUjian_Setup_v$v.exe?t=$ts';
     }
     if (!kIsWeb && Platform.isIOS) {
-      return 'https://ujian.tiksmkn1beringin.my.id/downloads/AppUjian.ipa';
+      return 'https://ujian.tiksmkn1beringin.my.id/downloads/AppUjian_v$v.ipa?t=$ts';
     }
-    return downloadUrl.value;
+    return '${downloadUrl.value}?t=$ts';
   }
 
   /// Membuka tautan download installer / APK aplikasi

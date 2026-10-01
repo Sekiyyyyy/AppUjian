@@ -280,9 +280,22 @@ def sync_artifacts(force: bool = False) -> bool:
                 # Copy generic (unversioned) file
                 dest_generic = target_dir / generic_name
                 shutil.copy2(source_file, dest_generic)
-                log.info(f"  ✅ Deployed: {dest_generic}")
-            
             deployed_files.append(versioned_name)
+        
+        # Write .htaccess in downloads directory to disable cache and redirect generic filenames
+        htaccess_content = f"""Header always set Cache-Control "no-store, no-cache, must-revalidate, max-age=0"
+Header always set Pragma "no-cache"
+Header always set Expires "0"
+
+RewriteEngine On
+RewriteBase /downloads/
+RewriteRule ^AppUjian\\.apk$ https://ujian.tiksmkn1beringin.my.id/downloads/AppUjian_v{version}.apk [R=302,L]
+RewriteRule ^AppUjian_Setup\\.exe$ https://ujian.tiksmkn1beringin.my.id/downloads/AppUjian_Setup_v{version}.exe [R=302,L]
+RewriteRule ^AppUjian\\.ipa$ https://ujian.tiksmkn1beringin.my.id/downloads/AppUjian_v{version}.ipa [R=302,L]
+"""
+        for target_dir in [PUBLIC_DOWNLOADS, DIST_DOWNLOADS]:
+            if target_dir.exists():
+                (target_dir / ".htaccess").write_text(htaccess_content)
         
         # Save state
         save_state({
