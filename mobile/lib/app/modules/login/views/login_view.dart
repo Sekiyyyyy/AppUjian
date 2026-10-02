@@ -87,6 +87,20 @@ class LoginView extends GetView<LoginController> {
             ),
           ),
 
+          // Sumut Logo - Top Right
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 24,
+            right: 24,
+            child: SafeArea(
+              child: Image.asset(
+                'assets/images/logo_sumut.png',
+                height: 48,
+                fit: BoxFit.contain,
+                errorBuilder: (context, error, stackTrace) => const SizedBox.shrink(),
+              ),
+            ),
+          ),
+
           // 2. Glassmorphism Card
           SafeArea(
             child: Center(

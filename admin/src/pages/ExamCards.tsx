@@ -65,8 +65,8 @@ export interface TokenTeacherItem {
   jabatan?: string;
 }
 
-// 8 Cards Per Page (2 Columns x 4 Rows) - Compact & Balanced Card Ratio (96mm x 64mm)
-const CARDS_PER_PAGE = 8;
+// 10 Cards Per Page (2 Columns x 5 Rows) - Compact & Balanced Card Ratio (96mm x 56mm)
+const CARDS_PER_PAGE = 10;
 const A4_WIDTH_PX = 794;   // 210mm in px at 96 DPI
 const A4_HEIGHT_PX = 1123;  // 297mm in px at 96 DPI
 
@@ -117,7 +117,7 @@ const ExamCards: React.FC = () => {
     });
   });
   const [principalTitle, setPrincipalTitle] = useState('Kepala Sekolah');
-  const [principalName, setPrincipalName] = useState('Asrori Batubara, S.Pd., M.Si');
+  const [principalName, setPrincipalName] = useState('Asron Batubara, S.Pd., M.Si');
   const [principalNip, setPrincipalNip] = useState('197312162005021003');
 
   // Preview container refs for auto-scaling
@@ -148,7 +148,7 @@ const ExamCards: React.FC = () => {
         t.jabatan?.toLowerCase().includes('kepsek')
       );
       if (kepala) {
-        setPrincipalName(kepala.name || 'Asrori Batubara, S.Pd., M.Si');
+        setPrincipalName((kepala.name || '').replace(/Asrori/i, 'Asron') || 'Asron Batubara, S.Pd., M.Si');
         if (kepala.nip) setPrincipalNip(kepala.nip);
       }
 
@@ -453,7 +453,7 @@ const ExamCards: React.FC = () => {
       margin: 0 auto;
       display: grid;
       grid-template-columns: repeat(2, 96mm);
-      grid-auto-rows: 64mm;
+      grid-auto-rows: 55mm;
       gap: 3mm 4mm;
       align-content: start;
       justify-content: center;
@@ -469,14 +469,14 @@ const ExamCards: React.FC = () => {
     }
     .exam-card {
       width: 96mm;
-      height: 64mm;
+      height: 55mm;
       min-width: 96mm;
       max-width: 96mm;
-      min-height: 64mm;
-      max-height: 64mm;
-      border: 1px solid #1e293b;
+      min-height: 55mm;
+      max-height: 55mm;
+      border: 1px solid #000000;
       border-radius: 4px;
-      padding: 1.8mm 2.5mm;
+      padding: 1.5mm 2.5mm;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
@@ -504,7 +504,7 @@ const ExamCards: React.FC = () => {
     .title-main {
       font-size: 8pt;
       font-weight: 800;
-      color: #0f172a;
+      color: #000000;
       letter-spacing: 0.3px;
       margin: 0;
       line-height: 1.1;
@@ -512,37 +512,37 @@ const ExamCards: React.FC = () => {
     .title-sub {
       font-size: 6pt;
       font-weight: 800;
-      color: #1e293b;
+      color: #000000;
       margin: 0.5px 0 0 0;
       line-height: 1.1;
     }
     .title-school {
       font-size: 6.8pt;
       font-weight: 800;
-      color: #0f172a;
+      color: #000000;
       margin: 0.5px 0 0 0;
       line-height: 1.1;
     }
     .title-year {
       font-size: 5.8pt;
-      font-weight: 600;
-      color: #475569;
+      font-weight: 700;
+      color: #000000;
       margin: 0.5px 0 0 0;
       line-height: 1.1;
     }
     .header-divider {
-      border-top: 1.2px solid #0f172a;
-      border-bottom: 0.5px solid #0f172a;
-      height: 2px;
+      border-top: 1.5px solid #000000;
+      border-bottom: 0.8px solid #000000;
+      height: 2.5px;
       margin-bottom: 1.2mm;
     }
     .card-body {
       display: flex;
       justify-content: space-between;
-      gap: 2mm;
+      gap: 1mm;
       flex: 1;
-      min-height: 27mm;
-      max-height: 28mm;
+      min-height: 22mm;
+      max-height: 24mm;
     }
     .student-info {
       flex: 1;
@@ -553,31 +553,37 @@ const ExamCards: React.FC = () => {
       border-collapse: collapse;
       font-size: 5.8pt;
       line-height: 1.25;
+      font-weight: 600;
     }
     .info-table td {
-      padding: 0.4px 0;
+      padding: 0.2px 0;
       vertical-align: top;
     }
     .info-table .lbl {
       width: 17mm;
-      color: #334155;
+      color: #000000;
       white-space: nowrap;
+      font-weight: 600;
     }
     .info-table .sep {
       width: 2mm;
       text-align: center;
-      color: #334155;
+      color: #000000;
+      font-weight: 700;
     }
     .info-table .val {
-      color: #0f172a;
+      color: #000000;
+      font-weight: 700;
     }
     .font-roll {
       font-size: 7pt;
-      color: #0f172a;
+      color: #000000;
+      font-weight: 800;
     }
     .font-name {
       font-size: 6.2pt;
       letter-spacing: -0.1px;
+      font-weight: 800;
     }
     .credentials-plain {
       width: 25mm;
@@ -585,7 +591,7 @@ const ExamCards: React.FC = () => {
       display: flex;
       flex-direction: column;
       align-self: flex-start;
-      margin-top: 0.5mm;
+      margin-top: 0mm;
       padding-left: 2mm;
     }
     .cred-item {
@@ -594,20 +600,20 @@ const ExamCards: React.FC = () => {
     }
     .cred-label {
       font-size: 5.5pt;
-      font-weight: 700;
-      color: #0f172a;
+      font-weight: 800;
+      color: #000000;
       letter-spacing: 0.3px;
       line-height: 1.1;
     }
     .cred-value {
       font-size: 8.5pt;
       font-weight: 800;
-      color: #0f172a;
+      color: #000000;
       letter-spacing: 0.5px;
       line-height: 1.2;
     }
     .card-footer {
-      border-top: 1px dashed #cbd5e1;
+      border-top: 1.5px dashed #94a3b8;
       padding-top: 1mm;
       display: flex;
       justify-content: space-between;
@@ -617,12 +623,13 @@ const ExamCards: React.FC = () => {
     .notes-section {
       flex: 1;
       font-size: 4.8pt;
-      color: #475569;
+      color: #000000;
+      font-weight: 600;
       line-height: 1.2;
     }
     .notes-title {
-      font-weight: 700;
-      color: #1e293b;
+      font-weight: 800;
+      color: #000000;
       margin-bottom: 0.2px;
     }
     .notes-text {
@@ -631,35 +638,38 @@ const ExamCards: React.FC = () => {
     .notes-badge {
       font-weight: 800;
       font-size: 5pt;
-      color: #0f172a;
+      color: #000000;
       margin-top: 0.6mm;
       letter-spacing: 0.2px;
     }
     .signature-section {
       text-align: center;
       font-size: 5pt;
-      color: #0f172a;
+      color: #000000;
       width: 36mm;
       flex-shrink: 0;
       line-height: 1.1;
+      font-weight: 600;
     }
     .sig-date {
-      color: #334155;
+      color: #000000;
+      font-weight: 600;
     }
     .sig-role {
-      font-weight: 600;
+      font-weight: 700;
       margin-top: 0.3px;
     }
     .sig-space {
-      height: 4.5mm;
+      height: 4mm;
     }
     .sig-name {
-      font-weight: 700;
+      font-weight: 800;
       font-size: 5.3pt;
     }
     .sig-nip {
       font-size: 4.7pt;
-      color: #475569;
+      color: #000000;
+      font-weight: 600;
       margin-top: 0.2px;
     }
   `;
@@ -1253,7 +1263,7 @@ const ExamCards: React.FC = () => {
                     height: `${A4_HEIGHT_PX}px`,
                     transform: `scale(${computedScale})`,
                     transformOrigin: 'top left',
-                    gridAutoRows: '64mm'
+                    gridAutoRows: '55mm'
                   }}
                 >
                   {/* 8 Compact Fixed Slots */}
@@ -1267,7 +1277,7 @@ const ExamCards: React.FC = () => {
                     return (
                       <div
                         key={student.id}
-                        className="w-[96mm] h-[64mm] min-w-[96mm] max-w-[96mm] min-height-[64mm] max-h-[64mm] border border-slate-800 rounded p-[1.8mm_2.5mm] flex flex-col justify-between bg-white box-border"
+                        className="w-[96mm] h-[55mm] min-w-[96mm] max-w-[96mm] min-h-[55mm] max-h-[55mm] border border-black rounded p-[1.5mm_2.5mm] flex flex-col justify-between bg-white box-border"
                       >
                         {/* Kop Header */}
                         <div>
@@ -1279,81 +1289,81 @@ const ExamCards: React.FC = () => {
                               onError={(e: any) => { e.currentTarget.style.display = 'none'; }}
                             />
                             <div className="flex-1 text-center">
-                              <h1 className="text-[8pt] font-extrabold text-slate-900 leading-tight tracking-tight m-0">
+                              <h1 className="text-[8pt] font-extrabold text-black leading-tight tracking-tight m-0">
                                 KARTU PESERTA
                               </h1>
-                              <h2 className="text-[6pt] font-bold text-slate-800 leading-tight mt-[0.5px] m-0">
+                              <h2 className="text-[6pt] font-extrabold text-black leading-tight mt-[0.5px] m-0">
                                 {examTitle}
                               </h2>
-                              <h3 className="text-[6.8pt] font-extrabold text-slate-900 leading-tight mt-[0.5px] m-0">
+                              <h3 className="text-[6.8pt] font-extrabold text-black leading-tight mt-[0.5px] m-0">
                                 {schoolName}
                               </h3>
-                              <h4 className="text-[5.8pt] font-semibold text-slate-600 leading-tight mt-[0.5px] m-0">
+                              <h4 className="text-[5.8pt] font-bold text-black leading-tight mt-[0.5px] m-0">
                                 {academicYear}
                               </h4>
                             </div>
                           </div>
 
                           {/* Double Line Divider */}
-                          <div className="border-t-[1.2px] border-b-[0.5px] border-slate-900 h-[2px] mb-[1.2mm]"></div>
+                          <div className="border-t-[1.5px] border-b-[0.8px] border-black h-[2.5px] mb-[1.2mm]"></div>
                         </div>
 
                         {/* Body: Info & Box */}
-                        <div className="flex justify-between gap-[2mm] flex-1 max-h-[28mm]">
+                        <div className="flex justify-between gap-[1mm] flex-1 max-h-[24mm]">
                           <div className="flex-1 min-w-0">
-                            <table className="w-full border-collapse text-[5.8pt] leading-[1.25]">
+                            <table className="w-full border-collapse text-[5.8pt] leading-[1.25] font-semibold">
                               <tbody>
                                 <tr>
-                                  <td className="w-[17mm] text-slate-600 py-[0.4px] whitespace-nowrap">No. Ujian</td>
-                                  <td className="w-[2mm] text-center text-slate-600">:</td>
-                                  <td className="text-slate-900 font-extrabold text-[7pt]">{rollNo}</td>
+                                  <td className="w-[17mm] text-black font-semibold py-[0.2px] whitespace-nowrap">No. Ujian</td>
+                                  <td className="w-[2mm] text-center text-black font-bold">:</td>
+                                  <td className="text-black font-extrabold text-[7pt]">{rollNo}</td>
                                 </tr>
                                 <tr>
-                                  <td className="text-slate-600 py-[0.4px] whitespace-nowrap">NISN</td>
-                                  <td className="text-center text-slate-600">:</td>
-                                  <td className="text-slate-900 font-bold">{student.nisn || '-'}</td>
+                                  <td className="text-black font-semibold py-[0.2px] whitespace-nowrap">NISN</td>
+                                  <td className="text-center text-black font-bold">:</td>
+                                  <td className="text-black font-bold">{student.nisn || '-'}</td>
                                 </tr>
                                 <tr>
-                                  <td className="text-slate-600 py-[0.4px] whitespace-nowrap">Nama</td>
-                                  <td className="text-center text-slate-600">:</td>
-                                  <td className="text-slate-900 font-extrabold text-[6.2pt] uppercase truncate max-w-[42mm]">
+                                  <td className="text-black font-semibold py-[0.2px] whitespace-nowrap">Nama</td>
+                                  <td className="text-center text-black font-bold">:</td>
+                                  <td className="text-black font-extrabold text-[6.2pt] uppercase truncate max-w-[42mm]">
                                     {student.user?.name || '-'}
                                   </td>
                                 </tr>
                                 <tr>
-                                  <td className="text-slate-600 py-[0.4px] whitespace-nowrap">Kelas</td>
-                                  <td className="text-center text-slate-600">:</td>
-                                  <td className="text-slate-900 font-bold">{clsName}</td>
+                                  <td className="text-black font-semibold py-[0.2px] whitespace-nowrap">Kelas</td>
+                                  <td className="text-center text-black font-bold">:</td>
+                                  <td className="text-black font-bold">{clsName}</td>
                                 </tr>
                                 <tr>
-                                  <td className="text-slate-600 py-[0.4px] whitespace-nowrap">Asal Sekolah</td>
-                                  <td className="text-center text-slate-600">:</td>
-                                  <td className="text-slate-800">{schoolName}</td>
+                                  <td className="text-black font-semibold py-[0.2px] whitespace-nowrap">Asal Sekolah</td>
+                                  <td className="text-center text-black font-bold">:</td>
+                                  <td className="text-black font-bold">{schoolName}</td>
                                 </tr>
                                 <tr>
-                                  <td className="text-slate-600 py-[0.4px] whitespace-nowrap">Ruang / Server</td>
-                                  <td className="text-center text-slate-600">:</td>
-                                  <td className="text-slate-900 font-bold">{roomSession}</td>
+                                  <td className="text-black font-semibold py-[0.2px] whitespace-nowrap">Ruang / Server</td>
+                                  <td className="text-center text-black font-bold">:</td>
+                                  <td className="text-black font-bold">{roomSession}</td>
                                 </tr>
                               </tbody>
                             </table>
                           </div>
 
                           {/* Credentials Plain (Polos tanpa border) */}
-                          <div className="w-[25mm] shrink-0 flex flex-col self-start pl-[2mm] mt-[0.5mm]">
+                          <div className="w-[25mm] shrink-0 flex flex-col self-start pl-[2mm] mt-[0mm]">
                             <div className="flex flex-col">
-                              <span className="text-[5.5pt] font-bold text-slate-900 tracking-wider leading-tight">
+                              <span className="text-[5.5pt] font-extrabold text-black tracking-wider leading-tight">
                                 USERNAME :
                               </span>
-                              <span className="text-[8.5pt] font-extrabold text-slate-900 tracking-wider leading-tight">
+                              <span className="text-[8.5pt] font-extrabold text-black tracking-wider leading-tight">
                                 {username}
                               </span>
                             </div>
                             <div className="flex flex-col mt-[1.5mm]">
-                              <span className="text-[5.5pt] font-bold text-slate-900 tracking-wider leading-tight">
+                              <span className="text-[5.5pt] font-extrabold text-black tracking-wider leading-tight">
                                 PASSWORD :
                               </span>
-                              <span className="text-[8.5pt] font-extrabold text-slate-900 tracking-wider leading-tight">
+                              <span className="text-[8.5pt] font-extrabold text-black tracking-wider leading-tight">
                                 {password}
                               </span>
                             </div>
@@ -1361,36 +1371,36 @@ const ExamCards: React.FC = () => {
                         </div>
 
                         {/* Footer: Catatan & Tanda Tangan */}
-                        <div className="border-t border-dashed border-slate-300 pt-[1mm] flex justify-between items-end gap-[1.5mm]">
-                          <div className="flex-1 text-[4.8pt] text-slate-600 leading-tight">
-                            <div className="font-bold text-slate-800 mb-[0.2px]">Catatan :</div>
+                        <div className="border-t-[1.5px] border-dashed border-slate-400 pt-[1mm] flex justify-between items-end gap-[1.5mm]">
+                          <div className="flex-1 text-[4.8pt] text-black font-semibold leading-tight">
+                            <div className="font-extrabold text-black mb-[0.2px]">Catatan :</div>
                             <div>1. Wajib dibawa saat ujian.</div>
                             <div>2. Jaga kerahasiaan Akun.</div>
-                            <div className="font-extrabold text-[5pt] text-slate-900 mt-[0.6mm] tracking-wide">
+                            <div className="font-extrabold text-[5pt] text-black mt-[0.6mm] tracking-wide">
                               CBT SMKN 1 BERINGIN
                             </div>
                           </div>
 
-                          <div className="text-center text-[5pt] text-slate-900 w-[36mm] shrink-0 leading-tight">
-                            <div className="text-slate-600">{cityName}, {cardDate}</div>
-                            <div className="font-semibold">{principalTitle}</div>
-                            <div className="h-[4.5mm]"></div>
-                            <div className="font-bold text-[5.3pt] underline">{principalName}</div>
-                            <div className="text-[4.7pt] text-slate-600">NIP. {principalNip}</div>
+                          <div className="text-center text-[5pt] text-black w-[36mm] shrink-0 leading-tight font-semibold">
+                            <div className="text-black font-semibold">{cityName}, {cardDate}</div>
+                            <div className="font-bold">{principalTitle}</div>
+                            <div className="h-[4mm]"></div>
+                            <div className="font-extrabold text-[5.3pt] underline">{principalName}</div>
+                            <div className="text-[4.7pt] text-black font-semibold">NIP. {principalNip}</div>
                           </div>
                         </div>
                       </div>
                     );
                   })}
 
-                  {/* Empty visual slots if less than 8 cards on page */}
+                  {/* Empty visual slots if less than 10 cards on page */}
                   {Array.from({ length: CARDS_PER_PAGE - currentSheetCards.length }).map((_, emptyIdx) => (
                     <div
                       key={`empty-${emptyIdx}`}
-                      className="w-[96mm] h-[64mm] min-w-[96mm] max-w-[96mm] min-height-[64mm] max-h-[64mm] border border-dashed border-slate-200 rounded p-3 flex flex-col items-center justify-center text-slate-300 text-[10px]"
+                      className="w-[96mm] h-[55mm] min-w-[96mm] max-w-[96mm] min-h-[55mm] max-h-[55mm] border border-dashed border-slate-300 rounded p-3 flex flex-col items-center justify-center text-slate-400 text-[10px]"
                     >
                       <span>Slot Kosong #{currentSheetCards.length + emptyIdx + 1}</span>
-                      <span className="text-[8px] text-slate-300">(Ukuran tetap 96mm × 64mm)</span>
+                      <span className="text-[8px] text-slate-400">(Ukuran tetap 96mm × 55mm)</span>
                     </div>
                   ))}
                 </div>

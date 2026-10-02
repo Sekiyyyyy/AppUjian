@@ -147,8 +147,9 @@ const AdminLayout = () => {
           </div>
         </div>
         
-        {/* Mobile Clock & Avatar */}
         <div className="flex items-center space-x-3">
+          <img src="/logo-sumut.png" alt="Kolaborasi Sumut Berkah" className="h-6 object-contain hidden sm:block" />
+          {/* Mobile Clock & Avatar */}
           <span className="text-xs font-mono font-semibold text-slate-700 bg-slate-100 px-2 py-1 rounded-md">
             {timeFormatted}
           </span>
@@ -333,16 +334,21 @@ const AdminLayout = () => {
             </h1>
           </div>
 
-          {/* Clean Realtime Clock & Date matching Reference */}
-          <div className="flex flex-col items-end">
-            <div className="flex items-center space-x-1.5">
-              <Clock size={15} className="text-primary-600 flex-shrink-0" />
-              <div className="text-sm font-bold text-slate-800 font-mono tracking-tight leading-none">
-                {timeFormatted}
+          <div className="flex items-center space-x-6">
+            {/* New Logo: Kolaborasi Sumut Berkah */}
+            <img src="/logo-sumut.png" alt="Kolaborasi Sumut Berkah" className="h-9 object-contain" title="Kolaborasi Sumut Berkah" />
+
+            {/* Clean Realtime Clock & Date matching Reference */}
+            <div className="flex flex-col items-end border-l border-slate-200 pl-6">
+              <div className="flex items-center space-x-1.5">
+                <Clock size={15} className="text-primary-600 flex-shrink-0" />
+                <div className="text-sm font-bold text-slate-800 font-mono tracking-tight leading-none">
+                  {timeFormatted}
+                </div>
               </div>
-            </div>
-            <div className="text-[10px] font-bold text-slate-400 tracking-wider uppercase mt-1 leading-none">
-              {dateFormatted}
+              <div className="text-[10px] font-bold text-slate-400 tracking-wider uppercase mt-1 leading-none">
+                {dateFormatted}
+              </div>
             </div>
           </div>
         </header>
