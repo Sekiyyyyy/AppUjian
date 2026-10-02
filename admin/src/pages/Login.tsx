@@ -44,12 +44,12 @@ const Login = () => {
   return (
     <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4 relative overflow-hidden">
       {/* New Logo: Kolaborasi Sumut Berkah - Top Right */}
-      <div className="absolute top-6 right-6 md:top-8 md:right-10 z-20">
-        <div className="bg-white/40 backdrop-blur-md border border-white/60 p-2 md:p-3 rounded-2xl shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+      <div className="absolute top-4 right-4 md:top-6 md:right-8 z-20">
+        <div className="bg-white/40 backdrop-blur-md border border-white/60 p-1.5 md:p-2 rounded-xl shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
           <img 
             src="/logo-sumut.png?v=1" 
             alt="Kolaborasi Sumut Berkah" 
-            className="h-10 md:h-12 lg:h-14 object-contain drop-shadow-md" 
+            className="h-5 md:h-7 lg:h-8 object-contain drop-shadow-sm" 
           />
         </div>
       </div>
