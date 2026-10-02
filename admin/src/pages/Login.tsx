@@ -45,11 +45,13 @@ const Login = () => {
     <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4 relative overflow-hidden">
       {/* New Logo: Kolaborasi Sumut Berkah - Top Right */}
       <div className="absolute top-6 right-6 md:top-8 md:right-10 z-20">
-        <img 
-          src="/logo-sumut.png" 
-          alt="Kolaborasi Sumut Berkah" 
-          className="h-10 md:h-14 lg:h-16 object-contain drop-shadow-md hover:scale-105 transition-transform duration-300" 
-        />
+        <div className="bg-white/40 backdrop-blur-md border border-white/60 p-2 md:p-3 rounded-2xl shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+          <img 
+            src="/logo-sumut.png" 
+            alt="Kolaborasi Sumut Berkah" 
+            className="h-10 md:h-12 lg:h-14 object-contain drop-shadow-md" 
+          />
+        </div>
       </div>
 
       <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-primary-400 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob"></div>

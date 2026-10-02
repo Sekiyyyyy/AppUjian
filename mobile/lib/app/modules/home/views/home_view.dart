@@ -132,44 +132,33 @@ class HomeView extends GetView<HomeController> {
                                       ],
                                     ),
                                   ),
-                                  Row(
-                                    children: [
-                                      Image.asset(
-                                        'assets/images/logo_sumut.png',
-                                        height: 40,
+                                  Container(
+                                    padding: const EdgeInsets.all(4),
+                                    decoration: const BoxDecoration(
+                                      color: Colors.white,
+                                      shape: BoxShape.circle,
+                                      boxShadow: [
+                                        BoxShadow(color: Colors.black26, blurRadius: 10, offset: Offset(0, 4))
+                                      ]
+                                    ),
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(40),
+                                      child: Image.asset(
+                                        'assets/images/logo.png',
+                                        width: 60,
+                                        height: 60,
                                         fit: BoxFit.contain,
-                                        errorBuilder: (context, error, stackTrace) => const SizedBox.shrink(),
-                                      ),
-                                      const SizedBox(width: 12),
-                                      Container(
-                                        padding: const EdgeInsets.all(4),
-                                        decoration: const BoxDecoration(
-                                          color: Colors.white,
-                                          shape: BoxShape.circle,
-                                          boxShadow: [
-                                            BoxShadow(color: Colors.black26, blurRadius: 10, offset: Offset(0, 4))
-                                          ]
-                                        ),
-                                        child: ClipRRect(
-                                          borderRadius: BorderRadius.circular(40),
-                                          child: Image.asset(
-                                            'assets/images/logo.png',
+                                        errorBuilder: (context, error, stackTrace) {
+                                          // Fallback if logo fails to load (e.g. before pub get)
+                                          return Container(
                                             width: 60,
                                             height: 60,
-                                            fit: BoxFit.contain,
-                                            errorBuilder: (context, error, stackTrace) {
-                                              // Fallback if logo fails to load (e.g. before pub get)
-                                              return Container(
-                                                width: 60,
-                                                height: 60,
-                                                color: Colors.grey.shade200,
-                                                child: const Icon(Icons.school_rounded, color: Colors.grey),
-                                              );
-                                            },
-                                          ),
-                                        ),
+                                            color: Colors.grey.shade200,
+                                            child: const Icon(Icons.school_rounded, color: Colors.grey),
+                                          );
+                                        },
                                       ),
-                                    ],
+                                    ),
                                   ),
                                 ],
                               ),
