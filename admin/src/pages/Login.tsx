@@ -47,7 +47,7 @@ const Login = () => {
       <div className="absolute top-6 right-6 md:top-8 md:right-10 z-20">
         <div className="bg-white/40 backdrop-blur-md border border-white/60 p-2 md:p-3 rounded-2xl shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
           <img 
-            src="/logo-sumut.png" 
+            src="/logo-sumut.png?v=1" 
             alt="Kolaborasi Sumut Berkah" 
             className="h-10 md:h-12 lg:h-14 object-contain drop-shadow-md" 
           />

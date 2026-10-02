@@ -149,7 +149,7 @@ const AdminLayout = () => {
         
         <div className="flex items-center space-x-3">
           <div className="hidden sm:flex items-center bg-slate-50/80 backdrop-blur-md border border-slate-200/60 px-2.5 py-1.5 rounded-lg shadow-sm">
-            <img src="/logo-sumut.png" alt="Kolaborasi Sumut Berkah" className="h-5 object-contain drop-shadow-sm" />
+            <img src="/logo-sumut.png?v=1" alt="Kolaborasi Sumut Berkah" className="h-5 object-contain drop-shadow-sm" />
           </div>
           {/* Mobile Clock & Avatar */}
           <span className="text-xs font-mono font-semibold text-slate-700 bg-slate-100 px-2 py-1 rounded-md">
@@ -339,7 +339,7 @@ const AdminLayout = () => {
           <div className="flex items-center space-x-6">
             {/* New Logo: Kolaborasi Sumut Berkah */}
             <div className="flex items-center bg-slate-50/80 backdrop-blur-sm border border-slate-200/60 px-3.5 py-2 rounded-xl shadow-sm hover:shadow hover:bg-white transition-all cursor-default group">
-              <img src="/logo-sumut.png" alt="Kolaborasi Sumut Berkah" className="h-8 object-contain drop-shadow-sm group-hover:scale-105 transition-transform duration-300" title="Kolaborasi Sumut Berkah" />
+              <img src="/logo-sumut.png?v=1" alt="Kolaborasi Sumut Berkah" className="h-8 object-contain drop-shadow-sm group-hover:scale-105 transition-transform duration-300" title="Kolaborasi Sumut Berkah" />
             </div>
 
             {/* Clean Realtime Clock & Date matching Reference */}
