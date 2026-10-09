@@ -20,9 +20,9 @@ type AppVersionResponse struct {
 }
 
 const (
-	CurrentLatestAppVersion  = "1.1.5"
-	CurrentLatestBuildNumber = 17
-	CurrentMinAppVersion     = "1.1.5"
+	CurrentLatestAppVersion  = "1.1.6"
+	CurrentLatestBuildNumber = 18
+	CurrentMinAppVersion     = "1.1.6"
 	CurrentAppDownloadURL    = "https://ujian.tiksmkn1beringin.my.id/download"
 )
 
@@ -103,9 +103,9 @@ func GetAppVersion(c *gin.Context) {
 		ForceUpdate:   isOutdated,
 		Title:         "Pembaruan Wajib Aplikasi CBT v" + CurrentLatestAppVersion,
 		Changelog: []string{
-			"Perbaikan Kunci Windows Desktop: Mode kiosk, layar penuh, dan pengait keyboard dipastikan lepas seketika saat ujian selesai atau terkunci.",
-			"Pembaruan Langsung Tanpa Uninstall: Standarisasi skema penandatanganan APK v1+v2 untuk mendukung update instan tanpa perlu mencopot aplikasi lama.",
-			"Pelindung Jendela Mengambang (Floating Window Guard): Deteksi dan kunci otomatis ujian saat menyentuh jendela mengambang di Android (Infinix, Xiaomi, Samsung, dsb).",
+			"Perbaikan Layar Mati & Tombol Power: Layar otomatis dijaga tetap menyala, dan jika layar mati atau tombol power tertekan tidak akan mengunci ujian.",
+			"Perbaikan Sentuhan & OEM Infinix / Oppo / Xiaomi: Memperbaiki masalah layar tidak merespons sentuhan (touch unresponsive) dan kompatibilitas semat layar di semua ROM.",
+			"Kompatibilitas Luas Android 8.0+: Pustaka native dan ikon aplikasi distandarisasi agar instalasi berhasil di seluruh merek HP Android.",
 		},
 		DownloadURL: CurrentAppDownloadURL,
 	})

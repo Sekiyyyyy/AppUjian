@@ -34,21 +34,21 @@ const DownloadPage: React.FC = () => {
       .catch(() => {
         // Fallback default
         setVersionInfo({
-          latest_version: '1.1.5',
-          build_number: 17,
-          min_version: '1.1.5',
-          title: 'Pembaruan Aplikasi CBT v1.1.5',
+          latest_version: '1.1.6',
+          build_number: 18,
+          min_version: '1.1.6',
+          title: 'Pembaruan Aplikasi CBT v1.1.6',
           changelog: [
-            'Perbaikan Kunci Windows Desktop: Mode kiosk, layar penuh, dan pengait keyboard dipastikan lepas seketika saat ujian selesai atau terkunci.',
-            'Pembaruan Langsung Tanpa Uninstall: Standarisasi skema penandatanganan APK v1+v2 untuk mendukung update instan tanpa perlu mencopot aplikasi lama.',
-            'Pelindung Jendela Mengambang (Floating Window Guard): Deteksi dan kunci otomatis ujian saat menyentuh jendela mengambang di Android (Infinix, Xiaomi, Samsung, dsb).',
+            'Perbaikan Layar Mati & Tombol Power: Layar otomatis dijaga tetap menyala, dan jika layar mati atau tombol power tertekan tidak akan mengunci ujian.',
+            'Perbaikan Sentuhan & OEM Infinix / Oppo / Xiaomi: Memperbaiki masalah layar tidak merespons sentuhan (touch unresponsive) dan kompatibilitas semat layar di semua ROM.',
+            'Kompatibilitas Luas Android 8.0+: Pustaka native dan ikon aplikasi distandarisasi agar instalasi berhasil di seluruh merek HP Android.',
           ],
           download_url: '/download'
         });
       });
   }, []);
 
-  const version = versionInfo?.latest_version || '1.1.5';
+  const version = versionInfo?.latest_version || '1.1.6';
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 text-white flex flex-col justify-between selection:bg-emerald-500 selection:text-white">

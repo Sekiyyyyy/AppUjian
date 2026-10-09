@@ -59,6 +59,7 @@ class ExamController extends GetxController with WidgetsBindingObserver {
   // App Pinning Tracking
   bool _isPinningApproved = false;
   bool _isPinningPending = false;
+  bool _wasPinnedInitially = false;
 
   /// Whether we're running on a desktop platform (Windows/macOS/Linux)
   bool get _isDesktop =>
@@ -106,6 +107,12 @@ class ExamController extends GetxController with WidgetsBindingObserver {
         if (!_isPinningApproved) {
           _isPinningApproved = true;
           _isPinningPending = false;
+          try {
+            final isPinned = await _kioskChannel.invokeMethod<bool>('isLockTaskActive') ?? false;
+            _wasPinnedInitially = isPinned;
+          } catch (_) {
+            _wasPinnedInitially = false;
+          }
           _startExamProcess();
         }
       } else if (call.method == 'onMultiWindowDetected') {
@@ -125,6 +132,7 @@ class ExamController extends GetxController with WidgetsBindingObserver {
     _isExamFinished = true;
     _isPinningPending = false;
     _isPinningApproved = false;
+    _wasPinnedInitially = false;
     _exitCheckTimer?.cancel();
     _sessionMonitorTimer?.cancel();
     _timer?.cancel();
@@ -167,6 +175,7 @@ class ExamController extends GetxController with WidgetsBindingObserver {
     _isExamFinished = true;
     _isPinningPending = false;
     _isPinningApproved = false;
+    _wasPinnedInitially = false;
     _exitCheckTimer?.cancel();
     _sessionMonitorTimer?.cancel();
     _timer?.cancel();
@@ -211,6 +220,7 @@ class ExamController extends GetxController with WidgetsBindingObserver {
   Future<void> _disableKioskMode() async {
     _isPinningApproved = false;
     _isPinningPending = false;
+    _wasPinnedInitially = false;
     try {
       await _kioskChannel.invokeMethod('stopLockTask');
     } catch (e) {
@@ -290,10 +300,10 @@ class ExamController extends GetxController with WidgetsBindingObserver {
         state == AppLifecycleState.paused ||
         state == AppLifecycleState.hidden) {
       _exitCheckTimer?.cancel();
-      // Beri jeda 800ms untuk memastikan transisi layar mati (tombol power) selesai.
-      // Jika layar mati (tombol power dipencet), isScreenInteractive bernilai false -> TIDAK dikunci.
-      // Jika layar hidup dan siswa berinteraksi dengan jendela mengambang AI -> isScreenInteractive bernilai true -> DIKUNCI!
-      _exitCheckTimer = Timer(const Duration(milliseconds: 800), () async {
+      // Beri jeda 2500ms untuk memastikan transisi layar mati (tombol power) atau lock screen selesai.
+      // Jika layar mati (tombol power dipencet / layar mati), isScreenInteractive bernilai false -> TIDAK dikunci.
+      // Jika layar hidup dan siswa benar-benar keluar ke Home/aplikasi lain -> isScreenInteractive bernilai true -> DIKUNCI!
+      _exitCheckTimer = Timer(const Duration(milliseconds: 2500), () async {
         if (_currentLifecycleState == AppLifecycleState.resumed || _isExamFinished || isExamLocked.value) {
           return;
         }
@@ -306,13 +316,13 @@ class ExamController extends GetxController with WidgetsBindingObserver {
             isTrulyOutside = false;
           }
         } else {
-          // iOS: jika 800ms tetap paused/hidden/inactive, berarti keluar aplikasi
+          // iOS: jika 2500ms tetap paused/hidden/inactive, berarti keluar aplikasi
           isTrulyOutside = true;
         }
 
         if (isTrulyOutside) {
-          // Siswa terdeteksi berada di luar aplikasi atau berinteraksi dengan jendela mengambang saat layar menyala
-          _lockExamSession("Terdeteksi menggunakan jendela mengambang / keluar dari aplikasi ujian");
+          // Siswa terdeteksi berada di luar aplikasi atau membuka aplikasi lain saat layar menyala
+          _lockExamSession("Terdeteksi keluar dari aplikasi ujian");
         }
       });
     }
@@ -543,15 +553,17 @@ class ExamController extends GetxController with WidgetsBindingObserver {
     _sessionMonitorTimer = Timer.periodic(const Duration(seconds: 4), (_) async {
       if (_isExamFinished || isExamLocked.value) return;
 
-      // Anti-Cheating: Pada perangkat Android, pastikan mode semat (App Pinning) tetap aktif
-      if (!kIsWeb && Platform.isAndroid) {
-        try {
-          final isPinned = await _kioskChannel.invokeMethod<bool>('isLockTaskActive') ?? false;
-          if (!isPinned && _isPinningApproved && !_isPinningPending) {
-            _lockExamSession("Terdeteksi melepas sematan aplikasi (Unpin) saat ujian");
-            return;
-          }
-        } catch (_) {}
+      // Anti-Cheating: Pada perangkat Android yang berhasil dipin, pantau jika siswa sengaja unpin saat aktif
+      if (!kIsWeb && Platform.isAndroid && _wasPinnedInitially) {
+        if (_currentLifecycleState == AppLifecycleState.resumed) {
+          try {
+            final isPinned = await _kioskChannel.invokeMethod<bool>('isLockTaskActive') ?? false;
+            if (!isPinned && !_isPinningPending && !_isExamFinished && !isExamLocked.value) {
+              _lockExamSession("Terdeteksi melepas sematan aplikasi (Unpin) saat ujian");
+              return;
+            }
+          } catch (_) {}
+        }
       }
 
       try {

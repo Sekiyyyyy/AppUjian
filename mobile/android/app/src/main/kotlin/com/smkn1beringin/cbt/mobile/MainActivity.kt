@@ -17,7 +17,6 @@ import android.os.Looper
 import android.os.PowerManager
 import android.os.VibrationEffect
 import android.os.Vibrator
-import android.view.MotionEvent
 import android.view.WindowManager
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -28,6 +27,7 @@ class MainActivity : FlutterActivity() {
     private var methodChannel: MethodChannel? = null
     private var mediaPlayer: MediaPlayer? = null
     private var isScreenOff = false
+    private var lastScreenOffTimestamp = 0L
     private var isActivityResumed = false
 
     // App Pinning Tracking (Screen Pinning / LockTaskMode)
@@ -37,24 +37,13 @@ class MainActivity : FlutterActivity() {
     private val pinningHandler = Handler(Looper.getMainLooper())
     private var pinCheckRunnable: Runnable? = null
 
-    // Exam Mode & Window Focus Tracking
+    // Exam Mode Tracking
     private var isExamModeActive = false
-    private val focusLossHandler = Handler(Looper.getMainLooper())
-    private var focusLossRunnable: Runnable? = null
 
     private fun applyHideOverlayWindows() {
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 window.setHideOverlayWindows(true)
-            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                // Fallback untuk Android 8.0 - 11 via privateFlags
-                val params = window.attributes
-                val field = params.javaClass.getDeclaredField("privateFlags")
-                field.isAccessible = true
-                val currentFlags = field.getInt(params)
-                val flagValue = 0x00080000 // SYSTEM_FLAG_HIDE_NON_SYSTEM_OVERLAY_WINDOWS
-                field.setInt(params, currentFlags or flagValue)
-                window.attributes = params
             }
         } catch (_: Exception) {}
     }
@@ -97,19 +86,6 @@ class MainActivity : FlutterActivity() {
         }
     }
 
-    override fun dispatchTouchEvent(ev: MotionEvent?): Boolean {
-        if (ev != null) {
-            val isObscured = (ev.flags and MotionEvent.FLAG_WINDOW_IS_OBSCURED) != 0 ||
-                             (ev.flags and MotionEvent.FLAG_WINDOW_IS_PARTIALLY_OBSCURED) != 0
-            if (isObscured) {
-                // Sentuhan terhalang atau berasal dari overlay/jendela mengambang
-                methodChannel?.invokeMethod("onOverlayDetected", null)
-                return false
-            }
-        }
-        return super.dispatchTouchEvent(ev)
-    }
-
     private fun isPinned(): Boolean {
         return try {
             val am = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
@@ -134,14 +110,17 @@ class MainActivity : FlutterActivity() {
 
     private val screenReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
-            if (intent?.action == Intent.ACTION_SCREEN_OFF) {
-                isScreenOff = true
-                // Jika layar dimatikan (tombol power), pastikan sirine TIDAK bunyi
-                stopEmergencySiren()
-            } else if (intent?.action == Intent.ACTION_SCREEN_ON) {
-                isScreenOff = false
-            } else if (intent?.action == Intent.ACTION_USER_PRESENT) {
-                isScreenOff = false
+            when (intent?.action) {
+                Intent.ACTION_SCREEN_OFF -> {
+                    isScreenOff = true
+                    lastScreenOffTimestamp = System.currentTimeMillis()
+                    // Jika layar dimatikan (tombol power/sleep), matikan sirine dan jangan kunci
+                    stopEmergencySiren()
+                }
+                Intent.ACTION_SCREEN_ON, Intent.ACTION_USER_PRESENT -> {
+                    isScreenOff = false
+                    lastScreenOffTimestamp = System.currentTimeMillis()
+                }
             }
         }
     }
@@ -149,9 +128,6 @@ class MainActivity : FlutterActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         applyHideOverlayWindows()
-        try {
-            window.decorView.filterTouchesWhenObscured = true
-        } catch (_: Exception) {}
         val filter = IntentFilter().apply {
             addAction(Intent.ACTION_SCREEN_OFF)
             addAction(Intent.ACTION_SCREEN_ON)
@@ -163,6 +139,9 @@ class MainActivity : FlutterActivity() {
     override fun onResume() {
         super.onResume()
         isActivityResumed = true
+        if (isExamModeActive || isPinned()) {
+            window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
         applyHideOverlayWindows()
     }
 
@@ -175,56 +154,17 @@ class MainActivity : FlutterActivity() {
         super.onWindowFocusChanged(hasFocus)
         if (hasFocus) {
             applyHideOverlayWindows()
-            focusLossRunnable?.let { focusLossHandler.removeCallbacks(it) }
-            focusLossRunnable = null
+            if (isExamModeActive || isPinned()) {
+                window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            }
+            if (isWaitingForPinApproval && isPinned()) {
+                stopPinApprovalTracking()
+                isExamModeActive = true
+                methodChannel?.invokeMethod("onPinningAccepted", null)
+            }
         } else {
-            // Dialog sistem "Sematkan Aplikasi" muncul dan mengambil fokus jendela
             if (isWaitingForPinApproval) {
                 pinDialogAppeared = true
-            } else if (isPinned() || isExamModeActive) {
-                // Sesi ujian sedang aktif dan fokus jendela hilang saat layar menyala!
-                // Ini terjadi jika siswa menyentuh jendela mengambang (AI / ChatGPT), status bar / notifikasi, dll.
-                focusLossRunnable?.let { focusLossHandler.removeCallbacks(it) }
-                focusLossRunnable = Runnable {
-                    val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
-                    val km = getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager
-                    val isInteractive = pm.isInteractive && !isScreenOff
-                    val isKeyguardLocked = km?.isKeyguardLocked ?: false
-                    if (!hasWindowFocus() && isInteractive && !isKeyguardLocked && (isPinned() || isExamModeActive) && !isWaitingForPinApproval) {
-                        methodChannel?.invokeMethod("onOverlayDetected", "floating_window_touch")
-                    }
-                }
-                focusLossHandler.postDelayed(focusLossRunnable!!, 400)
-            }
-        }
-
-        if (hasFocus) {
-            // Jendela aplikasi kita kembali mendapatkan fokus
-            if (isWaitingForPinApproval) {
-                if (isPinned()) {
-                    // Siswa menekan "Mengerti / ACC"
-                    stopPinApprovalTracking()
-                    isExamModeActive = true
-                    methodChannel?.invokeMethod("onPinningAccepted", null)
-                } else if (pinDialogAppeared && (System.currentTimeMillis() - pinRequestTimestamp > 700)) {
-                    // Dialog sistem sebelumnya muncul, dan sekarang telah ditutup oleh siswa TANPA ACC
-                    // (Siswa menekan "Tidak, terima kasih" / "No thanks" / tombol Back)
-                    // Beri jeda 250ms untuk memastikan status final Android
-                    pinningHandler.postDelayed({
-                        if (isWaitingForPinApproval) {
-                            if (isPinned()) {
-                                stopPinApprovalTracking()
-                                isExamModeActive = true
-                                methodChannel?.invokeMethod("onPinningAccepted", null)
-                            } else {
-                                // Benar-benar menolak sematan! Langsung tendang ke Beranda!
-                                stopPinApprovalTracking()
-                                isExamModeActive = false
-                                methodChannel?.invokeMethod("onPinningRejected", "no_thanks")
-                            }
-                        }
-                    }, 250)
-                }
             }
         }
     }
@@ -246,6 +186,13 @@ class MainActivity : FlutterActivity() {
                 "setExamActive" -> {
                     val active = call.argument<Boolean>("active") ?: false
                     isExamModeActive = active
+                    runOnUiThread {
+                        if (active) {
+                            window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                        } else if (!isPinned()) {
+                            window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                        }
+                    }
                     result.success(true)
                 }
                 "hasWindowFocus" -> {
@@ -273,7 +220,9 @@ class MainActivity : FlutterActivity() {
                         if (isPinned()) {
                             stopPinApprovalTracking()
                             isExamModeActive = true
-                            window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                            runOnUiThread {
+                                window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                            }
                             result.success(true)
                             methodChannel?.invokeMethod("onPinningAccepted", null)
                             return@setMethodCallHandler
@@ -283,12 +232,27 @@ class MainActivity : FlutterActivity() {
                         isWaitingForPinApproval = true
                         pinDialogAppeared = false
                         pinRequestTimestamp = System.currentTimeMillis()
-                        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-                        startLockTask()
+                        runOnUiThread {
+                            window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                        }
+
+                        try {
+                            startLockTask()
+                        } catch (e: Exception) {
+                            // Banyak ROM (Infinix XOS, Oppo ColorOS, Xiaomi dsb) tidak mendukung/menolak startLockTask
+                            // Fallback otomatis ke mode aman standar dengan pemantauan lifecycle & FLAG_KEEP_SCREEN_ON
+                            stopPinApprovalTracking()
+                            isExamModeActive = true
+                            runOnUiThread {
+                                window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                            }
+                            result.success(true)
+                            methodChannel?.invokeMethod("onPinningAccepted", null)
+                            return@setMethodCallHandler
+                        }
+
                         result.success(true)
 
-                        // Polling berkala (setiap 200ms): begitu siswa menekan "Mengerti" (ACC),
-                        // isPinned() langsung true seketika!
                         val startTime = System.currentTimeMillis()
                         val checkRunnable = object : Runnable {
                             override fun run() {
@@ -296,14 +260,31 @@ class MainActivity : FlutterActivity() {
                                 if (isPinned()) {
                                     stopPinApprovalTracking()
                                     isExamModeActive = true
+                                    runOnUiThread {
+                                        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                                    }
                                     methodChannel?.invokeMethod("onPinningAccepted", null)
                                     return
                                 }
-                                // Timeout 15 detik jika dialog dibiarkan tanpa respons
-                                if (System.currentTimeMillis() - startTime > 15000) {
+                                // Jika dalam 3.5 detik ROM tidak pernah memunculkan dialog semat (khas Infinix/Oppo/Android lawas),
+                                // fallback otomatis agar siswa tidak tertahan di loading screen
+                                if (!pinDialogAppeared && (System.currentTimeMillis() - startTime > 3500)) {
                                     stopPinApprovalTracking()
-                                    isExamModeActive = false
-                                    methodChannel?.invokeMethod("onPinningRejected", "timeout")
+                                    isExamModeActive = true
+                                    runOnUiThread {
+                                        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                                    }
+                                    methodChannel?.invokeMethod("onPinningAccepted", null)
+                                    return
+                                }
+                                // Timeout 8 detik fallback otomatis
+                                if (System.currentTimeMillis() - startTime > 8000) {
+                                    stopPinApprovalTracking()
+                                    isExamModeActive = true
+                                    runOnUiThread {
+                                        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                                    }
+                                    methodChannel?.invokeMethod("onPinningAccepted", null)
                                     return
                                 }
                                 pinningHandler.postDelayed(this, 200)
@@ -313,19 +294,26 @@ class MainActivity : FlutterActivity() {
                         pinningHandler.postDelayed(checkRunnable, 200)
                     } catch (e: Exception) {
                         stopPinApprovalTracking()
-                        isExamModeActive = false
-                        result.success(false)
-                        methodChannel?.invokeMethod("onPinningRejected", "exception: ${e.message}")
+                        isExamModeActive = true
+                        runOnUiThread {
+                            window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                        }
+                        result.success(true)
+                        methodChannel?.invokeMethod("onPinningAccepted", null)
                     }
                 }
                 "stopLockTask" -> {
                     try {
                         isExamModeActive = false
-                        focusLossRunnable?.let { focusLossHandler.removeCallbacks(it) }
-                        focusLossRunnable = null
                         stopPinApprovalTracking()
-                        stopLockTask()
-                        window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                        if (isPinned()) {
+                            try {
+                                stopLockTask()
+                            } catch (_: Exception) {}
+                        }
+                        runOnUiThread {
+                            window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                        }
                         result.success(true)
                     } catch (e: Exception) {
                         result.success(false)
@@ -333,20 +321,14 @@ class MainActivity : FlutterActivity() {
                 }
                 "isLockTaskActive" -> {
                     try {
-                        val am = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
-                        val mode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                            am.lockTaskModeState
-                        } else {
-                            ActivityManager.LOCK_TASK_MODE_NONE
-                        }
-                        result.success(mode != ActivityManager.LOCK_TASK_MODE_NONE)
+                        result.success(isPinned())
                     } catch (e: Exception) {
                         result.success(false)
                     }
                 }
                 "isScreenInteractive" -> {
                     try {
-                        // Jangan anggap keluar aplikasi jika sedang menunggu siswa merespons dialog pin
+                        // Jangan anggap keluar jika sedang menunggu siswa merespons dialog pin
                         if (isWaitingForPinApproval) {
                             result.success(false)
                             return@setMethodCallHandler
@@ -355,8 +337,19 @@ class MainActivity : FlutterActivity() {
                         val km = getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager
                         val isInteractive = pm.isInteractive && !isScreenOff
                         val isKeyguardLocked = km?.isKeyguardLocked ?: false
-                        // Hanya anggap keluar jika layar hidup, tidak di lockscreen, dan aplikasi kita tidak aktif di layar atau kehilangan fokus jendela
-                        val isOutside = isInteractive && !isKeyguardLocked && (!isActivityResumed || !hasWindowFocus())
+                        val timeSinceScreenChange = System.currentTimeMillis() - lastScreenOffTimestamp
+
+                        // Jika layar mati (sleep/tombol power), atau HP di lockscreen,
+                        // atau baru saja ada pergantian status layar dalam 4 detik:
+                        // JANGAN PERNAH anggap keluar aplikasi ujian!
+                        if (!isInteractive || isKeyguardLocked || timeSinceScreenChange < 4000) {
+                            result.success(false)
+                            return@setMethodCallHandler
+                        }
+
+                        // Layar hidup dan tidak di lockscreen:
+                        // Hanya anggap keluar jika activity benar-benar di background (siswa membuka app lain / ke Home)
+                        val isOutside = !isActivityResumed
                         result.success(isOutside)
                     } catch (e: Exception) {
                         result.success(false)
@@ -470,8 +463,6 @@ class MainActivity : FlutterActivity() {
 
     override fun onDestroy() {
         isExamModeActive = false
-        focusLossRunnable?.let { focusLossHandler.removeCallbacks(it) }
-        focusLossRunnable = null
         stopPinApprovalTracking()
         try {
             unregisterReceiver(screenReceiver)

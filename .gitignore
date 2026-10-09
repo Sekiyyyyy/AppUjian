@@ -15,3 +15,11 @@ backend/appujian-backend
 .sync_temp/
 sync_artifacts.sh
 .github_token
+
+video_motion/
+.motioncraft/
+.remotion/
+.agents/
+skills-lock.json
+assets/
+scripts/
