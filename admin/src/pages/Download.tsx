@@ -103,6 +103,19 @@ const DownloadPage: React.FC = () => {
           </p>
         </div>
 
+        {/* WhatsApp / In-App Browser Warning Banner */}
+        <div className="mb-8 p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs sm:text-sm flex items-start space-x-3 shadow-lg">
+          <AlertTriangle size={20} className="text-amber-400 flex-shrink-0 mt-0.5" />
+          <div className="space-y-1">
+            <p className="font-semibold text-amber-200">
+              Membuka link dari WhatsApp atau tombol unduh tidak merespons?
+            </p>
+            <p className="text-amber-300/90 leading-relaxed text-xs">
+              Ketuk <strong>titik tiga (⋮)</strong> di pojok kanan atas layar Anda, lalu pilih <strong>"Buka di Browser / Buka di Chrome"</strong>. WhatsApp memblokir unduhan langsung di dalam aplikasinya demi keamanan.
+            </p>
+          </div>
+        </div>
+
         {/* Download Cards Grid */}
         <div className="grid md:grid-cols-3 gap-6 mb-10">
           {/* Windows Desktop Card */}
@@ -194,7 +207,7 @@ const DownloadPage: React.FC = () => {
                 <span>Unduh Android (.apk)</span>
               </a>
               <p className="text-center text-[11px] text-slate-400 mt-2">
-                Ukuran: ~55.0 MB (APK) • Versi {version}
+                Ukuran: ~26.2 MB (APK) • Versi {version}
               </p>
             </div>
           </div>

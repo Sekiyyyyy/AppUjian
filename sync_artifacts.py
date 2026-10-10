@@ -98,18 +98,34 @@ def github_api(endpoint: str) -> dict:
 
 
 def download_artifact_zip(download_url: str, dest_path: Path):
-    """Download an artifact zip using curl."""
+    """Download an artifact zip by resolving the redirect and downloading without Auth headers."""
     import subprocess
-    cmd = [
-        "curl", "-s", "-L",
+    # Step 1: Get redirect Location header from GitHub API
+    cmd_head = [
+        "curl", "-s", "-I",
         "-H", f"Authorization: token {GITHUB_TOKEN}",
-        download_url,
+        download_url
+    ]
+    res_head = subprocess.run(cmd_head, capture_output=True, text=True)
+    location = None
+    for line in res_head.stdout.splitlines():
+        if line.lower().startswith("location:"):
+            location = line.split(":", 1)[1].strip()
+            break
+    
+    if not location:
+        raise RuntimeError(f"Failed to get redirect Location for {download_url}: {res_head.stdout}")
+
+    # Step 2: Download directly from the storage URL without Authorization header
+    cmd_dl = [
+        "curl", "-s", "-L",
+        location,
         "-o", str(dest_path)
     ]
-    res = subprocess.run(cmd, capture_output=True, text=True)
+    res_dl = subprocess.run(cmd_dl, capture_output=True, text=True)
     size = dest_path.stat().st_size if dest_path.exists() else 0
-    if res.returncode != 0 or size == 0:
-        raise RuntimeError(f"Curl failed (code {res.returncode}, size {size}) for {download_url}: {res.stderr}")
+    if res_dl.returncode != 0 or size == 0:
+        raise RuntimeError(f"Curl download failed (code {res_dl.returncode}, size {size}) for {location}: {res_dl.stderr}")
 
 
 def get_latest_successful_run() -> dict | None:
