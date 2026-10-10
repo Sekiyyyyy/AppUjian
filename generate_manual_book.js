@@ -21,7 +21,7 @@ const imgLogin = getBase64('/www/wwwroot/AppUjian/manual_book_assets/01_login_an
 const imgDashboard = getBase64('/www/wwwroot/AppUjian/manual_book_assets/02_dashboard_annotated.png');
 const imgPengawasRuang = getBase64('/www/wwwroot/AppUjian/manual_book_assets/03_pengawas_ruang_annotated.png');
 const imgModalBukaKunci = getBase64('/www/wwwroot/AppUjian/manual_book_assets/04_modal_buka_kunci_annotated.png');
-const imgJadwal = getBase64('/www/wwwroot/AppUjian/manual_book_assets/04_jadwal_ujian.png');
+const imgJadwal = getBase64('/www/wwwroot/AppUjian/manual_book_assets/05_jadwal_ujian_annotated.png');
 
 // Reusable clean SVG helper
 const svg = {
@@ -652,7 +652,7 @@ const htmlContent = `<!DOCTYPE html>
         <div class="window-dot dot-yellow"></div>
         <div class="window-dot dot-green"></div>
       </div>
-      <div class="window-address">https://ujian.tiksmkn1beringin.my.id/supervisors</div>
+      <div class="window-address">https://ujian.tiksmkn1beringin.my.id/dashboard/supervisors</div>
     </div>
     <div class="window-body">
       <img src="${imgPengawasRuang}" alt="Pengawas Ruang">
@@ -664,14 +664,14 @@ const htmlContent = `<!DOCTYPE html>
       <div class="step-badge">1</div>
       <div class="step-text">
         <strong>Pilih Kartu Ruangan</strong>
-        <p>Pastikan kartu ruangan sesuai dengan ruang kelas yang sedang diawasi (misal: <em>Ruang X PPLG 1</em>).</p>
+        <p>Pastikan kartu ruangan sesuai dengan ruang kelas yang sedang diawasi (misal: <em>Ruang XII PPLG 3</em>).</p>
       </div>
     </div>
     <div class="step-item">
       <div class="step-badge">2</div>
       <div class="step-text">
-        <strong>Klik Tombol "Pantau Siswa" (Lihat Tanda Biru)</strong>
-        <p>Tombol ini akan membuka jendela pop-up tabel seluruh siswa di kelas tersebut secara lengkap.</p>
+        <strong>Klik Tombol "Pantau Siswa" (Lihat Tanda Biru/Ungu)</strong>
+        <p>Tombol ini akan membuka jendela pop-up tabel seluruh siswa di kelas tersebut secara realtime.</p>
       </div>
     </div>
     <div class="step-item">
@@ -680,9 +680,9 @@ const htmlContent = `<!DOCTYPE html>
         <strong>Arti Status Siswa:</strong>
         <p>
           <span class="badge-status badge-ongoing">SEDANG UJIAN</span> Siswa sedang aktif menjawab soal di HP.<br>
-          <span class="badge-status badge-locked">TERKUNCI</span> Siswa melanggar aturan dan sesinya terblokir.<br>
-          <span class="badge-status badge-finished">SELESAI</span> Siswa telah mengirimkan lembar jawaban.<br>
-          <span class="badge-status badge-unstarted">BELUM MASUK</span> Siswa belum memulai ujian.
+          <span class="badge-status badge-locked">TERKUNCI</span> Siswa keluar aplikasi dan sesinya terkunci.<br>
+          <span class="badge-status badge-finished">SELESAI</span> Siswa telah menyelesaikan ujian.<br>
+          <span class="badge-status badge-unstarted">BELUM MULAI</span> Siswa belum menekan mulai ujian.
         </p>
       </div>
     </div>
@@ -703,7 +703,7 @@ const htmlContent = `<!DOCTYPE html>
     <h2 class="section-heading" style="color: #dc2626;">Cara Membuka Kunci Siswa (Unlock)</h2>
   </div>
   <p class="section-desc">
-    Jika siswa keluar ke aplikasi lain (WhatsApp, Google Chrome), membagi layar (Split Screen), atau melepas sematan aplikasi, ujian akan otomatis <strong>TERKUNCI</strong>. Pengawas dapat membukanya kembali dengan 1 klik.
+    Jika siswa keluar ke aplikasi lain (WhatsApp, YouTube, Google Chrome), membagi layar (Split Screen), atau mematikan paksa aplikasi, ujian akan otomatis <strong>TERKUNCI</strong>. Pengawas dapat membukanya kembali dalam 1 klik.
   </p>
 
   <div class="window-mockup">
@@ -713,7 +713,7 @@ const htmlContent = `<!DOCTYPE html>
         <div class="window-dot dot-yellow"></div>
         <div class="window-dot dot-green"></div>
       </div>
-      <div class="window-address">https://ujian.tiksmkn1beringin.my.id/supervisors • Modal Pantau Siswa</div>
+      <div class="window-address">https://ujian.tiksmkn1beringin.my.id/dashboard/supervisors • Modal Pantau Siswa</div>
     </div>
     <div class="window-body">
       <img src="${imgModalBukaKunci}" alt="Modal Buka Kunci Siswa">
@@ -724,22 +724,22 @@ const htmlContent = `<!DOCTYPE html>
     <div class="step-item">
       <div class="step-badge" style="background:#dc2626;">1</div>
       <div class="step-text">
-        <strong>Lihat Siswa Berstatus "TERKUNCI"</strong>
-        <p>Nama siswa yang melanggar aturan akan otomatis ditandai dengan badge merah <span class="badge-status badge-locked">TERKUNCI</span>.</p>
+        <strong>Lihat Siswa Berstatus "TERKUNCI (KELUAR APLIKASI)"</strong>
+        <p>Nama siswa yang keluar dari aplikasi otomatis terdeteksi dengan badge merah <span class="badge-status badge-locked">TERKUNCI</span>.</p>
       </div>
     </div>
     <div class="step-item">
-      <div class="step-badge" style="background:#dc2626;">2</div>
+      <div class="step-badge" style="background:#059669;">2</div>
       <div class="step-text">
-        <strong>Klik Ikon Gembok Terbuka "Buka Kunci" (Lihat Tanda Merah)</strong>
-        <p>Di kolom paling kanan baris siswa tersebut, klik tombol ikon gembok terbuka (<strong>Unlock</strong>).</p>
+        <strong>Klik Tombol Hijau "Buka Kunci" (Lihat Penanda Hijau)</strong>
+        <p>Pada baris siswa tersebut di kolom Kontrol & Aksi, klik tombol hijau <strong>"Buka Kunci"</strong>.</p>
       </div>
     </div>
     <div class="step-item">
-      <div class="step-badge" style="background:#059669;">3</div>
+      <div class="step-badge" style="background:#2563eb;">3</div>
       <div class="step-text">
-        <strong>Ujian Langsung Terbuka Kembali Seketika</strong>
-        <p>Layar HP siswa langsung terbuka otomatis tanpa perlu login ulang. <strong>Jawaban siswa yang sudah diisi tetap tersimpan aman di server!</strong></p>
+        <strong>Ujian Terbuka Kembali Seketika Tanpa Kehilangan Jawaban</strong>
+        <p>Layar HP siswa langsung terbuka seketika tanpa perlu login ulang. <strong>Seluruh jawaban yang telah dipilih tetap tersimpan aman di server!</strong></p>
       </div>
     </div>
   </div>
