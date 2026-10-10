@@ -192,7 +192,7 @@ const DownloadPage: React.FC = () => {
                 </div>
                 <div className="flex items-center space-x-2">
                   <CheckCircle2 size={16} className="text-sky-400 flex-shrink-0" />
-                  <span>Mendukung Android 8.0 hingga 14+</span>
+                  <span>Mendukung Android 5.0 hingga Android 17+ (Semua Perangkat)</span>
                 </div>
               </div>
             </div>
