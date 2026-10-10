@@ -12,7 +12,8 @@ import {
   AlertTriangle,
   Trash2,
   Settings,
-  ShieldAlert
+  ShieldAlert,
+  BookOpen
 } from 'lucide-react';
 
 interface VersionInfo {
@@ -258,6 +259,34 @@ const DownloadPage: React.FC = () => {
               </p>
             </div>
           </div>
+        </div>
+
+        {/* Buku Panduan Guru & Pengawas Banner */}
+        <div className="mb-10 bg-gradient-to-r from-indigo-950/80 via-slate-900/90 to-blue-950/80 border border-indigo-500/40 rounded-2xl p-5 sm:p-6 backdrop-blur-md shadow-2xl relative overflow-hidden flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
+          <div className="flex items-start space-x-3.5">
+            <div className="w-12 h-12 rounded-xl bg-indigo-500/20 border border-indigo-500/40 flex items-center justify-center text-indigo-400 flex-shrink-0 mt-0.5">
+              <BookOpen size={26} />
+            </div>
+            <div>
+              <div className="flex items-center space-x-2">
+                <h4 className="font-bold text-white text-base sm:text-lg">Buku Panduan Pengawas & Guru CBT</h4>
+                <span className="bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
+                  PDF Resmi
+                </span>
+              </div>
+              <p className="text-slate-300 text-xs sm:text-sm mt-1 leading-relaxed">
+                Panduan operasional lengkap untuk pengawas ruang: Akses login ruangan, pemantauan peserta realtime, serta prosedur membuka kunci siswa yang terkunci.
+              </p>
+            </div>
+          </div>
+          <a
+            href="/downloads/Buku_Panduan_Pengawas_CBT_SMKN1Beringin.pdf"
+            download="Buku_Panduan_Pengawas_CBT_SMKN1Beringin.pdf"
+            className="flex-shrink-0 inline-flex items-center space-x-2 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3 px-5 rounded-xl transition-all shadow-lg shadow-indigo-900/30 active:scale-[0.98] text-sm"
+          >
+            <Download size={18} />
+            <span>Unduh Buku Panduan (.pdf)</span>
+          </a>
         </div>
 
         {/* Security Assurance Banner */}
