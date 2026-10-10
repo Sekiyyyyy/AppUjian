@@ -98,15 +98,11 @@ def github_api(endpoint: str) -> dict:
 
 
 def download_artifact_zip(download_url: str, dest_path: Path):
-    """Download an artifact zip using curl with IPv4 to avoid DNS/IPv6 redirect issues."""
+    """Download an artifact zip using curl."""
     import subprocess
     cmd = [
-        "curl", "-4", "-s", "-S", "-L",
-        "--retry", "3",
-        "--connect-timeout", "30",
-        "-H", f"Authorization: Bearer {GITHUB_TOKEN}",
-        "-H", "Accept: application/vnd.github+json",
-        "-H", "X-GitHub-Api-Version: 2022-11-28",
+        "curl", "-s", "-L",
+        "-H", f"Authorization: token {GITHUB_TOKEN}",
         download_url,
         "-o", str(dest_path)
     ]

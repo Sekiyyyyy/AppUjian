@@ -38,7 +38,6 @@ android {
             keyPassword = "appujianpassword2026"
             enableV1Signing = true
             enableV2Signing = true
-            enableV3Signing = true
         }
     }
 

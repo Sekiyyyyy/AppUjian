@@ -20,9 +20,9 @@ type AppVersionResponse struct {
 }
 
 const (
-	CurrentLatestAppVersion  = "1.1.6"
-	CurrentLatestBuildNumber = 18
-	CurrentMinAppVersion     = "1.1.6"
+	CurrentLatestAppVersion  = "1.1.7"
+	CurrentLatestBuildNumber = 19
+	CurrentMinAppVersion     = "1.1.7"
 	CurrentAppDownloadURL    = "https://ujian.tiksmkn1beringin.my.id/download"
 )
 
@@ -103,9 +103,9 @@ func GetAppVersion(c *gin.Context) {
 		ForceUpdate:   isOutdated,
 		Title:         "Pembaruan Wajib Aplikasi CBT v" + CurrentLatestAppVersion,
 		Changelog: []string{
+			"Perbaikan Instalasi Universal: Menghilangkan error 'Package installer has stopped' dengan membersihkan permission sistem internal dan standarisasi skema penandatanganan APK v1+v2 murni.",
 			"Perbaikan Layar Mati & Tombol Power: Layar otomatis dijaga tetap menyala, dan jika layar mati atau tombol power tertekan tidak akan mengunci ujian.",
 			"Perbaikan Sentuhan & OEM Infinix / Oppo / Xiaomi: Memperbaiki masalah layar tidak merespons sentuhan (touch unresponsive) dan kompatibilitas semat layar di semua ROM.",
-			"Kompatibilitas Luas Android 8.0+: Pustaka native dan ikon aplikasi distandarisasi agar instalasi berhasil di seluruh merek HP Android.",
 		},
 		DownloadURL: CurrentAppDownloadURL,
 	})
