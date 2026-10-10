@@ -5,7 +5,7 @@ import {
   Plus, BookOpen, AlertCircle, Edit2, Trash2, 
   Download, Upload, FileSpreadsheet, ChevronDown, FileUp, 
   CheckCircle2, Calendar, Clock, Sparkles, ArrowRight,
-  School, Check, X, Layers
+  School, Check, X, Layers, Eye, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { confirmAction, showSuccessToast, showErrorToast } from '../utils/alert';
@@ -54,6 +54,7 @@ interface Question {
   subject_id: number;
   type: string;
   content: string;
+  options?: any;
   correct_answer?: string;
   points: number;
   CreatedAt: string;
@@ -277,6 +278,33 @@ const Questions: React.FC = () => {
   const [classFilterLevel, setClassFilterLevel] = useState('ALL');
   const [isCreatingExam, setIsCreatingExam] = useState(false);
   const [createExamError, setCreateExamError] = useState('');
+
+  // Question Detail Modal State
+  const [detailQuestion, setDetailQuestion] = useState<{ question: Question; index: number } | null>(null);
+
+  const getParsedOptions = (q?: Question | null): Record<string, string> => {
+    if (!q || !q.options) return {};
+    if (typeof q.options === 'string') {
+      try {
+        return JSON.parse(q.options);
+      } catch {
+        return {};
+      }
+    }
+    return q.options || {};
+  };
+
+  const handlePrevQuestion = () => {
+    if (!detailQuestion || detailQuestion.index <= 0) return;
+    const prevIdx = detailQuestion.index - 1;
+    setDetailQuestion({ question: questions[prevIdx], index: prevIdx });
+  };
+
+  const handleNextQuestion = () => {
+    if (!detailQuestion || detailQuestion.index >= questions.length - 1) return;
+    const nextIdx = detailQuestion.index + 1;
+    setDetailQuestion({ question: questions[nextIdx], index: nextIdx });
+  };
 
   // 1. Fetch Subjects & Classes on Mount
   useEffect(() => {
@@ -958,8 +986,12 @@ const Questions: React.FC = () => {
                             Pilihan Ganda
                           </span>
                         </td>
-                        <td className="py-3 px-4">
-                          <p className="text-xs text-slate-700 line-clamp-2 leading-relaxed">
+                        <td 
+                          className="py-3 px-4 cursor-pointer"
+                          onClick={() => setDetailQuestion({ question: q, index: idx })}
+                          title="Klik untuk melihat detail lengkap soal"
+                        >
+                          <p className="text-xs text-slate-700 line-clamp-2 leading-relaxed group-hover:text-primary-600 transition-colors">
                             {cleanText || '(Soal berbasis gambar/multimedia)'}
                           </p>
                         </td>
@@ -969,13 +1001,22 @@ const Questions: React.FC = () => {
                           </span>
                         </td>
                         <td className="py-3 px-4 text-center">
-                          <button 
-                            onClick={() => handleDeleteQuestion(q.ID)}
-                            className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                            title="Hapus Soal"
-                          >
-                            <Trash2 size={15} />
-                          </button>
+                          <div className="flex items-center justify-center space-x-1">
+                            <button 
+                              onClick={() => setDetailQuestion({ question: q, index: idx })}
+                              className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                              title="Lihat Detail Soal"
+                            >
+                              <Eye size={15} />
+                            </button>
+                            <button 
+                              onClick={() => handleDeleteQuestion(q.ID)}
+                              className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                              title="Hapus Soal"
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -1408,6 +1449,162 @@ const Questions: React.FC = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* MODAL: DETAIL SOAL (PREVIEW LENGKAP & OPSI JAWABAN)       */}
+      {/* ========================================================= */}
+      {detailQuestion && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="bg-white w-full max-w-3xl shadow-2xl relative z-10 max-h-[92vh] overflow-hidden rounded-2xl flex flex-col animate-in fade-in zoom-in-95 duration-200 border border-slate-100">
+            {/* Header Modal Detail */}
+            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-white sticky top-0 z-20">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                  <Eye size={20} />
+                </div>
+                <div>
+                  <div className="flex items-center space-x-2">
+                    <h2 className="text-base font-bold text-slate-800">
+                      Detail Soal #{detailQuestion.index + 1}
+                    </h2>
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+                      Pilihan Ganda
+                    </span>
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                      {detailQuestion.question.points || 1} Poin
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    {selectedExam?.title || selectedSubject?.name || 'Bank Soal CBT'}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center space-x-2">
+                {/* Navigasi nomor soal */}
+                <div className="flex items-center bg-slate-100 rounded-lg p-0.5 mr-2">
+                  <button
+                    onClick={handlePrevQuestion}
+                    disabled={detailQuestion.index <= 0}
+                    className="p-1 rounded text-slate-600 hover:text-slate-900 hover:bg-white disabled:opacity-30 disabled:hover:bg-transparent transition-all"
+                    title="Soal Sebelumnya"
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
+                  <span className="text-xs font-semibold text-slate-600 px-2">
+                    {detailQuestion.index + 1} / {questions.length}
+                  </span>
+                  <button
+                    onClick={handleNextQuestion}
+                    disabled={detailQuestion.index >= questions.length - 1}
+                    className="p-1 rounded text-slate-600 hover:text-slate-900 hover:bg-white disabled:opacity-30 disabled:hover:bg-transparent transition-all"
+                    title="Soal Berikutnya"
+                  >
+                    <ChevronRight size={16} />
+                  </button>
+                </div>
+                <button 
+                  onClick={() => setDetailQuestion(null)} 
+                  className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            {/* Konten Scrollable */}
+            <div className="p-6 overflow-y-auto space-y-6 flex-1">
+              {/* Pertanyaan Utama */}
+              <div className="bg-slate-50/70 border border-slate-200/80 rounded-xl p-5">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 block mb-2">
+                  Pertanyaan Soal:
+                </span>
+                <div 
+                  className="prose prose-slate max-w-none text-slate-900 text-sm leading-relaxed ql-editor !p-0"
+                  dangerouslySetInnerHTML={{ __html: detailQuestion.question.content }}
+                />
+              </div>
+
+              {/* Pilihan Jawaban (A - E) */}
+              <div>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 block mb-3">
+                  Pilihan Jawaban (A - E):
+                </span>
+                <div className="space-y-2.5">
+                  {['A', 'B', 'C', 'D', 'E'].map((optKey) => {
+                    const opts = getParsedOptions(detailQuestion.question);
+                    const optVal = opts[optKey] || '';
+                    const isCorrect = (detailQuestion.question.correct_answer || '').toUpperCase() === optKey;
+
+                    return (
+                      <div 
+                        key={optKey}
+                        className={`p-3.5 rounded-xl border transition-all flex items-start space-x-3 ${
+                          isCorrect 
+                            ? 'bg-emerald-50/90 border-emerald-400 ring-2 ring-emerald-500/20 shadow-xs' 
+                            : 'bg-white border-slate-200 hover:border-slate-300'
+                        }`}
+                      >
+                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ${
+                          isCorrect
+                            ? 'bg-emerald-600 text-white shadow-xs'
+                            : 'bg-slate-100 text-slate-600 border border-slate-200'
+                        }`}>
+                          {optKey}
+                        </div>
+                        <div className="flex-1 min-w-0 pt-0.5">
+                          <div 
+                            className={`text-xs sm:text-sm leading-relaxed ql-editor !p-0 ${
+                              isCorrect ? 'text-emerald-950 font-medium' : 'text-slate-800'
+                            }`}
+                            dangerouslySetInnerHTML={{ __html: optVal || '<span class="text-slate-400 italic">(Kosong)</span>' }}
+                          />
+                        </div>
+                        {isCorrect && (
+                          <span className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 shrink-0">
+                            <Check size={13} />
+                            <span>Kunci Benar</span>
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* Footer Modal */}
+            <div className="px-6 py-3.5 bg-slate-50 border-t border-slate-200/80 flex items-center justify-between">
+              <div className="flex items-center space-x-2 text-xs text-slate-600">
+                <span>Kunci Jawaban Terdaftar:</span>
+                <span className="font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-300">
+                  Pilihan {detailQuestion.question.correct_answer || '-'}
+                </span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const idToDelete = detailQuestion.question.ID;
+                    setDetailQuestion(null);
+                    handleDeleteQuestion(idToDelete);
+                  }}
+                  className="px-3 py-2 text-red-600 hover:bg-red-50 rounded-xl text-xs font-semibold transition-colors flex items-center space-x-1"
+                >
+                  <Trash2 size={14} />
+                  <span>Hapus Soal</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDetailQuestion(null)}
+                  className="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-xl text-xs font-semibold hover:bg-slate-100 transition-colors shadow-xs"
+                >
+                  Tutup
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
