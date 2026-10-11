@@ -120,6 +120,56 @@ func CreateQuestion(c *gin.Context) {
 	c.JSON(http.StatusCreated, q)
 }
 
+// UpdateQuestion updates an existing question in the bank
+func UpdateQuestion(c *gin.Context) {
+	id := c.Param("id")
+	var q models.Question
+	if err := config.DB.First(&q, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Soal tidak ditemukan"})
+		return
+	}
+
+	var req CreateQuestionInput
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if req.SubjectID > 0 {
+		var subject models.Subject
+		if err := config.DB.First(&subject, req.SubjectID).Error; err == nil {
+			q.SubjectID = req.SubjectID
+		}
+	}
+
+	if req.Type != "" {
+		q.Type = req.Type
+	}
+	if req.Content != "" {
+		q.Content = req.Content
+	}
+	if req.ImageUrl != "" {
+		q.ImageUrl = req.ImageUrl
+	}
+	if req.Options != nil {
+		q.Options = req.Options
+	}
+	if req.CorrectAnswer != "" {
+		q.CorrectAnswer = req.CorrectAnswer
+	}
+	if req.Points > 0 {
+		q.Points = req.Points
+	}
+
+	if err := config.DB.Save(&q).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal memperbarui soal"})
+		return
+	}
+
+	config.DB.Preload("Subject").First(&q, q.ID)
+	c.JSON(http.StatusOK, q)
+}
+
 // DeleteQuestion deletes a question by ID
 func DeleteQuestion(c *gin.Context) {
 	id := c.Param("id")

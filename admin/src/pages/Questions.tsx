@@ -52,6 +52,7 @@ interface ExamItem {
 interface Question {
   ID: number;
   subject_id: number;
+  subject?: Subject;
   type: string;
   content: string;
   options?: any;
@@ -282,6 +283,36 @@ const Questions: React.FC = () => {
   // Question Detail Modal State
   const [detailQuestion, setDetailQuestion] = useState<{ question: Question; index: number } | null>(null);
 
+  // Question Edit State
+  const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
+
+  const handleOpenCreateModal = () => {
+    setEditingQuestion(null);
+    setContent('');
+    setOptionA('');
+    setOptionB('');
+    setOptionC('');
+    setOptionD('');
+    setOptionE('');
+    setCorrectAnswer('A');
+    setFormError('');
+    setIsModalOpen(true);
+  };
+
+  const handleOpenEditModal = (q: Question) => {
+    setEditingQuestion(q);
+    setContent(q.content || '');
+    const opts = getParsedOptions(q);
+    setOptionA(opts['A'] || '');
+    setOptionB(opts['B'] || '');
+    setOptionC(opts['C'] || '');
+    setOptionD(opts['D'] || '');
+    setOptionE(opts['E'] || '');
+    setCorrectAnswer((q.correct_answer || 'A').toUpperCase());
+    setFormError('');
+    setIsModalOpen(true);
+  };
+
   const getParsedOptions = (q?: Question | null): Record<string, string> => {
     if (!q || !q.options) return {};
     if (typeof q.options === 'string') {
@@ -413,14 +444,14 @@ const Questions: React.FC = () => {
     return exams.find(e => e.ID === selectedExamId) || null;
   }, [exams, selectedExamId]);
 
-  // Handle Create Question (Manual)
+  // Handle Create or Update Question (Manual)
   const handleCreateQuestion = async (e?: React.FormEvent, keepOpen = false) => {
     if (e) e.preventDefault();
-    if (!selectedSubjectId) {
+    if (!selectedSubjectId && !editingQuestion?.subject_id) {
       setFormError('Pilih mata pelajaran terlebih dahulu');
       return;
     }
-    if (!selectedExamId) {
+    if (!editingQuestion && !selectedExamId) {
       setFormError('Pilih atau buat ujian terlebih dahulu sebelum membuat soal');
       return;
     }
@@ -435,35 +466,69 @@ const Questions: React.FC = () => {
     const optionsJSON = { A: optionA, B: optionB, C: optionC, D: optionD, E: optionE };
 
     try {
-      await axios.post('/api/v1/admin/questions', {
-        subject_id: selectedSubjectId,
-        exam_id: selectedExamId,
-        type: 'MULTIPLE_CHOICE',
-        content,
-        options: optionsJSON,
-        correct_answer: correctAnswer,
-        points: 1
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      if (editingQuestion) {
+        // UPDATE EXISTING QUESTION
+        await axios.put(`/api/v1/admin/questions/${editingQuestion.ID}`, {
+          subject_id: selectedSubjectId || editingQuestion.subject_id,
+          type: 'MULTIPLE_CHOICE',
+          content,
+          options: optionsJSON,
+          correct_answer: correctAnswer,
+          points: editingQuestion.points || 1
+        }, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
 
-      showSuccessToast('Soal berhasil ditambahkan ke ujian ini');
-      await fetchQuestions();
-      if (selectedSubjectId) {
-        fetchExamsForSubject(selectedSubjectId);
-      }
+        showSuccessToast('Soal berhasil diperbarui');
+        await fetchQuestions();
 
-      // Reset form
-      setContent('');
-      setOptionA('');
-      setOptionB('');
-      setOptionC('');
-      setOptionD('');
-      setOptionE('');
-      setCorrectAnswer('A');
+        // Update detail modal if open for this question
+        if (detailQuestion && detailQuestion.question.ID === editingQuestion.ID) {
+          setDetailQuestion({
+            question: {
+              ...detailQuestion.question,
+              content,
+              options: optionsJSON,
+              correct_answer: correctAnswer
+            },
+            index: detailQuestion.index
+          });
+        }
 
-      if (!keepOpen) {
         setIsModalOpen(false);
+        setEditingQuestion(null);
+      } else {
+        // CREATE NEW QUESTION
+        await axios.post('/api/v1/admin/questions', {
+          subject_id: selectedSubjectId,
+          exam_id: selectedExamId,
+          type: 'MULTIPLE_CHOICE',
+          content,
+          options: optionsJSON,
+          correct_answer: correctAnswer,
+          points: 1
+        }, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+
+        showSuccessToast('Soal berhasil ditambahkan ke ujian ini');
+        await fetchQuestions();
+        if (selectedSubjectId) {
+          fetchExamsForSubject(selectedSubjectId);
+        }
+
+        // Reset form
+        setContent('');
+        setOptionA('');
+        setOptionB('');
+        setOptionC('');
+        setOptionD('');
+        setOptionE('');
+        setCorrectAnswer('A');
+
+        if (!keepOpen) {
+          setIsModalOpen(false);
+        }
       }
     } catch (err: any) {
       setFormError(err.response?.data?.error || 'Gagal menyimpan soal');
@@ -885,7 +950,7 @@ const Questions: React.FC = () => {
             <div className="flex flex-wrap items-center gap-2 shrink-0">
               <button
                 type="button"
-                onClick={() => setIsModalOpen(true)}
+                onClick={handleOpenCreateModal}
                 className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-xl text-xs font-bold flex items-center space-x-1.5 shadow-xs transition-all"
               >
                 <Plus size={16} />
@@ -1010,6 +1075,13 @@ const Questions: React.FC = () => {
                               <Eye size={15} />
                             </button>
                             <button 
+                              onClick={() => handleOpenEditModal(q)}
+                              className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
+                              title="Edit Soal"
+                            >
+                              <Edit2 size={15} />
+                            </button>
+                            <button 
                               onClick={() => handleDeleteQuestion(q.ID)}
                               className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                               title="Hapus Soal"
@@ -1031,26 +1103,33 @@ const Questions: React.FC = () => {
       {/* ========================================================= */}
       {/* MODAL: MANUAL QUESTION INPUT (WITH QUILL)                 */}
       {/* ========================================================= */}
-      {isModalOpen && selectedExam && (
+      {isModalOpen && (selectedExam || editingQuestion) && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
           <div className="bg-white w-full max-w-4xl shadow-2xl relative z-10 max-h-[92vh] overflow-y-auto rounded-2xl flex flex-col animate-in fade-in zoom-in-95 duration-200">
             {/* Header */}
             <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-white sticky top-0 z-20">
               <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 rounded-xl bg-primary-100 text-primary-700 flex items-center justify-center">
-                  <BookOpen size={20} />
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                  editingQuestion ? 'bg-amber-100 text-amber-700' : 'bg-primary-100 text-primary-700'
+                }`}>
+                  {editingQuestion ? <Edit2 size={20} /> : <BookOpen size={20} />}
                 </div>
                 <div>
                   <h2 className="text-base font-bold text-slate-800">
-                    Tambah Soal ke: {selectedExam.title}
+                    {editingQuestion 
+                      ? `Edit Soal #${questions.findIndex(q => q.ID === editingQuestion.ID) + 1}`
+                      : `Tambah Soal ke: ${selectedExam?.title || ''}`}
                   </h2>
                   <p className="text-xs text-slate-500">
-                    {selectedSubject?.name} &bull; Soal ke-{questions.length + 1}
+                    {selectedSubject?.name || editingQuestion?.subject?.name} &bull; {editingQuestion ? 'Perbarui isi pertanyaan & opsi jawaban' : `Soal ke-${questions.length + 1}`}
                   </p>
                 </div>
               </div>
               <button 
-                onClick={() => setIsModalOpen(false)} 
+                onClick={() => {
+                  setIsModalOpen(false);
+                  setEditingQuestion(null);
+                }} 
                 className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition-colors"
               >
                 ✕
@@ -1139,25 +1218,37 @@ const Questions: React.FC = () => {
               <div className="pt-3 flex flex-col sm:flex-row justify-end items-center gap-2 border-t border-slate-100">
                 <button
                   type="button"
-                  onClick={() => setIsModalOpen(false)}
+                  onClick={() => {
+                    setIsModalOpen(false);
+                    setEditingQuestion(null);
+                  }}
                   className="w-full sm:w-auto px-4 py-2 border border-slate-200 text-slate-600 rounded-xl text-xs font-semibold hover:bg-slate-50"
                 >
                   Batal
                 </button>
-                <button
-                  type="button"
-                  disabled={isSavingQuestion}
-                  onClick={(e) => handleCreateQuestion(e, true)}
-                  className="w-full sm:w-auto px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold"
-                >
-                  Simpan & Tambah Lagi
-                </button>
+                {!editingQuestion && (
+                  <button
+                    type="button"
+                    disabled={isSavingQuestion}
+                    onClick={(e) => handleCreateQuestion(e, true)}
+                    className="w-full sm:w-auto px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold"
+                  >
+                    Simpan & Tambah Lagi
+                  </button>
+                )}
                 <button
                   type="submit"
                   disabled={isSavingQuestion}
-                  className="w-full sm:w-auto btn-primary px-5 py-2 text-xs font-bold shadow-xs"
+                  className={`w-full sm:w-auto px-6 py-2 text-xs font-bold shadow-xs rounded-xl text-white transition-all ${
+                    editingQuestion 
+                      ? 'bg-amber-600 hover:bg-amber-700' 
+                      : 'bg-primary-600 hover:bg-primary-700'
+                  }`}
                 >
-                  {isSavingQuestion ? 'Menyimpan...' : 'Simpan & Selesai'}
+                  {isSavingQuestion 
+                    ? 'Menyimpan...' 
+                    : (editingQuestion ? 'Perbarui Soal' : 'Simpan & Selesai')
+                  }
                 </button>
               </div>
             </form>
@@ -1584,6 +1675,18 @@ const Questions: React.FC = () => {
                 </span>
               </div>
               <div className="flex items-center space-x-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const qToEdit = detailQuestion.question;
+                    setDetailQuestion(null);
+                    handleOpenEditModal(qToEdit);
+                  }}
+                  className="px-3 py-2 text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-xl text-xs font-semibold transition-colors flex items-center space-x-1"
+                >
+                  <Edit2 size={14} />
+                  <span>Edit Soal</span>
+                </button>
                 <button
                   type="button"
                   onClick={() => {

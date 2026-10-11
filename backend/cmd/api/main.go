@@ -116,6 +116,7 @@ func main() {
 			adminRoutes.GET("/questions", controllers.GetQuestions)
 			adminRoutes.GET("/questions/template", controllers.DownloadQuestionTemplateExcel)
 			adminRoutes.POST("/questions", controllers.CreateQuestion)
+			adminRoutes.PUT("/questions/:id", controllers.UpdateQuestion)
 			adminRoutes.POST("/questions/import-excel", controllers.ImportQuestionsExcel)
 			adminRoutes.DELETE("/questions/:id", controllers.DeleteQuestion)
 
