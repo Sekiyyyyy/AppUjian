@@ -126,6 +126,8 @@ func main() {
 			adminRoutes.PUT("/exams/:id", controllers.UpdateExam)
 			adminRoutes.POST("/exams/:id/toggle-makeup", controllers.ToggleMakeup)
 			adminRoutes.GET("/exams/:id/participants", controllers.GetExamParticipants)
+			adminRoutes.GET("/exams/:id/sessions/:sessionId/review", controllers.GetExamSessionReview)
+			adminRoutes.POST("/exams/:id/sessions/:sessionId/grade", controllers.GradeExamSession)
 			adminRoutes.GET("/exams/:id/export-grades", controllers.ExportExamGradesExcel)
 			adminRoutes.DELETE("/exams/:id/reset/:student_id", controllers.ResetStudentExam)
 			adminRoutes.POST("/exams/:id/unlock/:student_id", controllers.UnlockStudentExam)

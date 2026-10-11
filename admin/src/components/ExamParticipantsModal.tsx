@@ -15,10 +15,12 @@ import {
   Pause, 
   Play, 
   ShieldAlert, 
-  List
+  List,
+  FileText
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { confirmAction, showSuccessToast, showErrorToast } from '../utils/alert';
+import StudentExamReviewModal from './StudentExamReviewModal';
 
 interface ExamParticipantsModalProps {
   isOpen: boolean;
@@ -40,6 +42,7 @@ interface Participant {
     number: string;
   };
   session_status: string; // "BELUM MULAI", "ONGOING", "FINISHED", "SUBMITTED", "TIMEOUT", "LOCKED", "PAUSED"
+  session_id?: number;
   lock_reason?: string;
   score?: number;
   can_unlock?: boolean;
@@ -62,6 +65,12 @@ const ExamParticipantsModal: React.FC<ExamParticipantsModalProps> = ({
   const [selectedStudentIds, setSelectedStudentIds] = useState<number[]>([]);
   const [isExporting, setIsExporting] = useState(false);
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'LOCKED' | 'ONGOING' | 'PAUSED' | 'FINISHED'>('ALL');
+  const [reviewSession, setReviewSession] = useState<{
+    sessionId: number;
+    studentName: string;
+    studentNis: string;
+    studentClass: string;
+  } | null>(null);
 
   const fetchParticipants = async () => {
     if (!examId) return;
@@ -743,6 +752,23 @@ const ExamParticipantsModal: React.FC<ExamParticipantsModalProps> = ({
                         </span>
 
                         <div className="flex items-center gap-1.5 shrink-0">
+                          {/* Koreksi Jawaban Essay / Review Siswa */}
+                          {isFinished && p.session_id && (
+                            <button
+                              onClick={() => setReviewSession({
+                                sessionId: p.session_id!,
+                                studentName: p.name,
+                                studentNis: p.nis,
+                                studentClass: p.class ? `${p.class.level} ${p.class.department} ${p.class.number}` : '-'
+                              })}
+                              className="inline-flex items-center space-x-1 px-2.5 py-1 text-xs font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-lg transition-colors shadow-2xs"
+                              title="Koreksi Jawaban Essay & Nilai Siswa"
+                            >
+                              <FileText className="w-3 h-3 text-purple-600" />
+                              <span>Koreksi</span>
+                            </button>
+                          )}
+
                           {canUnlock && (
                             <button
                               onClick={() => handleUnlock(p.id, p.name)}
@@ -952,6 +978,23 @@ const ExamParticipantsModal: React.FC<ExamParticipantsModalProps> = ({
                           {/* Actions (STICKY RIGHT COLUMN ON DESKTOP ONLY) */}
                           <td className="px-5 py-3.5 text-right md:sticky md:right-0 bg-white group-hover:bg-slate-50 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.04)] z-10">
                             <div className="flex items-center justify-end space-x-1.5">
+                              {/* Koreksi Jawaban Essay & Review */}
+                              {isFinished && p.session_id && (
+                                <button
+                                  onClick={() => setReviewSession({
+                                    sessionId: p.session_id!,
+                                    studentName: p.name,
+                                    studentNis: p.nis,
+                                    studentClass: p.class ? `${p.class.level} ${p.class.department} ${p.class.number}` : '-'
+                                  })}
+                                  className="inline-flex items-center space-x-1.5 px-3 py-1.5 text-xs font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-lg transition-colors shadow-2xs shrink-0"
+                                  title="Koreksi Jawaban Essay & Review Hasil Siswa"
+                                >
+                                  <FileText className="w-3.5 h-3.5 text-purple-600" />
+                                  <span>Koreksi</span>
+                                </button>
+                              )}
+
                               {/* Unlock */}
                               {canUnlock && (
                                 <button
@@ -1021,6 +1064,21 @@ const ExamParticipantsModal: React.FC<ExamParticipantsModalProps> = ({
           )}
         </div>
       </div>
+
+      {/* Review & Grading Modal */}
+      {reviewSession && (
+        <StudentExamReviewModal
+          isOpen={!!reviewSession}
+          onClose={() => setReviewSession(null)}
+          examId={examId}
+          sessionId={reviewSession.sessionId}
+          studentName={reviewSession.studentName}
+          studentNis={reviewSession.studentNis}
+          studentClass={reviewSession.studentClass}
+          examTitle={examTitle}
+          onSaved={fetchParticipants}
+        />
+      )}
     </div>
   );
 };

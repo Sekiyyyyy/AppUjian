@@ -470,8 +470,130 @@ class ExamView extends GetView<ExamController> {
     );
   }
 
-  Widget _buildOptionsList(int qId, Map<String, dynamic>? options) {
-    if (options == null || options.isEmpty) return const SizedBox.shrink();
+  Widget _buildEssayInput(int qId) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 4.0, bottom: 12),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: Colors.purple.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(Icons.edit_note_rounded, size: 18, color: Colors.purple.shade700),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                "Jawaban Essay / Uraian Anda:",
+                style: GoogleFonts.inter(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.textPrimary,
+                  letterSpacing: 0.3,
+                ),
+              ),
+            ],
+          ),
+        ),
+        Obx(() {
+          final currentAnswer = controller.answers[qId] ?? '';
+          return Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: currentAnswer.isNotEmpty ? Colors.purple.shade300 : Colors.grey.shade200,
+                width: currentAnswer.isNotEmpty ? 1.5 : 1.0,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: currentAnswer.isNotEmpty 
+                      ? Colors.purple.withValues(alpha: 0.06) 
+                      : Colors.black.withValues(alpha: 0.02),
+                  blurRadius: 10,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                TextFormField(
+                  key: ValueKey('essay_input_$qId'),
+                  initialValue: currentAnswer,
+                  maxLines: 8,
+                  minLines: 5,
+                  style: GoogleFonts.inter(
+                    fontSize: 14.5,
+                    color: AppTheme.textPrimary,
+                    height: 1.5,
+                  ),
+                  decoration: InputDecoration(
+                    hintText: "Tuliskan jawaban atau uraian lengkap Anda di sini...",
+                    hintStyle: GoogleFonts.inter(
+                      fontSize: 14,
+                      color: Colors.grey.shade400,
+                    ),
+                    border: InputBorder.none,
+                    isDense: true,
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                  onChanged: (val) {
+                    controller.selectAnswer(val);
+                  },
+                ),
+                const SizedBox(height: 12),
+                Divider(height: 1, color: Colors.grey.shade100),
+                const SizedBox(height: 10),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          currentAnswer.isNotEmpty ? Icons.check_circle_rounded : Icons.info_outline_rounded,
+                          size: 14,
+                          color: currentAnswer.isNotEmpty ? Colors.emerald.shade600 : Colors.grey.shade400,
+                        ),
+                        const SizedBox(width: 5),
+                        Text(
+                          currentAnswer.isNotEmpty ? "Jawaban tersimpan" : "Belum diisi",
+                          style: GoogleFonts.inter(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: currentAnswer.isNotEmpty ? Colors.emerald.shade700 : Colors.grey.shade400,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Text(
+                      "${currentAnswer.length} karakter",
+                      style: GoogleFonts.inter(
+                        fontSize: 11,
+                        color: Colors.grey.shade500,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          );
+        }),
+      ],
+    );
+  }
+
+  Widget _buildOptionsList(int qId, Map<String, dynamic>? options, [String? questionType]) {
+    final isEssay = questionType == 'ESSAY' || options == null || options.isEmpty;
+    if (isEssay) {
+      return _buildEssayInput(qId);
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1170,6 +1292,7 @@ class ExamView extends GetView<ExamController> {
               final rawId = currentQuestion['id'];
               final qId = rawId is int ? rawId : int.parse(rawId.toString());
               final options = currentQuestion['options'] as Map<String, dynamic>?;
+              final qType = currentQuestion['type']?.toString();
               final isDesktop = MediaQuery.of(context).size.width >= 900;
 
               if (isDesktop) {
@@ -1194,7 +1317,7 @@ class ExamView extends GetView<ExamController> {
                                       _buildQuestionHeader(currentIndex, qId),
                                       _buildQuestionBody(currentQuestion),
                                       const SizedBox(height: 24),
-                                      _buildOptionsList(qId, options),
+                                      _buildOptionsList(qId, options, qType),
                                       const SizedBox(height: 16),
                                     ],
                                   ),
@@ -1231,7 +1354,7 @@ class ExamView extends GetView<ExamController> {
                               _buildQuestionHeader(currentIndex, qId),
                               _buildQuestionBody(currentQuestion),
                               const SizedBox(height: 24),
-                              _buildOptionsList(qId, options),
+                              _buildOptionsList(qId, options, qType),
                             ],
                           ),
                         ),

@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"fmt"
+	"math"
 	"net/http"
 	"strconv"
 	"strings"
@@ -11,6 +12,7 @@ import (
 	"github.com/AppUjian/backend/internal/models"
 	"github.com/gin-gonic/gin"
 	"github.com/xuri/excelize/v2"
+	"gorm.io/datatypes"
 )
 
 // ExamInput payload for creating an exam
@@ -423,6 +425,7 @@ func GetExamParticipants(c *gin.Context) {
 	type ParticipantResponse struct {
 		models.Student
 		Name          string  `json:"name"`
+		SessionID     uint    `json:"session_id,omitempty"`
 		SessionStatus string  `json:"session_status"`
 		Score         float64 `json:"score"`
 		CanUnlock     bool    `json:"can_unlock"`
@@ -434,9 +437,11 @@ func GetExamParticipants(c *gin.Context) {
 	var responses []ParticipantResponse = make([]ParticipantResponse, 0)
 	for _, student := range students {
 		status := "BELUM MULAI"
+		var sessionID uint
 		var score float64
 		var lockReason string
 		if session, exists := sessionMap[student.ID]; exists {
+			sessionID = session.ID
 			status = session.Status
 			score = session.Score
 			lockReason = session.LockReason
@@ -448,6 +453,7 @@ func GetExamParticipants(c *gin.Context) {
 		responses = append(responses, ParticipantResponse{
 			Student:       student,
 			Name:          student.User.Name,
+			SessionID:     sessionID,
 			SessionStatus: status,
 			Score:         score,
 			CanUnlock:     canUnlock,
@@ -999,4 +1005,202 @@ func ExportExamGradesExcel(c *gin.Context) {
 	if err := f.Write(c.Writer); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menghasilkan file Excel"})
 	}
+}
+
+// GetExamSessionReview returns student answers, questions, and grading status for essay review
+func GetExamSessionReview(c *gin.Context) {
+	examID := c.Param("id")
+	sessionID := c.Param("sessionId")
+
+	var session models.ExamSession
+	if err := config.DB.Where("id = ? AND exam_id = ?", sessionID, examID).First(&session).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Sesi ujian siswa tidak ditemukan"})
+		return
+	}
+
+	var student models.Student
+	config.DB.Preload("User").Preload("Class").First(&student, session.StudentID)
+
+	var exam models.Exam
+	if err := config.DB.Preload("Questions.Subject").First(&exam, examID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Ujian tidak ditemukan"})
+		return
+	}
+
+	var studentAnswers []models.StudentAnswer
+	config.DB.Where("session_id = ?", session.ID).Find(&studentAnswers)
+
+	answerMap := make(map[uint]models.StudentAnswer)
+	for _, a := range studentAnswers {
+		answerMap[a.QuestionID] = a
+	}
+
+	type AnswerReviewItem struct {
+		QuestionID    uint           `json:"question_id"`
+		Type          string         `json:"type"`
+		Content       string         `json:"content"`
+		Options       datatypes.JSON `json:"options,omitempty"`
+		CorrectAnswer string         `json:"correct_answer"`
+		MaxPoints     int            `json:"max_points"`
+		StudentAnswer string         `json:"student_answer"`
+		Score         float64        `json:"score"`
+		IsGraded      bool           `json:"is_graded"`
+		IsCorrect     bool           `json:"is_correct"`
+	}
+
+	var items []AnswerReviewItem = make([]AnswerReviewItem, 0)
+	totalMCScore := 0.0
+	totalEssayScore := 0.0
+	maxTotalPoints := 0
+
+	for _, q := range exam.Questions {
+		ans, hasAns := answerMap[q.ID]
+		ansText := ""
+		score := 0.0
+		isGraded := false
+		isCorrect := false
+
+		if hasAns {
+			ansText = ans.Answer
+			score = ans.Score
+		}
+
+		if q.Type == models.MultipleChoice {
+			isGraded = true
+			if strings.EqualFold(strings.TrimSpace(ansText), strings.TrimSpace(q.CorrectAnswer)) {
+				isCorrect = true
+				if score == 0 && q.Points > 0 {
+					score = float64(q.Points)
+				}
+			}
+			totalMCScore += score
+		} else if q.Type == models.Essay {
+			if hasAns && ans.Score > 0 {
+				isGraded = true
+			}
+			totalEssayScore += score
+		}
+
+		maxTotalPoints += q.Points
+
+		items = append(items, AnswerReviewItem{
+			QuestionID:    q.ID,
+			Type:          string(q.Type),
+			Content:       q.Content,
+			Options:       q.Options,
+			CorrectAnswer: q.CorrectAnswer,
+			MaxPoints:     q.Points,
+			StudentAnswer: ansText,
+			Score:         score,
+			IsGraded:      isGraded,
+			IsCorrect:     isCorrect,
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"session": session,
+		"student": gin.H{
+			"id":    student.ID,
+			"name":  student.User.Name,
+			"nis":   student.NIS,
+			"class": student.Class,
+		},
+		"exam": gin.H{
+			"id":           exam.ID,
+			"title":        exam.Title,
+			"total_points": exam.TotalPoints,
+		},
+		"answers":           items,
+		"total_mc_score":    totalMCScore,
+		"total_essay_score": totalEssayScore,
+		"max_total_points":  maxTotalPoints,
+	})
+}
+
+// GradeExamSessionInput payload for manual teacher grading
+type GradeExamSessionInput struct {
+	Grades []struct {
+		QuestionID uint    `json:"question_id"`
+		Score      float64 `json:"score"`
+	} `json:"grades"`
+	FinalScore *float64 `json:"final_score,omitempty"`
+}
+
+// GradeExamSession saves teacher grades for essay questions and updates total session score
+func GradeExamSession(c *gin.Context) {
+	examID := c.Param("id")
+	sessionID := c.Param("sessionId")
+
+	var session models.ExamSession
+	if err := config.DB.Where("id = ? AND exam_id = ?", sessionID, examID).First(&session).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Sesi ujian siswa tidak ditemukan"})
+		return
+	}
+
+	var req GradeExamSessionInput
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	var exam models.Exam
+	if err := config.DB.Preload("Questions").First(&exam, examID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Ujian tidak ditemukan"})
+		return
+	}
+
+	tx := config.DB.Begin()
+
+	// Update each graded answer score
+	for _, g := range req.Grades {
+		var sa models.StudentAnswer
+		res := tx.Where("session_id = ? AND question_id = ?", session.ID, g.QuestionID).First(&sa)
+		if res.Error == nil {
+			tx.Model(&sa).Update("score", g.Score)
+		} else {
+			newAns := models.StudentAnswer{
+				SessionID:  session.ID,
+				QuestionID: g.QuestionID,
+				Answer:     "",
+				Score:      g.Score,
+			}
+			tx.Create(&newAns)
+		}
+	}
+
+	// Calculate total score
+	var allAnswers []models.StudentAnswer
+	tx.Where("session_id = ?", session.ID).Find(&allAnswers)
+
+	sumScore := 0.0
+	for _, a := range allAnswers {
+		sumScore += a.Score
+	}
+
+	maxPoints := 0
+	for _, q := range exam.Questions {
+		maxPoints += q.Points
+	}
+
+	finalScore := sumScore
+	if req.FinalScore != nil {
+		finalScore = *req.FinalScore
+	} else if maxPoints > 0 && maxPoints != 100 {
+		finalScore = (sumScore / float64(maxPoints)) * 100.0
+	}
+	finalScore = math.Round(finalScore*100) / 100
+
+	session.Score = finalScore
+	if err := tx.Save(&session).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menyimpan nilai sesi ujian"})
+		return
+	}
+
+	tx.Commit()
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":     "Penilaian jawaban berhasil disimpan",
+		"final_score": finalScore,
+	})
 }

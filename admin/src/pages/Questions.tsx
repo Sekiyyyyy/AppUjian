@@ -202,6 +202,7 @@ const Questions: React.FC = () => {
 
   // Quill refs
   const mainQuillRef = useRef<ReactQuill>(null);
+  const rubricQuillRef = useRef<ReactQuill>(null);
   const optAQuillRef = useRef<ReactQuill>(null);
   const optBQuillRef = useRef<ReactQuill>(null);
   const optCQuillRef = useRef<ReactQuill>(null);
@@ -209,6 +210,7 @@ const Questions: React.FC = () => {
   const optEQuillRef = useRef<ReactQuill>(null);
 
   const mainModules = useMemo(() => getCommonModules(mainQuillRef), []);
+  const rubricModules = useMemo(() => getCommonModules(rubricQuillRef), []);
   const optAModules = useMemo(() => getMiniModules(optAQuillRef), []);
   const optBModules = useMemo(() => getMiniModules(optBQuillRef), []);
   const optCModules = useMemo(() => getMiniModules(optCQuillRef), []);
@@ -235,6 +237,9 @@ const Questions: React.FC = () => {
   };
 
   // Form State for Manual Question
+  const [questionType, setQuestionType] = useState<'MULTIPLE_CHOICE' | 'ESSAY'>('MULTIPLE_CHOICE');
+  const [essayRubric, setEssayRubric] = useState('');
+  const [questionPoints, setQuestionPoints] = useState<number>(1);
   const [content, setContent] = useState('');
   const [optionA, setOptionA] = useState('');
   const [optionB, setOptionB] = useState('');
@@ -288,7 +293,10 @@ const Questions: React.FC = () => {
 
   const handleOpenCreateModal = () => {
     setEditingQuestion(null);
+    setQuestionType('MULTIPLE_CHOICE');
     setContent('');
+    setEssayRubric('');
+    setQuestionPoints(1);
     setOptionA('');
     setOptionB('');
     setOptionC('');
@@ -302,13 +310,28 @@ const Questions: React.FC = () => {
   const handleOpenEditModal = (q: Question) => {
     setEditingQuestion(q);
     setContent(q.content || '');
-    const opts = getParsedOptions(q);
-    setOptionA(opts['A'] || '');
-    setOptionB(opts['B'] || '');
-    setOptionC(opts['C'] || '');
-    setOptionD(opts['D'] || '');
-    setOptionE(opts['E'] || '');
-    setCorrectAnswer((q.correct_answer || 'A').toUpperCase());
+    if (q.type === 'ESSAY') {
+      setQuestionType('ESSAY');
+      setEssayRubric(q.correct_answer || '');
+      setQuestionPoints(q.points || 10);
+      setOptionA('');
+      setOptionB('');
+      setOptionC('');
+      setOptionD('');
+      setOptionE('');
+      setCorrectAnswer('');
+    } else {
+      setQuestionType('MULTIPLE_CHOICE');
+      setEssayRubric('');
+      setQuestionPoints(q.points || 1);
+      const opts = getParsedOptions(q);
+      setOptionA(opts['A'] || '');
+      setOptionB(opts['B'] || '');
+      setOptionC(opts['C'] || '');
+      setOptionD(opts['D'] || '');
+      setOptionE(opts['E'] || '');
+      setCorrectAnswer((q.correct_answer || 'A').toUpperCase());
+    }
     setFormError('');
     setIsModalOpen(true);
   };
@@ -463,18 +486,22 @@ const Questions: React.FC = () => {
     setIsSavingQuestion(true);
     setFormError('');
 
-    const optionsJSON = { A: optionA, B: optionB, C: optionC, D: optionD, E: optionE };
+    const isEssay = questionType === 'ESSAY';
+    const finalType = isEssay ? 'ESSAY' : 'MULTIPLE_CHOICE';
+    const finalOptions = isEssay ? null : { A: optionA, B: optionB, C: optionC, D: optionD, E: optionE };
+    const finalCorrectAnswer = isEssay ? essayRubric : correctAnswer;
+    const finalPoints = Number(questionPoints) > 0 ? Number(questionPoints) : (isEssay ? 10 : 1);
 
     try {
       if (editingQuestion) {
         // UPDATE EXISTING QUESTION
         await axios.put(`/api/v1/admin/questions/${editingQuestion.ID}`, {
           subject_id: selectedSubjectId || editingQuestion.subject_id,
-          type: 'MULTIPLE_CHOICE',
+          type: finalType,
           content,
-          options: optionsJSON,
-          correct_answer: correctAnswer,
-          points: editingQuestion.points || 1
+          options: finalOptions,
+          correct_answer: finalCorrectAnswer,
+          points: finalPoints
         }, {
           headers: { Authorization: `Bearer ${token}` }
         });
@@ -487,9 +514,11 @@ const Questions: React.FC = () => {
           setDetailQuestion({
             question: {
               ...detailQuestion.question,
+              type: finalType,
               content,
-              options: optionsJSON,
-              correct_answer: correctAnswer
+              options: finalOptions,
+              correct_answer: finalCorrectAnswer,
+              points: finalPoints
             },
             index: detailQuestion.index
           });
@@ -502,11 +531,11 @@ const Questions: React.FC = () => {
         await axios.post('/api/v1/admin/questions', {
           subject_id: selectedSubjectId,
           exam_id: selectedExamId,
-          type: 'MULTIPLE_CHOICE',
+          type: finalType,
           content,
-          options: optionsJSON,
-          correct_answer: correctAnswer,
-          points: 1
+          options: finalOptions,
+          correct_answer: finalCorrectAnswer,
+          points: finalPoints
         }, {
           headers: { Authorization: `Bearer ${token}` }
         });
@@ -525,6 +554,8 @@ const Questions: React.FC = () => {
         setOptionD('');
         setOptionE('');
         setCorrectAnswer('A');
+        setEssayRubric('');
+        setQuestionPoints(isEssay ? 10 : 1);
 
         if (!keepOpen) {
           setIsModalOpen(false);
@@ -1047,9 +1078,15 @@ const Questions: React.FC = () => {
                           {idx + 1}
                         </td>
                         <td className="py-3 px-4">
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-100">
-                            Pilihan Ganda
-                          </span>
+                          {q.type === 'ESSAY' ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-purple-50 text-purple-700 border border-purple-200">
+                              ✍️ Soal Essay
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-100">
+                              Pilihan Ganda
+                            </span>
+                          )}
                         </td>
                         <td 
                           className="py-3 px-4 cursor-pointer"
@@ -1061,9 +1098,15 @@ const Questions: React.FC = () => {
                           </p>
                         </td>
                         <td className="py-3 px-4 text-center">
-                          <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-50 text-emerald-700 font-bold border border-emerald-200 text-xs">
-                            {q.correct_answer || '-'}
-                          </span>
+                          {q.type === 'ESSAY' ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 font-bold border border-purple-200 text-[10px]" title={q.correct_answer || 'Pedoman Penilaian'}>
+                              Rubrik ({q.points || 10}p)
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-50 text-emerald-700 font-bold border border-emerald-200 text-xs">
+                              {q.correct_answer || '-'}
+                            </span>
+                          )}
                         </td>
                         <td className="py-3 px-4 text-center">
                           <div className="flex items-center justify-center space-x-1">
@@ -1144,6 +1187,43 @@ const Questions: React.FC = () => {
                 </div>
               )}
 
+              {/* Pilihan Tipe Soal (PG vs Essay) */}
+              <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs">
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                  Tipe Soal Ujian:
+                </label>
+                <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100 rounded-xl">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setQuestionType('MULTIPLE_CHOICE');
+                      if (questionPoints === 10) setQuestionPoints(1);
+                    }}
+                    className={`flex items-center justify-center space-x-2 py-2 px-3 rounded-lg text-xs font-bold transition-all ${
+                      questionType === 'MULTIPLE_CHOICE'
+                        ? 'bg-white text-primary-700 shadow-xs'
+                        : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    <span>🔘 Pilihan Ganda (PG)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setQuestionType('ESSAY');
+                      if (questionPoints === 1) setQuestionPoints(10);
+                    }}
+                    className={`flex items-center justify-center space-x-2 py-2 px-3 rounded-lg text-xs font-bold transition-all ${
+                      questionType === 'ESSAY'
+                        ? 'bg-white text-purple-700 shadow-xs'
+                        : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    <span>✍️ Soal Essay / Uraian (Koreksi Guru)</span>
+                  </button>
+                </div>
+              </div>
+
               {/* Pertanyaan Utama */}
               <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
@@ -1162,57 +1242,127 @@ const Questions: React.FC = () => {
                 </div>
               </div>
 
-              {/* Opsi Jawaban (A - E) */}
-              <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs space-y-3">
-                <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                  <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                    Pilihan Jawaban (A - E) & Kunci Jawaban
-                  </span>
-                  <span className="text-[11px] text-slate-400">
-                    Klik radio button untuk memilih kunci jawaban benar
-                  </span>
+              {questionType === 'MULTIPLE_CHOICE' ? (
+                /* Opsi Jawaban (A - E) */
+                <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-2 gap-2">
+                    <div>
+                      <span className="text-xs font-bold text-slate-700 uppercase tracking-wider block">
+                        Pilihan Jawaban (A - E) & Kunci Jawaban
+                      </span>
+                      <span className="text-[11px] text-slate-400">
+                        Klik radio button untuk memilih kunci jawaban benar
+                      </span>
+                    </div>
+                    <div className="flex items-center space-x-2 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-200 self-start sm:self-auto">
+                      <label className="text-xs font-semibold text-slate-600">Bobot Poin:</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="100"
+                        value={questionPoints}
+                        onChange={(e) => setQuestionPoints(Math.max(1, parseInt(e.target.value) || 1))}
+                        className="w-14 px-1.5 py-0.5 bg-white border border-slate-300 rounded text-xs font-bold text-center text-slate-800 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {['A', 'B', 'C', 'D', 'E'].map((opt) => (
+                      <div 
+                        key={opt} 
+                        className={`border rounded-xl p-3 transition-all ${
+                          opt === 'E' ? 'md:col-span-2' : ''
+                        } ${
+                          correctAnswer === opt 
+                            ? 'border-primary-500 bg-primary-50/40 ring-1 ring-primary-300' 
+                            : 'border-slate-200 bg-slate-50/40'
+                        }`}
+                      >
+                        <label className="flex items-center space-x-2 pb-2 cursor-pointer select-none border-b border-slate-200/60 mb-2">
+                          <input
+                            type="radio"
+                            name="correctAnswer"
+                            value={opt}
+                            checked={correctAnswer === opt}
+                            onChange={(e) => setCorrectAnswer(e.target.value)}
+                            className="w-4 h-4 text-primary-600 focus:ring-primary-500 cursor-pointer"
+                          />
+                          <span className={`text-xs font-bold ${correctAnswer === opt ? 'text-primary-700' : 'text-slate-600'}`}>
+                            Opsi {opt} {correctAnswer === opt && '✓ (Kunci Benar)'}
+                          </span>
+                        </label>
+                        <div className="bg-white rounded-lg overflow-hidden border border-slate-200">
+                          <ReactQuill 
+                            ref={getRefForOption(opt)}
+                            theme="snow" 
+                            value={getOptionValue(opt)} 
+                            onChange={(val) => setOptionValue(opt, val)}
+                            modules={getModulesForOption(opt)}
+                            className="h-20 pb-10"
+                            placeholder={`Ketik opsi ${opt}...`}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {['A', 'B', 'C', 'D', 'E'].map((opt) => (
-                    <div 
-                      key={opt} 
-                      className={`border rounded-xl p-3 transition-all ${
-                        opt === 'E' ? 'md:col-span-2' : ''
-                      } ${
-                        correctAnswer === opt 
-                          ? 'border-primary-500 bg-primary-50/40 ring-1 ring-primary-300' 
-                          : 'border-slate-200 bg-slate-50/40'
-                      }`}
-                    >
-                      <label className="flex items-center space-x-2 pb-2 cursor-pointer select-none border-b border-slate-200/60 mb-2">
-                        <input
-                          type="radio"
-                          name="correctAnswer"
-                          value={opt}
-                          checked={correctAnswer === opt}
-                          onChange={(e) => setCorrectAnswer(e.target.value)}
-                          className="w-4 h-4 text-primary-600 focus:ring-primary-500 cursor-pointer"
-                        />
-                        <span className={`text-xs font-bold ${correctAnswer === opt ? 'text-primary-700' : 'text-slate-600'}`}>
-                          Opsi {opt} {correctAnswer === opt && '✓ (Kunci Benar)'}
-                        </span>
-                      </label>
-                      <div className="bg-white rounded-lg overflow-hidden border border-slate-200">
-                        <ReactQuill 
-                          ref={getRefForOption(opt)}
-                          theme="snow" 
-                          value={getOptionValue(opt)} 
-                          onChange={(val) => setOptionValue(opt, val)}
-                          modules={getModulesForOption(opt)}
-                          className="h-20 pb-10"
-                          placeholder={`Ketik opsi ${opt}...`}
-                        />
+              ) : (
+                /* Rubrik / Kunci Penilaian Soal Essay */
+                <div className="bg-white p-4 rounded-xl border border-purple-200 shadow-2xs space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-2 border-b border-purple-100 gap-2">
+                    <div className="flex items-center space-x-2">
+                      <span className="w-6 h-6 rounded-lg bg-purple-100 text-purple-700 font-bold flex items-center justify-center text-xs">
+                        ✍️
+                      </span>
+                      <div>
+                        <h4 className="text-xs font-bold text-purple-900 uppercase tracking-wider">
+                          Pedoman / Rubrik Penilaian Jawaban Essay
+                        </h4>
+                        <p className="text-[11px] text-purple-600">
+                          Panduan Guru Mapel saat mereview dan menilai jawaban siswa
+                        </p>
                       </div>
                     </div>
-                  ))}
+                    <div className="flex items-center space-x-2 bg-purple-50 px-3 py-1.5 rounded-xl border border-purple-200 self-start sm:self-auto">
+                      <label className="text-xs font-bold text-purple-900">Bobot Maksimal:</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="100"
+                        value={questionPoints}
+                        onChange={(e) => setQuestionPoints(Math.max(1, parseInt(e.target.value) || 1))}
+                        className="w-16 px-2 py-1 bg-white border border-purple-300 rounded-lg text-xs font-bold text-center text-purple-900 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      />
+                      <span className="text-xs font-semibold text-purple-700">Poin</span>
+                    </div>
+                  </div>
+
+                  <div className="bg-purple-50/40 p-2.5 rounded-lg text-[11px] text-purple-700 flex items-start space-x-2 border border-purple-100">
+                    <span className="shrink-0">💡</span>
+                    <span>
+                      Jawaban essay siswa akan diperiksa dan dinilai secara manual oleh <strong>Guru Mapel</strong> melalui tombol <strong>"Koreksi"</strong> pada menu daftar peserta ujian.
+                    </span>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                      Kunci Jawaban / Indikator Jawaban Benar (Rubrik):
+                    </label>
+                    <div className="h-44 mb-12">
+                      <ReactQuill
+                        ref={rubricQuillRef}
+                        theme="snow"
+                        value={essayRubric}
+                        onChange={setEssayRubric}
+                        modules={rubricModules}
+                        className="h-32"
+                        placeholder="Tuliskan indikator jawaban lengkap, poin kata kunci, atau kriteria penilaian..."
+                      />
+                    </div>
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Modal Actions */}
               <div className="pt-3 flex flex-col sm:flex-row justify-end items-center gap-2 border-t border-slate-100">
@@ -1561,11 +1711,17 @@ const Questions: React.FC = () => {
                     <h2 className="text-base font-bold text-slate-800">
                       Detail Soal #{detailQuestion.index + 1}
                     </h2>
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">
-                      Pilihan Ganda
-                    </span>
+                    {detailQuestion.question.type === 'ESSAY' ? (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-purple-50 text-purple-700 border border-purple-200">
+                        ✍️ Soal Essay / Uraian
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+                        Pilihan Ganda
+                      </span>
+                    )}
                     <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
-                      {detailQuestion.question.points || 1} Poin
+                      {detailQuestion.question.points || (detailQuestion.question.type === 'ESSAY' ? 10 : 1)} Poin
                     </span>
                   </div>
                   <p className="text-xs text-slate-500 mt-0.5">
@@ -1618,61 +1774,94 @@ const Questions: React.FC = () => {
                 />
               </div>
 
-              {/* Pilihan Jawaban (A - E) */}
-              <div>
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 block mb-3">
-                  Pilihan Jawaban (A - E):
-                </span>
-                <div className="space-y-2.5">
-                  {['A', 'B', 'C', 'D', 'E'].map((optKey) => {
-                    const opts = getParsedOptions(detailQuestion.question);
-                    const optVal = opts[optKey] || '';
-                    const isCorrect = (detailQuestion.question.correct_answer || '').toUpperCase() === optKey;
-
-                    return (
-                      <div 
-                        key={optKey}
-                        className={`p-3.5 rounded-xl border transition-all flex items-start space-x-3 ${
-                          isCorrect 
-                            ? 'bg-emerald-50/90 border-emerald-400 ring-2 ring-emerald-500/20 shadow-xs' 
-                            : 'bg-white border-slate-200 hover:border-slate-300'
-                        }`}
-                      >
-                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ${
-                          isCorrect
-                            ? 'bg-emerald-600 text-white shadow-xs'
-                            : 'bg-slate-100 text-slate-600 border border-slate-200'
-                        }`}>
-                          {optKey}
-                        </div>
-                        <div className="flex-1 min-w-0 pt-0.5">
-                          <div 
-                            className={`text-xs sm:text-sm leading-relaxed ql-editor !p-0 ${
-                              isCorrect ? 'text-emerald-950 font-medium' : 'text-slate-800'
-                            }`}
-                            dangerouslySetInnerHTML={{ __html: optVal || '<span class="text-slate-400 italic">(Kosong)</span>' }}
-                          />
-                        </div>
-                        {isCorrect && (
-                          <span className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 shrink-0">
-                            <Check size={13} />
-                            <span>Kunci Benar</span>
-                          </span>
-                        )}
-                      </div>
-                    );
-                  })}
+              {detailQuestion.question.type === 'ESSAY' ? (
+                /* Detail Rubrik Essay */
+                <div className="bg-purple-50/50 border border-purple-200 rounded-xl p-5 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-purple-900 flex items-center space-x-1.5">
+                      <span>✍️ Pedoman Penilaian / Rubrik Jawaban:</span>
+                    </span>
+                    <span className="text-xs font-bold text-purple-700 bg-purple-100 px-2.5 py-0.5 rounded-full border border-purple-200">
+                      Maks. {detailQuestion.question.points || 10} Poin
+                    </span>
+                  </div>
+                  <div 
+                    className="prose prose-purple max-w-none text-purple-950 text-sm leading-relaxed ql-editor !p-0"
+                    dangerouslySetInnerHTML={{ __html: detailQuestion.question.correct_answer || '<span class="text-slate-400 italic">Tidak ada pedoman jawaban khusus yang diinput.</span>' }}
+                  />
+                  <div className="pt-2 border-t border-purple-100 text-[11px] text-purple-700 flex items-center space-x-1.5">
+                    <span>💡</span>
+                    <span>Jawaban essay siswa akan dinilai secara manual oleh Guru Mapel setelah ujian diselesaikan.</span>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                /* Pilihan Jawaban (A - E) */
+                <div>
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 block mb-3">
+                    Pilihan Jawaban (A - E):
+                  </span>
+                  <div className="space-y-2.5">
+                    {['A', 'B', 'C', 'D', 'E'].map((optKey) => {
+                      const opts = getParsedOptions(detailQuestion.question);
+                      const optVal = opts[optKey] || '';
+                      const isCorrect = (detailQuestion.question.correct_answer || '').toUpperCase() === optKey;
+
+                      return (
+                        <div 
+                          key={optKey} 
+                          className={`p-3.5 rounded-xl border transition-all flex items-start space-x-3 ${
+                            isCorrect 
+                              ? 'bg-emerald-50/90 border-emerald-400 ring-2 ring-emerald-500/20 shadow-xs' 
+                              : 'bg-white border-slate-200 hover:border-slate-300'
+                          }`}
+                        >
+                          <div className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ${
+                            isCorrect
+                              ? 'bg-emerald-600 text-white shadow-xs'
+                              : 'bg-slate-100 text-slate-600 border border-slate-200'
+                          }`}>
+                            {optKey}
+                          </div>
+                          <div className="flex-1 min-w-0 pt-0.5">
+                            <div 
+                              className={`text-xs sm:text-sm leading-relaxed ql-editor !p-0 ${
+                                isCorrect ? 'text-emerald-950 font-medium' : 'text-slate-800'
+                              }`}
+                              dangerouslySetInnerHTML={{ __html: optVal || '<span class="text-slate-400 italic">(Kosong)</span>' }}
+                            />
+                          </div>
+                          {isCorrect && (
+                            <span className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 shrink-0">
+                              <Check size={13} />
+                              <span>Kunci Benar</span>
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Footer Modal */}
             <div className="px-6 py-3.5 bg-slate-50 border-t border-slate-200/80 flex items-center justify-between">
               <div className="flex items-center space-x-2 text-xs text-slate-600">
-                <span>Kunci Jawaban Terdaftar:</span>
-                <span className="font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-300">
-                  Pilihan {detailQuestion.question.correct_answer || '-'}
-                </span>
+                {detailQuestion.question.type === 'ESSAY' ? (
+                  <>
+                    <span>Tipe Penilaian:</span>
+                    <span className="font-bold text-purple-700 bg-purple-100 px-2 py-0.5 rounded border border-purple-300">
+                      ✍️ Koreksi Manual Guru Mapel
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span>Kunci Jawaban Terdaftar:</span>
+                    <span className="font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-300">
+                      Pilihan {detailQuestion.question.correct_answer || '-'}
+                    </span>
+                  </>
+                )}
               </div>
               <div className="flex items-center space-x-2">
                 <button
