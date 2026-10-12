@@ -119,24 +119,42 @@ def download_artifact_zip(download_url: str, dest_path: Path):
     # Step 2: Download directly from the storage URL without Authorization header
     cmd_dl = [
         "curl", "-s", "-L",
+        "--retry", "5",
+        "--retry-delay", "2",
         location,
         "-o", str(dest_path)
     ]
     res_dl = subprocess.run(cmd_dl, capture_output=True, text=True)
     size = dest_path.stat().st_size if dest_path.exists() else 0
     if res_dl.returncode != 0 or size == 0:
-        raise RuntimeError(f"Curl download failed (code {res_dl.returncode}, size {size}) for {location}: {res_dl.stderr}")
+        log.warning(f"Curl failed ({res_dl.returncode}), trying urllib fallback...")
+        try:
+            import urllib.request
+            req = urllib.request.Request(location, headers={'User-Agent': 'Mozilla/5.0'})
+            with urllib.request.urlopen(req, timeout=60) as resp, open(dest_path, 'wb') as out_f:
+                shutil.copyfileobj(resp, out_f)
+            size = dest_path.stat().st_size if dest_path.exists() else 0
+        except Exception as e:
+            log.error(f"urllib fallback also failed: {e}")
+
+    if size == 0:
+        raise RuntimeError(f"Download failed for {location}: size is 0")
 
 
 def get_latest_successful_run() -> dict | None:
-    """Get the latest successful workflow run."""
+    """Get the latest workflow run with uploaded artifacts."""
+    # First, check recent runs regardless of overall status (useful when called from deploy step)
+    data = github_api("actions/runs?per_page=5")
+    runs = data.get("workflow_runs", [])
+    for r in runs:
+        if r.get("head_branch") in ["main", "master"]:
+            artifacts = get_run_artifacts(r["id"])
+            if len(artifacts) >= 3:
+                return r
+    # Fallback to status=success
     data = github_api("actions/runs?status=success&per_page=5")
     runs = data.get("workflow_runs", [])
-    if not runs:
-        log.warning("No successful workflow runs found.")
-        return None
-    # Return the most recent successful run
-    return runs[0]
+    return runs[0] if runs else None
 
 
 def get_run_artifacts(run_id: int) -> list:
