@@ -20,9 +20,9 @@ type AppVersionResponse struct {
 }
 
 const (
-	CurrentLatestAppVersion  = "1.1.7"
-	CurrentLatestBuildNumber = 19
-	CurrentMinAppVersion     = "1.1.7"
+	CurrentLatestAppVersion  = "1.1.8"
+	CurrentLatestBuildNumber = 20
+	CurrentMinAppVersion     = "1.1.8"
 	CurrentAppDownloadURL    = "https://ujian.tiksmkn1beringin.my.id/download"
 )
 
@@ -103,9 +103,10 @@ func GetAppVersion(c *gin.Context) {
 		ForceUpdate:   isOutdated,
 		Title:         "Pembaruan Wajib Aplikasi CBT v" + CurrentLatestAppVersion,
 		Changelog: []string{
-			"Perbaikan Instalasi Universal: Menghilangkan error 'Package installer has stopped' dengan membersihkan permission sistem internal dan standarisasi skema penandatanganan APK v1+v2 murni.",
-			"Perbaikan Layar Mati & Tombol Power: Layar otomatis dijaga tetap menyala, dan jika layar mati atau tombol power tertekan tidak akan mengunci ujian.",
-			"Perbaikan Sentuhan & OEM Infinix / Oppo / Xiaomi: Memperbaiki masalah layar tidak merespons sentuhan (touch unresponsive) dan kompatibilitas semat layar di semua ROM.",
+			"Pembaruan Langsung dari Aplikasi: Siswa kini dapat mengunduh dan memasang update APK secara instan langsung dari aplikasi tanpa harus membuka browser secara manual.",
+			"Keamanan Anti-Emulator Ketat: Memblokir akses dari emulator PC (BlueStacks, Nox, LDPlayer, MEmu, dll) demi menjamin integritas, keadilan, dan kejujuran ujian siswa.",
+			"Ikon Mata Field Password: Siswa kini dapat melihat dan memeriksa kata sandi/token ujian yang diketik pada halaman login dengan menekan ikon mata.",
+			"Perbaikan Sentuhan & OEM: Stabilitas penuh untuk perangkat Infinix, Oppo, Xiaomi, Vivo, Samsung dan penghindaran bug layar terkunci mendadak.",
 		},
 		DownloadURL: CurrentAppDownloadURL,
 	})

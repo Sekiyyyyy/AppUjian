@@ -12,6 +12,11 @@ class LoginController extends GetxController {
   
   final isLoading = false.obs;
   final errorMessage = ''.obs;
+  final isPasswordVisible = false.obs;
+
+  void togglePasswordVisibility() {
+    isPasswordVisible.value = !isPasswordVisible.value;
+  }
 
   final _dio = ApiClient().dio;
 
@@ -29,6 +34,11 @@ class LoginController extends GetxController {
   }
 
   Future<void> login() async {
+    if (UpdateService.isEmulatorDetected.value) {
+      errorMessage.value = "Akses ditolak: Aplikasi tidak diizinkan berjalan di emulator PC.";
+      return;
+    }
+
     if (UpdateService.isUpdateRequired.value) {
       errorMessage.value = "Aplikasi Anda wajib diperbarui ke versi terbaru.";
       UpdateService.checkForUpdate(isManualCheck: true);

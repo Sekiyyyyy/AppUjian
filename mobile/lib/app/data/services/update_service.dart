@@ -1,6 +1,8 @@
 import 'dart:io';
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -9,6 +11,9 @@ import '../app_version.dart';
 import '../../theme/app_theme.dart';
 
 class UpdateService {
+  // Method Channel Kiosk & Native Utilities
+  static const MethodChannel _kioskChannel = MethodChannel('com.smkn1beringin.cbt/kiosk');
+
   // Versi aplikasi saat ini
   static const String currentVersion = AppVersion.currentVersion;
   static const int currentBuildNumber = AppVersion.currentBuildNumber;
@@ -21,6 +26,16 @@ class UpdateService {
   static final RxList<String> changelog = <String>[].obs;
   static final RxString downloadUrl = 'https://ujian.tiksmkn1beringin.my.id/download'.obs;
   static final RxBool isChecking = false.obs;
+
+  // Status Pengunduhan Langsung (In-App Direct Download & Install)
+  static final RxBool isDownloading = false.obs;
+  static final RxDouble downloadProgress = 0.0.obs;
+  static final RxString downloadStatusText = ''.obs;
+  static final RxBool isDownloadSuccess = false.obs;
+  static final RxString downloadedApkPath = ''.obs;
+
+  // Deteksi Emulator (Anti-Emulator)
+  static final RxBool isEmulatorDetected = false.obs;
 
   static bool _dialogShowing = false;
 
@@ -187,6 +202,122 @@ class UpdateService {
       } catch (err) {
         debugPrint('Error membuka URL unduhan (fallback): $err');
       }
+    }
+  }
+
+  /// Memeriksa apakah aplikasi berjalan di dalam Emulator (Anti-Emulator)
+  static Future<bool> checkEmulator() async {
+    if (kIsWeb || !Platform.isAndroid) return false;
+    try {
+      final bool? isEmu = await _kioskChannel.invokeMethod<bool>('isEmulator');
+      if (isEmu == true) {
+        isEmulatorDetected.value = true;
+        return true;
+      }
+    } catch (e) {
+      debugPrint('Gagal memeriksa status emulator: $e');
+    }
+    return false;
+  }
+
+  /// Mengunduh dan memasang pembaruan APK langsung dari dalam aplikasi
+  static Future<void> downloadAndInstallApk() async {
+    if (kIsWeb || !Platform.isAndroid) {
+      // Platform non-Android: buka web browser
+      await openDownloadUrl();
+      return;
+    }
+
+    if (isDownloading.value) return;
+
+    // Jika file APK versi ini sudah pernah berhasil diunduh dan masih ada, langsung jalankan installer
+    if (isDownloadSuccess.value && downloadedApkPath.value.isNotEmpty) {
+      final file = File(downloadedApkPath.value);
+      if (file.existsSync()) {
+        await installDownloadedApk();
+        return;
+      }
+    }
+
+    isDownloading.value = true;
+    downloadProgress.value = 0.0;
+    downloadStatusText.value = 'Mempersiapkan pengunduhan...';
+    isDownloadSuccess.value = false;
+
+    try {
+      String? basePath;
+      try {
+        basePath = await _kioskChannel.invokeMethod<String>('getAppStoragePath');
+      } catch (_) {}
+
+      if (basePath == null || basePath.isEmpty) {
+        basePath = '/sdcard/Download';
+      }
+
+      final v = latestVersion.value.trim().isNotEmpty ? latestVersion.value.trim() : currentVersion;
+      final String savePath = '$basePath/AppUjian_v$v.apk';
+      final String apkUrl = getPlatformDownloadUrl();
+
+      final downloadDio = Dio(BaseOptions(
+        connectTimeout: const Duration(seconds: 30),
+        receiveTimeout: const Duration(minutes: 10),
+        followRedirects: true,
+      ));
+      await downloadDio.download(
+        apkUrl,
+        savePath,
+        onReceiveProgress: (received, total) {
+          if (total > 0) {
+            final double p = (received / total).clamp(0.0, 1.0);
+            downloadProgress.value = p;
+            final String recMb = (received / (1024 * 1024)).toStringAsFixed(1);
+            final String totMb = (total / (1024 * 1024)).toStringAsFixed(1);
+            final int percent = (p * 100).toInt();
+            downloadStatusText.value = '$recMb MB / $totMb MB ($percent%)';
+          } else {
+            final String recMb = (received / (1024 * 1024)).toStringAsFixed(1);
+            downloadStatusText.value = '$recMb MB terunduh...';
+          }
+        },
+      );
+
+      final file = File(savePath);
+      if (await file.exists() && await file.length() > 0) {
+        downloadedApkPath.value = savePath;
+        isDownloadSuccess.value = true;
+        downloadStatusText.value = 'Pengunduhan selesai! Membuka installer...';
+        await installDownloadedApk();
+      } else {
+        throw Exception('File APK hasil unduhan tidak ditemukan atau kosong.');
+      }
+    } catch (e) {
+      debugPrint('Gagal mengunduh APK secara langsung: $e');
+      downloadStatusText.value = 'Gagal mengunduh otomatis. Mengalihkan ke browser...';
+      Get.snackbar(
+        'Gagal Unduh Otomatis',
+        'Mengalihkan ke browser web untuk mengunduh manual...',
+        backgroundColor: Colors.red.shade600,
+        colorText: Colors.white,
+        snackPosition: SnackPosition.BOTTOM,
+        margin: const EdgeInsets.all(16),
+        borderRadius: 12,
+      );
+      await openDownloadUrl();
+    } finally {
+      isDownloading.value = false;
+    }
+  }
+
+  /// Membuka prompt installasi APK Android asli (Native Package Installer)
+  static Future<void> installDownloadedApk() async {
+    if (downloadedApkPath.value.isEmpty) return;
+    try {
+      await _kioskChannel.invokeMethod('installApk', {
+        'filePath': downloadedApkPath.value,
+      });
+    } catch (e) {
+      debugPrint('Error trigger installer: $e');
+      await openDownloadUrl();
     }
   }
 

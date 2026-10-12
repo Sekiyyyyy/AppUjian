@@ -302,9 +302,49 @@ class LoginView extends GetView<LoginController> {
     bool isPassword = false,
     Iterable<String>? autofillHints,
   }) {
+    if (isPassword) {
+      return Obx(() => TextFormField(
+            controller: controller,
+            obscureText: !this.controller.isPasswordVisible.value,
+            autofillHints: autofillHints,
+            style: GoogleFonts.inter(color: AppTheme.textPrimary),
+            decoration: InputDecoration(
+              hintText: hint,
+              hintStyle: GoogleFonts.inter(color: AppTheme.textSecondary.withValues(alpha: 0.6)),
+              prefixIcon: Icon(icon, color: AppTheme.textSecondary),
+              suffixIcon: IconButton(
+                icon: Icon(
+                  this.controller.isPasswordVisible.value
+                      ? Icons.visibility_outlined
+                      : Icons.visibility_off_outlined,
+                  color: AppTheme.textSecondary,
+                  size: 20,
+                ),
+                onPressed: this.controller.togglePasswordVisibility,
+                tooltip: this.controller.isPasswordVisible.value ? 'Sembunyikan password' : 'Lihat password',
+              ),
+              filled: true,
+              fillColor: Colors.white.withValues(alpha: 0.8),
+              contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide.none,
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.5)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: const BorderSide(color: AppTheme.primaryColor, width: 1.5),
+              ),
+            ),
+          ));
+    }
+
     return TextFormField(
       controller: controller,
-      obscureText: isPassword,
+      obscureText: false,
       autofillHints: autofillHints,
       style: GoogleFonts.inter(color: AppTheme.textPrimary),
       decoration: InputDecoration(

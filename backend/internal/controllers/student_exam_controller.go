@@ -333,48 +333,65 @@ func FinishExam(c *gin.Context) {
 		answerMap[a.QuestionID] = a
 	}
 
+	mcCount := 0
+	essayCount := 0
+	for _, q := range exam.Questions {
+		if q.Type == models.MultipleChoice {
+			mcCount++
+		} else if q.Type == models.Essay {
+			essayCount++
+		}
+	}
+
+	totalUnits := float64(mcCount) + (2.0 * float64(essayCount))
+	if totalUnits == 0 {
+		totalUnits = 1.0
+	}
+
+	pointPerMC := 100.0 / totalUnits
+	if mcCount > 0 && essayCount == 0 {
+		pointPerMC = 100.0 / float64(mcCount)
+	}
 	var answersToUpdate []models.StudentAnswer
-	totalScore := 0.0
 	correctCount := 0
-	totalQuestions := len(exam.Questions)
+	totalScore := 0.0
 
 	for _, q := range exam.Questions {
 		if ans, ok := answerMap[q.ID]; ok {
 			if q.Type == models.MultipleChoice {
 				if strings.EqualFold(strings.TrimSpace(ans.Answer), strings.TrimSpace(q.CorrectAnswer)) {
 					correctCount++
-					ans.Score = float64(q.Points)
+					ans.Score = pointPerMC
+					answersToUpdate = append(answersToUpdate, ans)
+				} else {
+					ans.Score = 0
 					answersToUpdate = append(answersToUpdate, ans)
 				}
 			}
 		}
 	}
 
-	if totalQuestions > 0 {
-		maxScore := 100.0
-		if exam.TotalPoints > 0 {
-			maxScore = float64(exam.TotalPoints)
-		}
-		// Final student score: percentage of correct answers * maxScore
-		totalScore = (float64(correctCount) / float64(totalQuestions)) * maxScore
-		totalScore = math.Round(totalScore*100) / 100
-
-		// Also update individual answer points proportionally
-		pointPerQ := math.Round((maxScore/float64(totalQuestions))*100) / 100
-		for i := range answersToUpdate {
-			answersToUpdate[i].Score = pointPerQ
-		}
-	}
+	totalScore = float64(correctCount) * pointPerMC
+	totalScore = math.Round(totalScore*100) / 100
 
 	tx := config.DB.Begin()
 	for _, a := range answersToUpdate {
 		tx.Model(&models.StudentAnswer{}).Where("id = ?", a.ID).Update("score", a.Score)
 	}
 
+	hasEssay := false
+	for _, q := range exam.Questions {
+		if q.Type == models.Essay {
+			hasEssay = true
+			break
+		}
+	}
+
 	now := time.Now()
 	session.Status = "FINISHED"
 	session.EndTime = now
 	session.Score = totalScore
+	session.IsGraded = !hasEssay
 	tx.Save(&session)
 	tx.Commit()
 

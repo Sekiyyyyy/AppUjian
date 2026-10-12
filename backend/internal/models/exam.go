@@ -65,6 +65,7 @@ type ExamSession struct {
 	Score              float64   `json:"score"`
 	LockReason         string    `json:"lock_reason,omitempty"` // Reason why exam was locked (e.g., left app)
 	IsUnlocked         bool      `json:"is_unlocked"`          // Proctor unlock flag to permit resume
+	IsGraded           bool      `gorm:"default:false" json:"is_graded"` // Manual grading status
 	DeviceID           string    `json:"device_id"`           // Security: Zero Trust
 	IPAddress          string    `json:"ip_address"`          // Security
 	BrowserFingerprint string    `json:"browser_fingerprint"` // Security: Detect multiple browsers

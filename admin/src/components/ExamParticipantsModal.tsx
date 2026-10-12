@@ -821,8 +821,9 @@ const ExamParticipantsModal: React.FC<ExamParticipantsModalProps> = ({
                       </div>
 
                       {p.lock_reason && (
-                        <div className="mt-1.5 p-1.5 rounded-lg bg-rose-50/80 border border-rose-200 text-[10px] text-rose-800">
-                          ⚠️ {p.lock_reason}
+                        <div className="mt-1.5 p-1.5 rounded-lg bg-rose-50/80 border border-rose-200 text-[10px] text-rose-800 flex items-center space-x-1.5">
+                          <AlertCircle className="w-3 h-3 text-rose-600 shrink-0" />
+                          <span>{p.lock_reason}</span>
                         </div>
                       )}
                     </div>
@@ -959,8 +960,9 @@ const ExamParticipantsModal: React.FC<ExamParticipantsModalProps> = ({
                                 {statusText}
                               </span>
                               {p.lock_reason && (
-                                <p className="text-[11px] text-rose-700 italic max-w-xs truncate" title={p.lock_reason}>
-                                  ⚠️ {p.lock_reason}
+                                <p className="text-[11px] text-rose-700 italic max-w-xs truncate flex items-center space-x-1" title={p.lock_reason}>
+                                  <AlertCircle className="w-3 h-3 text-rose-600 shrink-0" />
+                                  <span>{p.lock_reason}</span>
                                 </p>
                               )}
                             </div>

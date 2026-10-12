@@ -18,9 +18,15 @@ import android.os.PowerManager
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.view.WindowManager
+import androidx.core.content.FileProvider
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
+import android.net.Uri
+import android.provider.Settings
+import java.io.BufferedReader
+import java.io.File
+import java.io.InputStreamReader
 
 class MainActivity : FlutterActivity() {
     private val CHANNEL = "com.smkn1beringin.cbt/kiosk"
@@ -39,6 +45,87 @@ class MainActivity : FlutterActivity() {
 
     // Exam Mode Tracking
     private var isExamModeActive = false
+
+    private fun isEmulator(): Boolean {
+        // 1. Build properties check
+        val isGeneric = Build.FINGERPRINT.startsWith("generic") ||
+                Build.FINGERPRINT.startsWith("unknown") ||
+                Build.FINGERPRINT.contains("google_sdk") ||
+                Build.FINGERPRINT.contains("Emulator") ||
+                Build.FINGERPRINT.contains("Android SDK built for x86") ||
+                Build.FINGERPRINT.contains("vbox86p")
+
+        val isHardwareQemu = Build.HARDWARE.contains("goldfish") ||
+                Build.HARDWARE.contains("ranchu") ||
+                Build.HARDWARE.contains("vbox86") ||
+                Build.HARDWARE.contains("nox") ||
+                Build.HARDWARE.contains("ttVM_x86")
+
+        val isModelEmulator = Build.MODEL.contains("google_sdk") ||
+                Build.MODEL.contains("Emulator") ||
+                Build.MODEL.contains("Android SDK built for x86") ||
+                Build.MODEL.contains("BlueStacks") ||
+                Build.MODEL.contains("Droid4X") ||
+                Build.MODEL.contains("TIANYAN") ||
+                Build.MODEL.contains("Nox")
+
+        val isManufacturerEmulator = Build.MANUFACTURER.contains("Genymotion") ||
+                Build.MANUFACTURER.contains("BlueStacks") ||
+                Build.MANUFACTURER.contains("Bignox") ||
+                Build.MANUFACTURER.contains("Nox")
+
+        val isProductEmulator = Build.PRODUCT.contains("sdk") ||
+                Build.PRODUCT.contains("google_sdk") ||
+                Build.PRODUCT.contains("sdk_x86") ||
+                Build.PRODUCT.contains("vbox86p") ||
+                Build.PRODUCT.contains("nox") ||
+                Build.PRODUCT.contains("bluestacks") ||
+                Build.PRODUCT.contains("bignox")
+
+        val isBoardEmulator = Build.BOARD.contains("goldfish") ||
+                Build.BOARD.contains("vbox") ||
+                Build.BOARD.contains("nox")
+
+        val isBrandGeneric = Build.BRAND.startsWith("generic") && Build.DEVICE.startsWith("generic")
+
+        // 2. Emulator-specific files and pipes
+        val knownPipes = arrayOf(
+            "/dev/socket/qemud",
+            "/dev/qemu_pipe",
+            "/system/lib/libc_malloc_debug_qemu.so",
+            "/sys/qemu_trace",
+            "/system/bin/qemu-props",
+            "/system/bin/androVM-vbox-sf",
+            "/system/bin/nox-prop",
+            "/system/bin/microvirt-prop"
+        )
+        var hasPipes = false
+        for (pipe in knownPipes) {
+            try {
+                if (File(pipe).exists()) {
+                    hasPipes = true
+                    break
+                }
+            } catch (_: Exception) {}
+        }
+
+        // 3. System Properties (getprop ro.kernel.qemu)
+        var qemuKernel = false
+        try {
+            val process = Runtime.getRuntime().exec("getprop ro.kernel.qemu")
+            val reader = BufferedReader(InputStreamReader(process.inputStream))
+            val output = reader.readLine()
+            reader.close()
+            process.destroy()
+            if (output != null && output.trim() == "1") {
+                qemuKernel = true
+            }
+        } catch (_: Exception) {}
+
+        return isGeneric || isHardwareQemu || isModelEmulator ||
+                isManufacturerEmulator || isProductEmulator || isBoardEmulator ||
+                isBrandGeneric || hasPipes || qemuKernel
+    }
 
     private fun applyHideOverlayWindows() {
         try {
@@ -372,6 +459,60 @@ class MainActivity : FlutterActivity() {
                 "stopAlarm" -> {
                     stopEmergencySiren()
                     result.success(true)
+                }
+                "isEmulator" -> {
+                    try {
+                        result.success(isEmulator())
+                    } catch (e: Exception) {
+                        result.success(false)
+                    }
+                }
+                "getAppStoragePath" -> {
+                    try {
+                        val path = getExternalFilesDir(null)?.absolutePath ?: cacheDir.absolutePath
+                        result.success(path)
+                    } catch (e: Exception) {
+                        result.success(cacheDir.absolutePath)
+                    }
+                }
+                "installApk" -> {
+                    val filePath = call.argument<String>("filePath")
+                    if (filePath.isNullOrEmpty()) {
+                        result.error("INVALID_PATH", "Path file APK tidak boleh kosong", null)
+                        return@setMethodCallHandler
+                    }
+                    val apkFile = File(filePath)
+                    if (!apkFile.exists()) {
+                        result.error("FILE_NOT_FOUND", "File APK tidak ditemukan: $filePath", null)
+                        return@setMethodCallHandler
+                    }
+                    try {
+                        val apkUri = FileProvider.getUriForFile(
+                            applicationContext,
+                            "${applicationContext.packageName}.fileprovider",
+                            apkFile
+                        )
+                        val intent = Intent(Intent.ACTION_VIEW).apply {
+                            setDataAndType(apkUri, "application/vnd.android.package-archive")
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+                        startActivity(intent)
+                        result.success(true)
+                    } catch (e: Exception) {
+                        try {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !packageManager.canRequestPackageInstalls()) {
+                                val settingsIntent = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES).apply {
+                                    data = Uri.parse("package:$packageName")
+                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                }
+                                startActivity(settingsIntent)
+                                result.success(true)
+                                return@setMethodCallHandler
+                            }
+                        } catch (_: Exception) {}
+                        result.error("INSTALL_ERROR", e.message ?: "Gagal membuka installer APK", null)
+                    }
                 }
                 else -> result.notImplemented()
             }

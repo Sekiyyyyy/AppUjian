@@ -364,9 +364,16 @@ func GetExamParticipants(c *gin.Context) {
 	examID := c.Param("id")
 
 	var exam models.Exam
-	if err := config.DB.Preload("Classes").First(&exam, examID).Error; err != nil {
+	if err := config.DB.Preload("Classes").Preload("Questions").First(&exam, examID).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Ujian tidak ditemukan"})
 		return
+	}
+
+	essayCount := 0
+	for _, q := range exam.Questions {
+		if q.Type == models.Essay {
+			essayCount++
+		}
 	}
 
 	if len(exam.Classes) == 0 {
@@ -432,6 +439,8 @@ func GetExamParticipants(c *gin.Context) {
 		IsSupervisor  bool    `json:"is_supervisor"`
 		CanExport     bool    `json:"can_export"`
 		LockReason    string  `json:"lock_reason"`
+		IsGraded      bool    `json:"is_graded"`
+		EssayCount    int     `json:"essay_count"`
 	}
 
 	var responses []ParticipantResponse = make([]ParticipantResponse, 0)
@@ -440,11 +449,17 @@ func GetExamParticipants(c *gin.Context) {
 		var sessionID uint
 		var score float64
 		var lockReason string
+		var isGraded bool
 		if session, exists := sessionMap[student.ID]; exists {
 			sessionID = session.ID
 			status = session.Status
 			score = session.Score
 			lockReason = session.LockReason
+			isGraded = session.IsGraded
+		}
+
+		if essayCount == 0 && (status == "FINISHED" || status == "SUBMITTED" || status == "TIMEOUT") {
+			isGraded = true
 		}
 
 		isSupervisor := isAdmin || supervisedClassMap[student.ClassID]
@@ -460,6 +475,8 @@ func GetExamParticipants(c *gin.Context) {
 			IsSupervisor:  isSupervisor,
 			CanExport:     canExport,
 			LockReason:    lockReason,
+			IsGraded:      isGraded,
+			EssayCount:    essayCount,
 		})
 	}
 
@@ -1041,17 +1058,43 @@ func GetExamSessionReview(c *gin.Context) {
 		Content       string         `json:"content"`
 		Options       datatypes.JSON `json:"options,omitempty"`
 		CorrectAnswer string         `json:"correct_answer"`
-		MaxPoints     int            `json:"max_points"`
+		MaxPoints     float64        `json:"max_points"`
 		StudentAnswer string         `json:"student_answer"`
 		Score         float64        `json:"score"`
 		IsGraded      bool           `json:"is_graded"`
 		IsCorrect     bool           `json:"is_correct"`
 	}
 
+	mcCount := 0
+	essayCount := 0
+	for _, q := range exam.Questions {
+		if q.Type == models.MultipleChoice {
+			mcCount++
+		} else if q.Type == models.Essay {
+			essayCount++
+		}
+	}
+
+	totalUnits := float64(mcCount) + (2.0 * float64(essayCount))
+	if totalUnits == 0 {
+		totalUnits = 1.0
+	}
+
+	pointPerMC := 100.0 / totalUnits
+	pointPerEssay := 200.0 / totalUnits
+	if mcCount > 0 && essayCount == 0 {
+		pointPerMC = 100.0 / float64(mcCount)
+		pointPerEssay = 0.0
+	} else if mcCount == 0 && essayCount > 0 {
+		pointPerMC = 0.0
+		pointPerEssay = 100.0 / float64(essayCount)
+	}
+	pointPerMC = math.Round(pointPerMC*100) / 100
+	pointPerEssay = math.Round(pointPerEssay*100) / 100
+
 	var items []AnswerReviewItem = make([]AnswerReviewItem, 0)
 	totalMCScore := 0.0
 	totalEssayScore := 0.0
-	maxTotalPoints := 0
 
 	for _, q := range exam.Questions {
 		ans, hasAns := answerMap[q.ID]
@@ -1065,13 +1108,18 @@ func GetExamSessionReview(c *gin.Context) {
 			score = ans.Score
 		}
 
+		maxPoints := pointPerMC
+		if q.Type == models.Essay {
+			maxPoints = pointPerEssay
+		}
+
 		if q.Type == models.MultipleChoice {
 			isGraded = true
 			if strings.EqualFold(strings.TrimSpace(ansText), strings.TrimSpace(q.CorrectAnswer)) {
 				isCorrect = true
-				if score == 0 && q.Points > 0 {
-					score = float64(q.Points)
-				}
+				score = pointPerMC
+			} else {
+				score = 0.0
 			}
 			totalMCScore += score
 		} else if q.Type == models.Essay {
@@ -1081,15 +1129,13 @@ func GetExamSessionReview(c *gin.Context) {
 			totalEssayScore += score
 		}
 
-		maxTotalPoints += q.Points
-
 		items = append(items, AnswerReviewItem{
 			QuestionID:    q.ID,
 			Type:          string(q.Type),
 			Content:       q.Content,
 			Options:       q.Options,
 			CorrectAnswer: q.CorrectAnswer,
-			MaxPoints:     q.Points,
+			MaxPoints:     maxPoints,
 			StudentAnswer: ansText,
 			Score:         score,
 			IsGraded:      isGraded,
@@ -1111,9 +1157,13 @@ func GetExamSessionReview(c *gin.Context) {
 			"total_points": exam.TotalPoints,
 		},
 		"answers":           items,
-		"total_mc_score":    totalMCScore,
-		"total_essay_score": totalEssayScore,
-		"max_total_points":  maxTotalPoints,
+		"point_per_mc":      pointPerMC,
+		"point_per_essay":   pointPerEssay,
+		"mc_count":          mcCount,
+		"essay_count":       essayCount,
+		"total_mc_score":    math.Round(totalMCScore*100) / 100,
+		"total_essay_score": math.Round(totalEssayScore*100) / 100,
+		"max_total_points":  100,
 	})
 }
 
@@ -1191,6 +1241,7 @@ func GradeExamSession(c *gin.Context) {
 	finalScore = math.Round(finalScore*100) / 100
 
 	session.Score = finalScore
+	session.IsGraded = true
 	if err := tx.Save(&session).Error; err != nil {
 		tx.Rollback()
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menyimpan nilai sesi ujian"})

@@ -7,6 +7,7 @@ import 'app/theme/app_theme.dart';
 import 'app/data/api_client.dart';
 import 'app/data/services/update_service.dart';
 import 'app/widgets/mandatory_update_widget.dart';
+import 'app/widgets/emulator_blocked_widget.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -37,16 +38,18 @@ class _AppUjianRootState extends State<AppUjianRoot> with WidgetsBindingObserver
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    // Langsung periksa pembaruan saat aplikasi dibuka
+    // Langsung periksa status emulator dan pembaruan saat aplikasi dibuka
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      UpdateService.checkEmulator();
       UpdateService.checkForUpdate();
     });
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // Saat aplikasi dibuka kembali dari background, cek ulang pembaruan
+    // Saat aplikasi dibuka kembali dari background, cek ulang emulator & pembaruan
     if (state == AppLifecycleState.resumed) {
+      UpdateService.checkEmulator();
       UpdateService.checkForUpdate();
     }
   }
@@ -70,6 +73,7 @@ class _AppUjianRootState extends State<AppUjianRoot> with WidgetsBindingObserver
           children: [
             child ?? const SizedBox.shrink(),
             const MandatoryUpdateWidget(),
+            const EmulatorBlockedWidget(),
           ],
         );
       },

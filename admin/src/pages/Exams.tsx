@@ -13,8 +13,6 @@ import {
   Search,
   Edit2,
   Users,
-  Calculator,
-  Target,
   FileSpreadsheet,
   Download,
   Sparkles,
@@ -90,17 +88,18 @@ interface ExamItem {
 
 const Exams = () => {
   const { token, user: currentUser } = useAuth();
+  const isAdmin = currentUser?.role === 'ADMIN' || currentUser?.role === 'SUPER_ADMIN';
 
   // Permission helpers: only creator teacher or admin can modify/download exam
   const canModifyExam = (exam: ExamItem) => {
     if (!currentUser) return false;
-    if (currentUser.role === 'ADMIN' || currentUser.role === 'SUPER_ADMIN') return true;
+    if (isAdmin) return true;
     return exam.teacher_id === currentUser.id || exam.teacher?.id === currentUser.id;
   };
 
   const canDownloadExam = (exam: ExamItem) => {
     if (!currentUser) return false;
-    if (currentUser.role === 'ADMIN' || currentUser.role === 'SUPER_ADMIN') return true;
+    if (isAdmin) return true;
     return exam.teacher_id === currentUser.id || exam.teacher?.id === currentUser.id;
   };
 
@@ -184,13 +183,10 @@ const Exams = () => {
   const [duration, setDuration] = useState(90);
   const [selectedClassIds, setSelectedClassIds] = useState<number[]>([]);
   const [classFilterLevel, setClassFilterLevel] = useState('ALL');
-  const [autoIncludeAllQuestions, setAutoIncludeAllQuestions] = useState(true);
-  const [selectedQuestionIds] = useState<number[]>([]);
   const [tahun, setTahun] = useState('');
   const [semester, setSemester] = useState('Ganjil');
   const [proktor, setProktor] = useState('');
   const [pengawas, setPengawas] = useState('');
-  const [templatePreset, setTemplatePreset] = useState<'ALL' | '35' | '40' | '45'>('ALL');
 
   // Fetch initial data
   const fetchData = async () => {
@@ -310,7 +306,6 @@ const Exams = () => {
     setProktor('');
     setPengawas('');
     setSelectedClassIds([]);
-    setTemplatePreset('ALL');
     setError('');
   };
 
@@ -334,24 +329,10 @@ const Exams = () => {
     try {
       let questionIdsToSend: number[] | undefined = undefined;
       if (!editingId) {
-        let ids = autoIncludeAllQuestions
-          ? availableQuestions.map(q => q.ID)
-          : selectedQuestionIds;
-
-        if (templatePreset !== 'ALL') {
-          const targetCount = Number(templatePreset);
-          if (ids.length > targetCount) {
-            ids = ids.slice(0, targetCount);
-          }
-        }
-        questionIdsToSend = ids;
-      } else if (autoIncludeAllQuestions && (!editingExam?.questions || editingExam.questions.length === 0)) {
-        let ids = availableQuestions.map(q => q.ID);
-        if (templatePreset !== 'ALL') {
-          const targetCount = Number(templatePreset);
-          if (ids.length > targetCount) ids = ids.slice(0, targetCount);
-        }
-        questionIdsToSend = ids;
+        // Default: otomatis sertakan semua butir soal yang ada di bank soal mata pelajaran
+        questionIdsToSend = availableQuestions.map(q => q.ID);
+      } else if (!editingExam?.questions || editingExam.questions.length === 0) {
+        questionIdsToSend = availableQuestions.map(q => q.ID);
       }
 
       const payload: any = {
@@ -841,104 +822,112 @@ const Exams = () => {
                     })}
                   </select>
                   {subjectId && (
-                    <p className="text-xs text-primary-600 mt-1 font-medium">
-                      ✓ Ditemukan {availableQuestions.length} soal di bank soal.
+                    <p className="text-xs text-primary-600 mt-1.5 font-medium flex items-center gap-1.5">
+                      <CheckCircle2 size={14} className="text-primary-600 flex-shrink-0" />
+                      <span>
+                        Ditemukan <strong>{availableQuestions.length} butir soal</strong> di bank soal (semua soal otomatis disertakan dalam ujian ini).
+                      </span>
                     </p>
                   )}
                 </div>
               </div>
 
-              {/* Kelengkapan Administrasi */}
-              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                <h3 className="text-sm font-bold text-slate-800 flex items-center mb-4">
-                  <AlertCircle size={16} className="mr-1.5 text-primary-600" />
-                  Kelengkapan Administrasi (Opsional)
-                </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">Tahun Ajaran</label>
-                    <input
-                      type="text"
-                      value={tahun}
-                      onChange={(e) => setTahun(e.target.value)}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-primary-500"
-                      placeholder="Contoh: 2026/2027"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">Semester</label>
-                    <select
-                      value={semester}
-                      onChange={(e) => setSemester(e.target.value)}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 bg-white"
-                    >
-                      <option value="Ganjil">Ganjil</option>
-                      <option value="Genap">Genap</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">Proktor</label>
-                    <input
-                      type="text"
-                      value={proktor}
-                      onChange={(e) => setProktor(e.target.value)}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-primary-500"
-                      placeholder="Nama Proktor"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">Pengawas</label>
-                    <input
-                      type="text"
-                      value={pengawas}
-                      onChange={(e) => setPengawas(e.target.value)}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-primary-500"
-                      placeholder="Nama Pengawas"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Jadwal Tanggal & Durasi (1 Hari Penuh) */}
-              <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
-                      <Calendar size={14} className="text-primary-600" />
-                      Tanggal Pelaksanaan Ujian
-                    </label>
-                    <input
-                      type="date"
-                      value={examDate}
-                      onChange={(e) => setExamDate(e.target.value)}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 bg-white"
-                      required
-                    />
-                    <p className="text-[11px] text-slate-500 mt-1">
-                      Otomatis tersedia 1 hari penuh (00:00 - 23:59 WIB). Ujian baru dapat dimulai saat Pengawas mengaktifkan sesi.
-                    </p>
+              {/* Kelengkapan Administrasi & Tanggal Durasi Pelaksanaan (Khusus Sisi Admin) */}
+              {isAdmin && (
+                <>
+                  {/* Kelengkapan Administrasi */}
+                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                    <h3 className="text-sm font-bold text-slate-800 flex items-center mb-4">
+                      <AlertCircle size={16} className="mr-1.5 text-primary-600" />
+                      Kelengkapan Administrasi (Opsional)
+                    </h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">Tahun Ajaran</label>
+                        <input
+                          type="text"
+                          value={tahun}
+                          onChange={(e) => setTahun(e.target.value)}
+                          className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-primary-500"
+                          placeholder="Contoh: 2026/2027"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">Semester</label>
+                        <select
+                          value={semester}
+                          onChange={(e) => setSemester(e.target.value)}
+                          className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 bg-white"
+                        >
+                          <option value="Ganjil">Ganjil</option>
+                          <option value="Genap">Genap</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">Proktor</label>
+                        <input
+                          type="text"
+                          value={proktor}
+                          onChange={(e) => setProktor(e.target.value)}
+                          className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-primary-500"
+                          placeholder="Nama Proktor"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">Pengawas</label>
+                        <input
+                          type="text"
+                          value={pengawas}
+                          onChange={(e) => setPengawas(e.target.value)}
+                          className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-primary-500"
+                          placeholder="Nama Pengawas"
+                        />
+                      </div>
+                    </div>
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
-                      <Clock size={14} className="text-primary-600" />
-                      Durasi Pengerjaan Siswa (Menit)
-                    </label>
-                    <input
-                      type="number"
-                      min="5"
-                      max="300"
-                      value={duration}
-                      onChange={(e) => setDuration(Number(e.target.value))}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 bg-white"
-                      required
-                    />
-                    <p className="text-[11px] text-slate-500 mt-1">
-                      Waktu pengerjaan bagi siswa setelah ujian diaktifkan pengawas (misal 90 menit).
-                    </p>
+                  {/* Jadwal Tanggal & Durasi (1 Hari Penuh) */}
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                          <Calendar size={14} className="text-primary-600" />
+                          Tanggal Pelaksanaan Ujian
+                        </label>
+                        <input
+                          type="date"
+                          value={examDate}
+                          onChange={(e) => setExamDate(e.target.value)}
+                          className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 bg-white"
+                          required
+                        />
+                        <p className="text-[11px] text-slate-500 mt-1">
+                          Otomatis tersedia 1 hari penuh (00:00 - 23:59 WIB). Ujian baru dapat dimulai saat Pengawas mengaktifkan sesi.
+                        </p>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                          <Clock size={14} className="text-primary-600" />
+                          Durasi Pengerjaan Siswa (Menit)
+                        </label>
+                        <input
+                          type="number"
+                          min="5"
+                          max="300"
+                          value={duration}
+                          onChange={(e) => setDuration(Number(e.target.value))}
+                          className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 bg-white"
+                          required
+                        />
+                        <p className="text-[11px] text-slate-500 mt-1">
+                          Waktu pengerjaan bagi siswa setelah ujian diaktifkan pengawas (misal 90 menit).
+                        </p>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
+                </>
+              )}
 
               {/* PEMETAAN KELAS, JURUSAN & ROMBEL (SMK DOMAIN LOGIC) */}
               <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
@@ -1020,116 +1009,6 @@ const Exams = () => {
                     </button>
                   )}
                 </div>
-              </div>
-
-              {/* OPSI SOAL & PRESET TEMPLATE */}
-              <div className="border border-slate-200 rounded-2xl p-5 bg-slate-50/50 space-y-4">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center">
-                    <Target size={16} className="mr-1.5 text-primary-600" />
-                    Format Preset Template Soal & Perhitungan Nilai
-                  </h4>
-                  <span className="text-xs font-semibold text-primary-600 bg-primary-50 px-2.5 py-0.5 rounded-full border border-primary-100">
-                    Skala Standar 100 Poin
-                  </span>
-                </div>
-
-                {/* Preset Options Buttons */}
-                <div>
-                  <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">
-                    Pilih Target Butir Soal Ujian:
-                  </label>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                    {[
-                      { id: 'ALL', label: 'Semua Soal', desc: `${availableQuestions.length} Soal Ada` },
-                      { id: '35', label: 'Template 35', desc: '35 Butir Soal' },
-                      { id: '40', label: 'Template 40', desc: 'Standar 40 Butir' },
-                      { id: '45', label: 'Template 45', desc: '45 Butir Soal' }
-                    ].map((p) => {
-                      const isSelected = templatePreset === p.id;
-                      return (
-                        <button
-                          key={p.id}
-                          type="button"
-                          onClick={() => {
-                            setTemplatePreset(p.id as any);
-                            setAutoIncludeAllQuestions(true);
-                          }}
-                          className={`p-3 rounded-xl border text-left transition-all ${
-                            isSelected
-                              ? 'bg-primary-600 text-white border-primary-600 shadow-md shadow-primary-500/20'
-                              : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
-                          }`}
-                        >
-                          <p className={`text-xs font-bold ${isSelected ? 'text-white' : 'text-slate-800'}`}>
-                            {p.label}
-                          </p>
-                          <p className={`text-[11px] mt-0.5 ${isSelected ? 'text-primary-100' : 'text-slate-500'}`}>
-                            {p.desc}
-                          </p>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Status Ketersediaan Soal & Formula Auto-Scoring */}
-                <div className="bg-white rounded-xl p-3.5 border border-slate-200 space-y-2.5">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-slate-500">Soal Tersedia di Bank Soal:</span>
-                    <strong className="text-slate-800 font-bold">{availableQuestions.length} Soal</strong>
-                  </div>
-
-                  {templatePreset !== 'ALL' && (
-                    <div className="flex items-center justify-between text-xs border-t border-slate-100 pt-2">
-                      <span className="text-slate-500">Soal yang Digunakan:</span>
-                      <strong className="text-primary-600 font-bold">
-                        {Math.min(availableQuestions.length, Number(templatePreset))} dari {templatePreset} Butir
-                      </strong>
-                    </div>
-                  )}
-
-                  {/* Formula Auto-Score Banner */}
-                  <div className="p-3 bg-emerald-50/70 border border-emerald-200/70 rounded-lg text-xs text-emerald-900 flex items-start space-x-2">
-                    <Calculator size={16} className="text-emerald-600 flex-shrink-0 mt-0.5" />
-                    <div>
-                      <strong className="font-semibold block mb-0.5">Sistem Perhitungan Nilai Otomatis:</strong>
-                      {templatePreset === 'ALL' ? (
-                        <span>
-                          Siswa akan dinilai dengan rumus: <code>(Benar ÷ {availableQuestions.length || 'N'}) × 100</code> (Skala Maksimal 100 Poin).
-                        </span>
-                      ) : (
-                        <span>
-                          Siswa akan dinilai dengan rumus: <code>(Benar ÷ {templatePreset}) × 100</code>. Nilai akhir otomatis dihitung presisi skala 100 saat ujian selesai.
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  {templatePreset !== 'ALL' && availableQuestions.length < Number(templatePreset) && (
-                    <div className="p-2.5 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800 flex items-center space-x-2">
-                      <AlertCircle size={15} className="text-amber-600 flex-shrink-0" />
-                      <span>
-                        Bank soal baru memiliki {availableQuestions.length} soal (kurang {Number(templatePreset) - availableQuestions.length} soal). Anda dapat upload soal via Excel di menu Bank Soal.
-                      </span>
-                    </div>
-                  )}
-                </div>
-
-                <label className="flex items-center space-x-3 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={autoIncludeAllQuestions}
-                    onChange={(e) => setAutoIncludeAllQuestions(e.target.checked)}
-                    className="w-4 h-4 rounded text-primary-600 focus:ring-primary-500"
-                  />
-                  <span className="text-sm text-slate-700 font-medium">
-                    {templatePreset === 'ALL' 
-                      ? `Sertakan semua (${availableQuestions.length}) butir soal yang tersedia`
-                      : `Sertakan hingga ${templatePreset} butir soal dari bank soal mata pelajaran ini`
-                    }
-                  </span>
-                </label>
               </div>
 
               {/* Submit Buttons */}

@@ -181,29 +181,132 @@ class MandatoryUpdateWidget extends StatelessWidget {
                             ),
                             const SizedBox(height: 24),
 
-                            // Download Button (Primary)
-                            SizedBox(
-                              width: double.infinity,
-                              child: ElevatedButton.icon(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppTheme.primaryColor,
-                                  foregroundColor: Colors.white,
-                                  elevation: 2,
-                                  shadowColor: AppTheme.primaryColor.withValues(alpha: 0.4),
-                                  padding: const EdgeInsets.symmetric(vertical: 14),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                                ),
-                                onPressed: () => UpdateService.openDownloadUrl(),
-                                icon: const Icon(Icons.download_rounded, size: 20),
-                                label: Text(
-                                  'Unduh Pembaruan Sekarang',
-                                  style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 14),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 8),
+                            // In-App Download Progress & Direct Action
+                            Obx(() {
+                              if (UpdateService.isDownloading.value) {
+                                return Container(
+                                  padding: const EdgeInsets.all(16),
+                                  margin: const EdgeInsets.only(bottom: 16),
+                                  decoration: BoxDecoration(
+                                    color: Colors.green.shade50,
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(color: Colors.green.shade200),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                                    children: [
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Row(
+                                            children: [
+                                              const SizedBox(
+                                                width: 16,
+                                                height: 16,
+                                                child: CircularProgressIndicator(
+                                                  strokeWidth: 2.5,
+                                                  valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
+                                                ),
+                                              ),
+                                              const SizedBox(width: 10),
+                                              Text(
+                                                'Mengunduh APK...',
+                                                style: GoogleFonts.inter(
+                                                  fontSize: 13,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: AppTheme.primaryColor,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          Text(
+                                            '${(UpdateService.downloadProgress.value * 100).toInt()}%',
+                                            style: GoogleFonts.inter(
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.bold,
+                                              color: AppTheme.primaryColor,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 10),
+                                      ClipRRect(
+                                        borderRadius: BorderRadius.circular(6),
+                                        child: LinearProgressIndicator(
+                                          value: UpdateService.downloadProgress.value > 0 ? UpdateService.downloadProgress.value : null,
+                                          backgroundColor: Colors.green.shade100,
+                                          valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
+                                          minHeight: 8,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        UpdateService.downloadStatusText.value,
+                                        textAlign: TextAlign.center,
+                                        style: GoogleFonts.inter(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w500,
+                                          color: Colors.grey.shade700,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }
 
-                            // Open Download Website in Browser
+                              if (UpdateService.isDownloadSuccess.value) {
+                                return Column(
+                                  children: [
+                                    SizedBox(
+                                      width: double.infinity,
+                                      child: ElevatedButton.icon(
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.green.shade700,
+                                          foregroundColor: Colors.white,
+                                          elevation: 2,
+                                          padding: const EdgeInsets.symmetric(vertical: 14),
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                        ),
+                                        onPressed: () => UpdateService.installDownloadedApk(),
+                                        icon: const Icon(Icons.install_mobile_rounded, size: 22),
+                                        label: Text(
+                                          'Pasang Pembaruan Sekarang',
+                                          style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 14),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 10),
+                                  ],
+                                );
+                              }
+
+                              return Column(
+                                children: [
+                                  SizedBox(
+                                    width: double.infinity,
+                                    child: ElevatedButton.icon(
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: AppTheme.primaryColor,
+                                        foregroundColor: Colors.white,
+                                        elevation: 2,
+                                        shadowColor: AppTheme.primaryColor.withValues(alpha: 0.4),
+                                        padding: const EdgeInsets.symmetric(vertical: 14),
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                      ),
+                                      onPressed: () => UpdateService.downloadAndInstallApk(),
+                                      icon: const Icon(Icons.downloading_rounded, size: 22),
+                                      label: Text(
+                                        'Unduh & Pasang Langsung',
+                                        style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 14),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                ],
+                              );
+                            }),
+
+                            // Open Download Website in Browser (Fallback)
                             SizedBox(
                               width: double.infinity,
                               child: TextButton.icon(
@@ -214,7 +317,7 @@ class MandatoryUpdateWidget extends StatelessWidget {
                                 onPressed: () => UpdateService.openDownloadUrl('https://ujian.tiksmkn1beringin.my.id/download'),
                                 icon: const Icon(Icons.open_in_browser_rounded, size: 18),
                                 label: Text(
-                                  'Buka Halaman Web Unduhan',
+                                  'Unduh Manual via Browser Web',
                                   style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13),
                                 ),
                               ),

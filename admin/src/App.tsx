@@ -21,6 +21,7 @@ const SubjectDetails = lazy(() => import('./pages/SubjectDetails'));
 const Supervisors = lazy(() => import('./pages/Supervisors'));
 const RoomsSessions = lazy(() => import('./pages/RoomsSessions'));
 const ExamCards = lazy(() => import('./pages/ExamCards'));
+const Grading = lazy(() => import('./pages/Grading'));
 
 const PageLoader = () => (
   <div className="flex items-center justify-center min-h-[400px] w-full">
@@ -52,6 +53,7 @@ function App() {
               <Route path="subjects/:id" element={<SubjectDetails />} />
               <Route path="questions" element={<Questions />} />
               <Route path="exams" element={<Exams />} />
+              <Route path="grading" element={<Grading />} />
               <Route path="supervisors" element={<Supervisors />} />
               <Route path="categories" element={<Categories />} />
               <Route path="users" element={<Users />} />

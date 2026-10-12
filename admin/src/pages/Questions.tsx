@@ -5,7 +5,8 @@ import {
   Plus, BookOpen, AlertCircle, Edit2, Trash2, 
   Download, Upload, FileSpreadsheet, ChevronDown, FileUp, 
   CheckCircle2, Calendar, Clock, Sparkles, ArrowRight,
-  School, Check, X, Layers, Eye, ChevronLeft, ChevronRight
+  School, Check, X, Layers, Eye, ChevronLeft, ChevronRight,
+  PenTool, CheckSquare
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { confirmAction, showSuccessToast, showErrorToast } from '../utils/alert';
@@ -1079,8 +1080,9 @@ const Questions: React.FC = () => {
                         </td>
                         <td className="py-3 px-4">
                           {q.type === 'ESSAY' ? (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-purple-50 text-purple-700 border border-purple-200">
-                              ✍️ Soal Essay
+                            <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-purple-50 text-purple-700 border border-purple-200">
+                              <PenTool className="w-3 h-3 text-purple-600" />
+                              <span>Soal Essay</span>
                             </span>
                           ) : (
                             <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-100">
@@ -1213,13 +1215,14 @@ const Questions: React.FC = () => {
                       setQuestionType('ESSAY');
                       if (questionPoints === 1) setQuestionPoints(10);
                     }}
-                    className={`flex items-center justify-center space-x-2 py-2 px-3 rounded-lg text-xs font-bold transition-all ${
+                    className={`flex items-center justify-center space-x-1.5 py-2 px-3 rounded-lg text-xs font-bold transition-all ${
                       questionType === 'ESSAY'
                         ? 'bg-white text-purple-700 shadow-xs'
                         : 'text-slate-500 hover:text-slate-800'
                     }`}
                   >
-                    <span>✍️ Soal Essay / Uraian (Koreksi Guru)</span>
+                    <PenTool className="w-3.5 h-3.5" />
+                    <span>Soal Essay / Uraian (Koreksi Guru)</span>
                   </button>
                 </div>
               </div>
@@ -1313,7 +1316,7 @@ const Questions: React.FC = () => {
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-2 border-b border-purple-100 gap-2">
                     <div className="flex items-center space-x-2">
                       <span className="w-6 h-6 rounded-lg bg-purple-100 text-purple-700 font-bold flex items-center justify-center text-xs">
-                        ✍️
+                        <PenTool className="w-3.5 h-3.5" />
                       </span>
                       <div>
                         <h4 className="text-xs font-bold text-purple-900 uppercase tracking-wider">
@@ -1339,9 +1342,9 @@ const Questions: React.FC = () => {
                   </div>
 
                   <div className="bg-purple-50/40 p-2.5 rounded-lg text-[11px] text-purple-700 flex items-start space-x-2 border border-purple-100">
-                    <span className="shrink-0">💡</span>
+                    <Sparkles className="w-3.5 h-3.5 text-purple-600 shrink-0 mt-0.5" />
                     <span>
-                      Jawaban essay siswa akan diperiksa dan dinilai secara manual oleh <strong>Guru Mapel</strong> melalui tombol <strong>"Koreksi"</strong> pada menu daftar peserta ujian.
+                      Jawaban essay siswa akan diperiksa dan dinilai secara manual oleh <strong>Guru Mapel</strong> melalui menu <strong>"Koreksi Jawaban"</strong>.
                     </span>
                   </div>
 
@@ -1779,7 +1782,8 @@ const Questions: React.FC = () => {
                 <div className="bg-purple-50/50 border border-purple-200 rounded-xl p-5 space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="text-[11px] font-bold uppercase tracking-wider text-purple-900 flex items-center space-x-1.5">
-                      <span>✍️ Pedoman Penilaian / Rubrik Jawaban:</span>
+                      <PenTool className="w-3.5 h-3.5 text-purple-700" />
+                      <span>Pedoman Penilaian / Rubrik Jawaban:</span>
                     </span>
                     <span className="text-xs font-bold text-purple-700 bg-purple-100 px-2.5 py-0.5 rounded-full border border-purple-200">
                       Maks. {detailQuestion.question.points || 10} Poin
@@ -1790,8 +1794,8 @@ const Questions: React.FC = () => {
                     dangerouslySetInnerHTML={{ __html: detailQuestion.question.correct_answer || '<span class="text-slate-400 italic">Tidak ada pedoman jawaban khusus yang diinput.</span>' }}
                   />
                   <div className="pt-2 border-t border-purple-100 text-[11px] text-purple-700 flex items-center space-x-1.5">
-                    <span>💡</span>
-                    <span>Jawaban essay siswa akan dinilai secara manual oleh Guru Mapel setelah ujian diselesaikan.</span>
+                    <Sparkles className="w-3.5 h-3.5 text-purple-600 shrink-0" />
+                    <span>Jawaban essay siswa dinilai secara proporsional oleh Guru Mapel (1 Soal Essay = 2x Pilgan).</span>
                   </div>
                 </div>
               ) : (

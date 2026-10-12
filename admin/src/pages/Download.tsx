@@ -35,21 +35,22 @@ const DownloadPage: React.FC = () => {
       .catch(() => {
         // Fallback default
         setVersionInfo({
-          latest_version: '1.1.7',
-          build_number: 19,
-          min_version: '1.1.7',
-          title: 'Pembaruan Aplikasi CBT v1.1.7',
+          latest_version: '1.1.8',
+          build_number: 20,
+          min_version: '1.1.8',
+          title: 'Pembaruan Aplikasi CBT v1.1.8',
           changelog: [
-            'Perbaikan Instalasi Universal: Menghilangkan error "Package installer has stopped" dengan membersihkan permission sistem internal dan standarisasi skema penandatanganan APK v1+v2 murni.',
-            'Perbaikan Layar Mati & Tombol Power: Layar otomatis dijaga tetap menyala, dan jika layar mati atau tombol power tertekan tidak akan mengunci ujian.',
-            'Perbaikan Sentuhan & OEM Infinix / Oppo / Xiaomi: Memperbaiki masalah layar tidak merespons sentuhan (touch unresponsive) dan kompatibilitas semat layar di semua ROM.',
+            'Pembaruan Langsung dari Aplikasi: Siswa kini dapat mengunduh dan memasang update APK secara instan langsung dari aplikasi tanpa harus membuka browser secara manual.',
+            'Keamanan Anti-Emulator Ketat: Memblokir akses dari emulator PC (BlueStacks, Nox, LDPlayer, MEmu, dll) demi menjamin integritas, keadilan, dan kejujuran ujian siswa.',
+            'Ikon Mata Field Password: Siswa kini dapat melihat dan memeriksa kata sandi/token ujian yang diketik pada halaman login dengan menekan ikon mata.',
+            'Perbaikan Sentuhan & OEM: Stabilitas penuh untuk perangkat Infinix, Oppo, Xiaomi, Vivo, Samsung dan penghindaran bug layar terkunci mendadak.',
           ],
           download_url: '/download'
         });
       });
   }, []);
 
-  const version = versionInfo?.latest_version || '1.1.7';
+  const version = versionInfo?.latest_version || '1.1.8';
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 text-white flex flex-col justify-between selection:bg-emerald-500 selection:text-white">
