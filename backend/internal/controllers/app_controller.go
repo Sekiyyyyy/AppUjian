@@ -20,9 +20,9 @@ type AppVersionResponse struct {
 }
 
 const (
-	CurrentLatestAppVersion  = "1.1.8"
-	CurrentLatestBuildNumber = 20
-	CurrentMinAppVersion     = "1.1.8"
+	CurrentLatestAppVersion  = "1.1.9"
+	CurrentLatestBuildNumber = 21
+	CurrentMinAppVersion     = "1.1.9"
 	CurrentAppDownloadURL    = "https://ujian.tiksmkn1beringin.my.id/download"
 )
 
@@ -103,10 +103,11 @@ func GetAppVersion(c *gin.Context) {
 		ForceUpdate:   isOutdated,
 		Title:         "Pembaruan Wajib Aplikasi CBT v" + CurrentLatestAppVersion,
 		Changelog: []string{
-			"Pembaruan Langsung dari Aplikasi: Siswa kini dapat mengunduh dan memasang update APK secara instan langsung dari aplikasi tanpa harus membuka browser secara manual.",
-			"Keamanan Anti-Emulator Ketat: Memblokir akses dari emulator PC (BlueStacks, Nox, LDPlayer, MEmu, dll) demi menjamin integritas, keadilan, dan kejujuran ujian siswa.",
-			"Ikon Mata Field Password: Siswa kini dapat melihat dan memeriksa kata sandi/token ujian yang diketik pada halaman login dengan menekan ikon mata.",
-			"Perbaikan Sentuhan & OEM: Stabilitas penuh untuk perangkat Infinix, Oppo, Xiaomi, Vivo, Samsung dan penghindaran bug layar terkunci mendadak.",
+			"Fitur Pembaruan Otomatis Langsung di Aplikasi: Siswa dapat mengunduh dan memperbarui APK secara instan langsung dari dalam aplikasi dengan progress bar real-time tanpa keluar ke browser.",
+			"Keamanan Tingkat Lanjut Anti-Emulator PC: Deteksi ketat terhadap BlueStacks 5, LDPlayer, Nox, MEmu, dan MuMu untuk menjamin integritas, keadilan, dan kejujuran ujian sekolah.",
+			"Kompatibilitas Penuh Seluruh Versi Android: Dukungan sempurna dari Android 5 hingga Android 15 untuk segala merek smartphone (Infinix, Oppo, Vivo, Xiaomi, Samsung, Realme).",
+			"Ikon Mata Field Password: Siswa dapat memeriksa kata sandi atau token ujian yang diketik pada halaman login secara transparan.",
+			"Perbaikan Sentuhan & OEM: Stabilitas gesture sentuhan dan pencegahan false alarm sleep tombol daya.",
 		},
 		DownloadURL: CurrentAppDownloadURL,
 	})

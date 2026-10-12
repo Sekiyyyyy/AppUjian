@@ -165,6 +165,15 @@ class HomeController extends GetxController {
       return;
     }
 
+    final isEmulator = await UpdateService.checkEmulator();
+    if (isEmulator || UpdateService.isEmulatorDetected.value) {
+      AppToast.error(
+        title: "Perangkat Emulator Diblokir",
+        message: "Ujian CBT hanya dapat diikuti melalui Smartphone Android fisik atau Aplikasi Desktop resmi demi integritas ujian.",
+      );
+      return;
+    }
+
     if (exam['session_status'] == 'MENUNGGU PENGAWAS' || exam['can_start'] == false) {
       AppToast.info(
         title: "Menunggu Pengawas",

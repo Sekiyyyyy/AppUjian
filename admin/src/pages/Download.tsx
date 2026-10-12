@@ -35,22 +35,23 @@ const DownloadPage: React.FC = () => {
       .catch(() => {
         // Fallback default
         setVersionInfo({
-          latest_version: '1.1.8',
-          build_number: 20,
-          min_version: '1.1.8',
-          title: 'Pembaruan Aplikasi CBT v1.1.8',
+          latest_version: '1.1.9',
+          build_number: 21,
+          min_version: '1.1.9',
+          title: 'Pembaruan Aplikasi CBT v1.1.9',
           changelog: [
-            'Pembaruan Langsung dari Aplikasi: Siswa kini dapat mengunduh dan memasang update APK secara instan langsung dari aplikasi tanpa harus membuka browser secara manual.',
-            'Keamanan Anti-Emulator Ketat: Memblokir akses dari emulator PC (BlueStacks, Nox, LDPlayer, MEmu, dll) demi menjamin integritas, keadilan, dan kejujuran ujian siswa.',
-            'Ikon Mata Field Password: Siswa kini dapat melihat dan memeriksa kata sandi/token ujian yang diketik pada halaman login dengan menekan ikon mata.',
-            'Perbaikan Sentuhan & OEM: Stabilitas penuh untuk perangkat Infinix, Oppo, Xiaomi, Vivo, Samsung dan penghindaran bug layar terkunci mendadak.',
+            'Fitur Pembaruan Otomatis Langsung di Aplikasi: Siswa dapat mengunduh dan memperbarui APK secara instan langsung dari dalam aplikasi dengan progress bar real-time tanpa keluar ke browser.',
+            'Keamanan Tingkat Lanjut Anti-Emulator PC: Deteksi ketat terhadap BlueStacks 5, LDPlayer, Nox, MEmu, dan MuMu untuk menjamin integritas, keadilan, dan kejujuran ujian sekolah.',
+            'Kompatibilitas Penuh Seluruh Versi Android: Dukungan sempurna dari Android 5 hingga Android 15 untuk segala merek smartphone (Infinix, Oppo, Vivo, Xiaomi, Samsung, Realme).',
+            'Ikon Mata Field Password: Siswa dapat memeriksa kata sandi atau token ujian yang diketik pada halaman login secara transparan.',
+            'Perbaikan Sentuhan & OEM: Stabilitas gesture sentuhan dan pencegahan false alarm sleep tombol daya.',
           ],
           download_url: '/download'
         });
       });
   }, []);
 
-  const version = versionInfo?.latest_version || '1.1.8';
+  const version = versionInfo?.latest_version || '1.1.9';
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 text-white flex flex-col justify-between selection:bg-emerald-500 selection:text-white">

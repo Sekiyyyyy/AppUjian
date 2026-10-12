@@ -24,6 +24,8 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import android.net.Uri
 import android.provider.Settings
+import android.hardware.Sensor
+import android.hardware.SensorManager
 import java.io.BufferedReader
 import java.io.File
 import java.io.InputStreamReader
@@ -47,7 +49,110 @@ class MainActivity : FlutterActivity() {
     private var isExamModeActive = false
 
     private fun isEmulator(): Boolean {
-        // 1. Build properties check
+        // 1. Emulator-Specific Package Detection (BlueStacks 5, LDPlayer, Nox, MEmu, MuMu)
+        // BlueStacks 5 selalu memiliki paket-paket internal ini meskipun model HP di-spoofing
+        val emulatorPackages = arrayOf(
+            "com.bluestacks.settings",
+            "com.bluestacks.home",
+            "com.bluestacks.launcher",
+            "com.bluestacks.appmart",
+            "com.bluestacks.filemanager",
+            "com.bluestacks.windowsfilemanager",
+            "com.bluestacks.bstx",
+            "com.bignox.app",
+            "com.bignox.launcher",
+            "com.microvirt.launcher",
+            "com.microvirt.tools",
+            "com.vphone.launcher",
+            "com.ldmnq.launcher",
+            "com.mumu.launcher"
+        )
+        for (pkg in emulatorPackages) {
+            try {
+                packageManager.getPackageInfo(pkg, 0)
+                return true
+            } catch (_: Exception) {}
+        }
+
+        // 2. Emulator-Specific Files, Virtual Drivers, and Pipes
+        val emulatorFiles = arrayOf(
+            // BlueStacks Virtual Files & Drivers
+            "/sdcard/windows/BstSharedFolder",
+            "/mnt/windows/BstSharedFolder",
+            "/system/bin/bstk",
+            "/system/xbin/bstksu",
+            "/system/bin/bstk-launcher",
+            "/dev/bst_gps",
+            "/dev/bst_pipe",
+            "/dev/bst_touch",
+            "/sys/module/bst_pipe",
+            "/sys/module/bst_touch",
+            "/system/lib/libbstk.so",
+            "/system/lib64/libbstk.so",
+            // LDPlayer
+            "/system/bin/ldprop",
+            "/dev/ld_pipe",
+            "/dev/vboxuser",
+            // Nox
+            "/system/bin/nox-prop",
+            "/system/bin/noxd",
+            "/dev/nox_pipe",
+            // MEmu
+            "/system/bin/microvirt-prop",
+            "/dev/memu_pipe",
+            // Generic QEMU / VirtualBox Pipes
+            "/dev/socket/qemud",
+            "/dev/qemu_pipe",
+            "/sys/qemu_trace",
+            "/system/bin/qemu-props",
+            "/system/bin/androVM-vbox-sf",
+            "/system/lib/libc_malloc_debug_qemu.so"
+        )
+        for (path in emulatorFiles) {
+            try {
+                if (File(path).exists()) {
+                    return true
+                }
+            } catch (_: Exception) {}
+        }
+
+        // 3. Hardware CPU Inspection (/proc/cpuinfo)
+        // Emulator PC berjalan di atas prosesor x86/x64 PC (Intel / AMD) menggunakan hypervisor.
+        // HP fisik siswa (Infinix, Oppo, Vivo, Xiaomi, Samsung, Realme) MURNI arsitektur ARM bare-metal.
+        try {
+            val cpuInfoFile = File("/proc/cpuinfo")
+            if (cpuInfoFile.exists() && cpuInfoFile.canRead()) {
+                val cpuContent = cpuInfoFile.readText()
+                // A. Hypervisor flag: HANYA ada di mesin virtual (KVM, Hyper-V, VirtualBox, BlueStacks, QEMU).
+                // HP fisik bare-metal TIDAK PERNAH memiliki flag hypervisor.
+                if (cpuContent.contains("hypervisor", ignoreCase = true)) {
+                    return true
+                }
+                // B. Desktop x86 Processors (Intel Core, AMD Ryzen, GenuineIntel, AuthenticAMD)
+                if (cpuContent.contains("GenuineIntel", ignoreCase = true) ||
+                    cpuContent.contains("AuthenticAMD", ignoreCase = true) ||
+                    cpuContent.contains("AMD Ryzen", ignoreCase = true) ||
+                    cpuContent.contains("Intel(R) Core", ignoreCase = true)) {
+                    return true
+                }
+            }
+        } catch (_: Exception) {}
+
+        // 4. Hardware Sensors & ABI Inspection
+        // PC Emulator tidak memiliki sensor fisik Proximity (Sensor Kedekatan Telinga).
+        try {
+            val sensorManager = getSystemService(Context.SENSOR_SERVICE) as? SensorManager
+            if (sensorManager != null) {
+                val proximitySensor = sensorManager.getDefaultSensor(Sensor.TYPE_PROXIMITY)
+                val lightSensor = sensorManager.getDefaultSensor(Sensor.TYPE_LIGHT)
+                val hasX86 = Build.SUPPORTED_ABIS.any { it.contains("x86") }
+                if (proximitySensor == null && (hasX86 || lightSensor == null)) {
+                    return true
+                }
+            }
+        } catch (_: Exception) {}
+
+        // 5. Build Properties Check (Default Emulators)
         val isGeneric = Build.FINGERPRINT.startsWith("generic") ||
                 Build.FINGERPRINT.startsWith("unknown") ||
                 Build.FINGERPRINT.contains("google_sdk") ||
@@ -88,29 +193,13 @@ class MainActivity : FlutterActivity() {
 
         val isBrandGeneric = Build.BRAND.startsWith("generic") && Build.DEVICE.startsWith("generic")
 
-        // 2. Emulator-specific files and pipes
-        val knownPipes = arrayOf(
-            "/dev/socket/qemud",
-            "/dev/qemu_pipe",
-            "/system/lib/libc_malloc_debug_qemu.so",
-            "/sys/qemu_trace",
-            "/system/bin/qemu-props",
-            "/system/bin/androVM-vbox-sf",
-            "/system/bin/nox-prop",
-            "/system/bin/microvirt-prop"
-        )
-        var hasPipes = false
-        for (pipe in knownPipes) {
-            try {
-                if (File(pipe).exists()) {
-                    hasPipes = true
-                    break
-                }
-            } catch (_: Exception) {}
+        if (isGeneric || isHardwareQemu || isModelEmulator ||
+            isManufacturerEmulator || isProductEmulator || isBoardEmulator ||
+            isBrandGeneric) {
+            return true
         }
 
-        // 3. System Properties (getprop ro.kernel.qemu)
-        var qemuKernel = false
+        // 6. System Properties
         try {
             val process = Runtime.getRuntime().exec("getprop ro.kernel.qemu")
             val reader = BufferedReader(InputStreamReader(process.inputStream))
@@ -118,13 +207,11 @@ class MainActivity : FlutterActivity() {
             reader.close()
             process.destroy()
             if (output != null && output.trim() == "1") {
-                qemuKernel = true
+                return true
             }
         } catch (_: Exception) {}
 
-        return isGeneric || isHardwareQemu || isModelEmulator ||
-                isManufacturerEmulator || isProductEmulator || isBoardEmulator ||
-                isBrandGeneric || hasPipes || qemuKernel
+        return false
     }
 
     private fun applyHideOverlayWindows() {
@@ -486,16 +573,47 @@ class MainActivity : FlutterActivity() {
                         result.error("FILE_NOT_FOUND", "File APK tidak ditemukan: $filePath", null)
                         return@setMethodCallHandler
                     }
+
+                    // Android 8.0+ (Oreo through Android 15): jika belum diberikan izin install aplikasi tidak dikenal
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !packageManager.canRequestPackageInstalls()) {
+                        try {
+                            val settingsIntent = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES).apply {
+                                data = Uri.parse("package:$packageName")
+                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            }
+                            startActivity(settingsIntent)
+                            result.success(true)
+                            return@setMethodCallHandler
+                        } catch (e: Exception) {
+                            try {
+                                val securityIntent = Intent(Settings.ACTION_SECURITY_SETTINGS).apply {
+                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                }
+                                startActivity(securityIntent)
+                                result.success(true)
+                                return@setMethodCallHandler
+                            } catch (_: Exception) {}
+                        }
+                    }
+
                     try {
-                        val apkUri = FileProvider.getUriForFile(
-                            applicationContext,
-                            "${applicationContext.packageName}.fileprovider",
-                            apkFile
-                        )
+                        apkFile.setReadable(true, false)
+                        val apkUri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                            FileProvider.getUriForFile(
+                                applicationContext,
+                                "${applicationContext.packageName}.fileprovider",
+                                apkFile
+                            )
+                        } else {
+                            @Suppress("DEPRECATION")
+                            Uri.fromFile(apkFile)
+                        }
+
                         val intent = Intent(Intent.ACTION_VIEW).apply {
                             setDataAndType(apkUri, "application/vnd.android.package-archive")
                             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
                         }
                         startActivity(intent)
                         result.success(true)

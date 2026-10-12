@@ -386,6 +386,19 @@ class ExamController extends GetxController with WidgetsBindingObserver {
         await _enableKioskMode();
       }
 
+      // Pastikan perangkat bukan emulator Android di PC
+      final isEmulator = await UpdateService.checkEmulator();
+      if (isEmulator || UpdateService.isEmulatorDetected.value) {
+        isLoading.value = false;
+        _isStartingExam = false;
+        Get.offAllNamed(Routes.MAIN);
+        AppToast.error(
+          title: "Akses Ditolak",
+          message: "Ujian CBT tidak diizinkan dijalankan di emulator PC.",
+        );
+        return;
+      }
+
       // 1. Start Exam Session
       final startRes = await _dio.post('/api/v1/student/exams/$examId/start');
       if (_isExamFinished) return;

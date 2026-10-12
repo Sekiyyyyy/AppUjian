@@ -69,5 +69,21 @@
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
         </intent>
+
+        <!-- Emulator Package Detection (Android 11+ Package Visibility) -->
+        <package android:name="com.bluestacks.settings" />
+        <package android:name="com.bluestacks.home" />
+        <package android:name="com.bluestacks.launcher" />
+        <package android:name="com.bluestacks.appmart" />
+        <package android:name="com.bluestacks.filemanager" />
+        <package android:name="com.bluestacks.windowsfilemanager" />
+        <package android:name="com.bluestacks.bstx" />
+        <package android:name="com.bignox.app" />
+        <package android:name="com.bignox.launcher" />
+        <package android:name="com.microvirt.launcher" />
+        <package android:name="com.microvirt.tools" />
+        <package android:name="com.vphone.launcher" />
+        <package android:name="com.ldmnq.launcher" />
+        <package android:name="com.mumu.launcher" />
     </queries>
 </manifest>

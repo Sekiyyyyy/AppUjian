@@ -258,6 +258,14 @@ class UpdateService {
       final String savePath = '$basePath/AppUjian_v$v.apk';
       final String apkUrl = getPlatformDownloadUrl();
 
+      // Hapus file parsial lama jika ada agar tidak terjadi korupsi file APK
+      final existingFile = File(savePath);
+      if (existingFile.existsSync()) {
+        try {
+          existingFile.deleteSync();
+        } catch (_) {}
+      }
+
       final downloadDio = Dio(BaseOptions(
         connectTimeout: const Duration(seconds: 30),
         receiveTimeout: const Duration(minutes: 10),
@@ -282,13 +290,13 @@ class UpdateService {
       );
 
       final file = File(savePath);
-      if (await file.exists() && await file.length() > 0) {
+      if (await file.exists() && await file.length() > 5 * 1024 * 1024) {
         downloadedApkPath.value = savePath;
         isDownloadSuccess.value = true;
         downloadStatusText.value = 'Pengunduhan selesai! Membuka installer...';
         await installDownloadedApk();
       } else {
-        throw Exception('File APK hasil unduhan tidak ditemukan atau kosong.');
+        throw Exception('File APK hasil unduhan tidak ditemukan atau ukurannya tidak valid.');
       }
     } catch (e) {
       debugPrint('Gagal mengunduh APK secara langsung: $e');
