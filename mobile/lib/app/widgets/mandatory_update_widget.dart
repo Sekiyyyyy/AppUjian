@@ -1,4 +1,6 @@
+import 'dart:io' show Platform;
 import 'dart:ui';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -181,6 +183,40 @@ class MandatoryUpdateWidget extends StatelessWidget {
                             ),
                             const SizedBox(height: 24),
 
+                            // Inline Error Message (Jelas, Tidak Buram, Mudah Dibaca)
+                            Obx(() {
+                              if (UpdateService.updateErrorMessage.value.isEmpty) {
+                                return const SizedBox.shrink();
+                              }
+                              return Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                                margin: const EdgeInsets.only(bottom: 16),
+                                decoration: BoxDecoration(
+                                  color: Colors.red.shade50,
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(color: Colors.red.shade200),
+                                ),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Icon(Icons.error_outline_rounded, size: 20, color: Colors.red.shade700),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Text(
+                                        UpdateService.updateErrorMessage.value,
+                                        style: GoogleFonts.inter(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.red.shade800,
+                                          height: 1.4,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }),
+
                             // In-App Download Progress & Direct Action
                             Obx(() {
                               if (UpdateService.isDownloading.value) {
@@ -210,7 +246,7 @@ class MandatoryUpdateWidget extends StatelessWidget {
                                               ),
                                               const SizedBox(width: 10),
                                               Text(
-                                                'Mengunduh APK...',
+                                                !kIsWeb && Platform.isWindows ? 'Mengunduh Versi Windows...' : 'Mengunduh APK...',
                                                 style: GoogleFonts.inter(
                                                   fontSize: 13,
                                                   fontWeight: FontWeight.bold,
@@ -255,6 +291,7 @@ class MandatoryUpdateWidget extends StatelessWidget {
                               }
 
                               if (UpdateService.isDownloadSuccess.value) {
+                                final bool isWin = !kIsWeb && Platform.isWindows;
                                 return Column(
                                   children: [
                                     SizedBox(
@@ -268,9 +305,9 @@ class MandatoryUpdateWidget extends StatelessWidget {
                                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                                         ),
                                         onPressed: () => UpdateService.installDownloadedApk(),
-                                        icon: const Icon(Icons.install_mobile_rounded, size: 22),
+                                        icon: Icon(isWin ? Icons.desktop_windows_rounded : Icons.install_mobile_rounded, size: 22),
                                         label: Text(
-                                          'Pasang Pembaruan Sekarang',
+                                          isWin ? 'Buka Installer Windows' : 'Pasang Pembaruan Sekarang',
                                           style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 14),
                                         ),
                                       ),
@@ -279,6 +316,11 @@ class MandatoryUpdateWidget extends StatelessWidget {
                                   ],
                                 );
                               }
+
+                              final bool isWin = !kIsWeb && Platform.isWindows;
+                              final String buttonLabel = UpdateService.updateErrorMessage.value.isNotEmpty
+                                  ? 'Coba Unduh & Pasang Lagi'
+                                  : (isWin ? 'Unduh & Pasang Versi Windows' : 'Unduh & Pasang Langsung');
 
                               return Column(
                                 children: [
@@ -296,7 +338,7 @@ class MandatoryUpdateWidget extends StatelessWidget {
                                       onPressed: () => UpdateService.downloadAndInstallApk(),
                                       icon: const Icon(Icons.downloading_rounded, size: 22),
                                       label: Text(
-                                        'Unduh & Pasang Langsung',
+                                        buttonLabel,
                                         style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 14),
                                       ),
                                     ),

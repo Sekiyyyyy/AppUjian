@@ -35,10 +35,10 @@ const DownloadPage: React.FC = () => {
       .catch(() => {
         // Fallback default
         setVersionInfo({
-          latest_version: '1.1.9',
-          build_number: 21,
-          min_version: '1.1.9',
-          title: 'Pembaruan Aplikasi CBT v1.1.9',
+          latest_version: '1.2.0',
+          build_number: 22,
+          min_version: '1.2.0',
+          title: 'Pembaruan Aplikasi CBT v1.2.0',
           changelog: [
             'Fitur Pembaruan Otomatis Langsung di Aplikasi: Siswa dapat mengunduh dan memperbarui APK secara instan langsung dari dalam aplikasi dengan progress bar real-time tanpa keluar ke browser.',
             'Keamanan Tingkat Lanjut Anti-Emulator PC: Deteksi ketat terhadap BlueStacks 5, LDPlayer, Nox, MEmu, dan MuMu untuk menjamin integritas, keadilan, dan kejujuran ujian sekolah.',
@@ -51,7 +51,7 @@ const DownloadPage: React.FC = () => {
       });
   }, []);
 
-  const version = versionInfo?.latest_version || '1.1.9';
+  const version = versionInfo?.latest_version || '1.2.0';
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 text-white flex flex-col justify-between selection:bg-emerald-500 selection:text-white">

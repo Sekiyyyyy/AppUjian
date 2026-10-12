@@ -31,6 +31,7 @@ class UpdateService {
   static final RxBool isDownloading = false.obs;
   static final RxDouble downloadProgress = 0.0.obs;
   static final RxString downloadStatusText = ''.obs;
+  static final RxString updateErrorMessage = ''.obs;
   static final RxBool isDownloadSuccess = false.obs;
   static final RxString downloadedApkPath = ''.obs;
 
@@ -220,20 +221,26 @@ class UpdateService {
     return false;
   }
 
-  /// Mengunduh dan memasang pembaruan APK langsung dari dalam aplikasi
+  /// Mengunduh dan memasang pembaruan aplikasi langsung dari dalam aplikasi (Android APK & Windows EXE)
   static Future<void> downloadAndInstallApk() async {
-    if (kIsWeb || !Platform.isAndroid) {
-      // Platform non-Android: buka web browser
+    final bool isWindows = !kIsWeb && Platform.isWindows;
+    final bool isAndroid = !kIsWeb && Platform.isAndroid;
+
+    if (!isAndroid && !isWindows) {
+      // Platform non-Android & non-Windows (iOS/Web): buka web browser
       await openDownloadUrl();
       return;
     }
 
     if (isDownloading.value) return;
 
-    // Jika file APK versi ini sudah pernah berhasil diunduh dan masih ada, langsung jalankan installer
+    // Reset pesan error terdahulu
+    updateErrorMessage.value = '';
+
+    // Jika file hasil unduhan versi ini sudah ada dan lengkap, langsung jalankan installer
     if (isDownloadSuccess.value && downloadedApkPath.value.isNotEmpty) {
       final file = File(downloadedApkPath.value);
-      if (file.existsSync()) {
+      if (file.existsSync() && file.lengthSync() > 2 * 1024 * 1024) {
         await installDownloadedApk();
         return;
       }
@@ -245,20 +252,28 @@ class UpdateService {
     isDownloadSuccess.value = false;
 
     try {
-      String? basePath;
-      try {
-        basePath = await _kioskChannel.invokeMethod<String>('getAppStoragePath');
-      } catch (_) {}
+      String savePath;
+      final v = latestVersion.value.trim().isNotEmpty ? latestVersion.value.trim() : currentVersion;
 
-      if (basePath == null || basePath.isEmpty) {
-        basePath = '/sdcard/Download';
+      if (isAndroid) {
+        String? basePath;
+        try {
+          basePath = await _kioskChannel.invokeMethod<String>('getAppStoragePath');
+        } catch (_) {}
+
+        if (basePath == null || basePath.isEmpty) {
+          basePath = '/sdcard/Download';
+        }
+        savePath = '$basePath/AppUjian_v$v.apk';
+      } else {
+        // Windows Desktop: simpan installer exe di folder temporary sistem
+        final tempDir = Directory.systemTemp.path;
+        savePath = '$tempDir\\AppUjian_Setup_v$v.exe';
       }
 
-      final v = latestVersion.value.trim().isNotEmpty ? latestVersion.value.trim() : currentVersion;
-      final String savePath = '$basePath/AppUjian_v$v.apk';
-      final String apkUrl = getPlatformDownloadUrl();
+      final String fileUrl = getPlatformDownloadUrl();
 
-      // Hapus file parsial lama jika ada agar tidak terjadi korupsi file APK
+      // Hapus file parsial lama jika ada agar tidak terjadi korupsi file
       final existingFile = File(savePath);
       if (existingFile.existsSync()) {
         try {
@@ -271,8 +286,9 @@ class UpdateService {
         receiveTimeout: const Duration(minutes: 10),
         followRedirects: true,
       ));
+
       await downloadDio.download(
-        apkUrl,
+        fileUrl,
         savePath,
         onReceiveProgress: (received, total) {
           if (total > 0) {
@@ -290,42 +306,47 @@ class UpdateService {
       );
 
       final file = File(savePath);
-      if (await file.exists() && await file.length() > 5 * 1024 * 1024) {
+      if (await file.exists() && await file.length() > 2 * 1024 * 1024) {
         downloadedApkPath.value = savePath;
         isDownloadSuccess.value = true;
-        downloadStatusText.value = 'Pengunduhan selesai! Membuka installer...';
+        updateErrorMessage.value = '';
+        downloadStatusText.value = isWindows
+            ? 'Pengunduhan selesai! Membuka installer Windows...'
+            : 'Pengunduhan selesai! Membuka installer Android...';
         await installDownloadedApk();
       } else {
-        throw Exception('File APK hasil unduhan tidak ditemukan atau ukurannya tidak valid.');
+        throw Exception('Berkas pembaruan tidak ditemukan atau ukurannya tidak valid.');
       }
     } catch (e) {
-      debugPrint('Gagal mengunduh APK secara langsung: $e');
-      downloadStatusText.value = 'Gagal mengunduh otomatis. Mengalihkan ke browser...';
-      Get.snackbar(
-        'Gagal Unduh Otomatis',
-        'Mengalihkan ke browser web untuk mengunduh manual...',
-        backgroundColor: Colors.red.shade600,
-        colorText: Colors.white,
-        snackPosition: SnackPosition.BOTTOM,
-        margin: const EdgeInsets.all(16),
-        borderRadius: 12,
-      );
-      await openDownloadUrl();
+      debugPrint('Gagal mengunduh berkas secara langsung: $e');
+      updateErrorMessage.value = 'Gagal mengunduh otomatis: ${e.toString().replaceAll("Exception:", "").trim()}';
+      downloadStatusText.value = 'Pengunduhan gagal. Anda dapat mencoba lagi atau unduh manual.';
     } finally {
       isDownloading.value = false;
     }
   }
 
-  /// Membuka prompt installasi APK Android asli (Native Package Installer)
+  /// Membuka prompt installasi (Native Package Installer Android atau EXE Installer Windows)
   static Future<void> installDownloadedApk() async {
     if (downloadedApkPath.value.isEmpty) return;
     try {
-      await _kioskChannel.invokeMethod('installApk', {
-        'filePath': downloadedApkPath.value,
-      });
+      updateErrorMessage.value = '';
+
+      if (!kIsWeb && Platform.isWindows) {
+        downloadStatusText.value = 'Membuka instalasi Windows...';
+        await Process.start(downloadedApkPath.value, [], runInShell: true);
+        return;
+      }
+
+      if (!kIsWeb && Platform.isAndroid) {
+        await _kioskChannel.invokeMethod('installApk', {
+          'filePath': downloadedApkPath.value,
+        });
+      }
     } catch (e) {
       debugPrint('Error trigger installer: $e');
-      await openDownloadUrl();
+      updateErrorMessage.value = 'Gagal membuka installer: ${e.toString().replaceAll("Exception:", "").trim()}';
+      downloadStatusText.value = 'Gagal membuka installer. Silakan pasang ulang atau gunakan tombol unduh manual di bawah.';
     }
   }
 

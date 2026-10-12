@@ -102,8 +102,9 @@ def download_artifact_zip(download_url: str, dest_path: Path):
     import subprocess
     # Step 1: Get redirect Location header from GitHub API
     cmd_head = [
-        "curl", "-s", "-I",
-        "-H", f"Authorization: token {GITHUB_TOKEN}",
+        "curl", "-4", "-s", "-I",
+        "-H", f"Authorization: Bearer {GITHUB_TOKEN}",
+        "-H", "Accept: application/vnd.github+json",
         download_url
     ]
     res_head = subprocess.run(cmd_head, capture_output=True, text=True)
@@ -118,7 +119,7 @@ def download_artifact_zip(download_url: str, dest_path: Path):
 
     # Step 2: Download directly from the storage URL without Authorization header
     cmd_dl = [
-        "curl", "-s", "-L",
+        "curl", "-4", "-s", "-L",
         "--retry", "5",
         "--retry-delay", "2",
         location,

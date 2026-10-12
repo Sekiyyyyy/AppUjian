@@ -20,9 +20,9 @@ type AppVersionResponse struct {
 }
 
 const (
-	CurrentLatestAppVersion  = "1.1.9"
-	CurrentLatestBuildNumber = 21
-	CurrentMinAppVersion     = "1.1.9"
+	CurrentLatestAppVersion  = "1.2.0"
+	CurrentLatestBuildNumber = 22
+	CurrentMinAppVersion     = "1.2.0"
 	CurrentAppDownloadURL    = "https://ujian.tiksmkn1beringin.my.id/download"
 )
 

@@ -22,6 +22,7 @@ import androidx.core.content.FileProvider
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.provider.Settings
 import android.hardware.Sensor
@@ -556,8 +557,7 @@ class MainActivity : FlutterActivity() {
                 }
                 "getAppStoragePath" -> {
                     try {
-                        val path = getExternalFilesDir(null)?.absolutePath ?: cacheDir.absolutePath
-                        result.success(path)
+                        result.success(cacheDir.absolutePath)
                     } catch (e: Exception) {
                         result.success(cacheDir.absolutePath)
                     }
@@ -612,23 +612,36 @@ class MainActivity : FlutterActivity() {
                         val intent = Intent(Intent.ACTION_VIEW).apply {
                             setDataAndType(apkUri, "application/vnd.android.package-archive")
                             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            addFlags(Intent.FLAG_GRANT_PREFIX_URI_PERMISSION)
                             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                             addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
                         }
+
+                        // Berikan izin eksplisit ke semua package yang menangani installer intent ini
+                        try {
+                            val resolveInfoList = packageManager.queryIntentActivities(intent, PackageManager.MATCH_DEFAULT_ONLY)
+                            for (resolveInfo in resolveInfoList) {
+                                val targetPkg = resolveInfo.activityInfo.packageName
+                                grantUriPermission(targetPkg, apkUri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            }
+                        } catch (_: Exception) {}
+
                         startActivity(intent)
                         result.success(true)
                     } catch (e: Exception) {
+                        // Fallback jika FileProvider gagal pada perangkat tertentu
                         try {
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !packageManager.canRequestPackageInstalls()) {
-                                val settingsIntent = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES).apply {
-                                    data = Uri.parse("package:$packageName")
-                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                }
-                                startActivity(settingsIntent)
-                                result.success(true)
-                                return@setMethodCallHandler
+                            @Suppress("DEPRECATION")
+                            val fallbackUri = Uri.fromFile(apkFile)
+                            val fallbackIntent = Intent(Intent.ACTION_VIEW).apply {
+                                setDataAndType(fallbackUri, "application/vnd.android.package-archive")
+                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                             }
+                            startActivity(fallbackIntent)
+                            result.success(true)
+                            return@setMethodCallHandler
                         } catch (_: Exception) {}
+
                         result.error("INSTALL_ERROR", e.message ?: "Gagal membuka installer APK", null)
                     }
                 }
