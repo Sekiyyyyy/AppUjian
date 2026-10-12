@@ -100,6 +100,7 @@ def github_api(endpoint: str) -> dict:
 def download_artifact_zip(download_url: str, dest_path: Path):
     """Download an artifact zip by resolving the redirect and downloading without Auth headers."""
     import subprocess
+    dest_path.parent.mkdir(parents=True, exist_ok=True)
     # Step 1: Get redirect Location header from GitHub API
     cmd_head = [
         "curl", "-4", "-s", "-I",
@@ -119,7 +120,7 @@ def download_artifact_zip(download_url: str, dest_path: Path):
 
     # Step 2: Download directly from the storage URL without Authorization header
     cmd_dl = [
-        "curl", "-4", "-s", "-L",
+        "curl", "-4", "-s", "-S", "-L",
         "--retry", "5",
         "--retry-delay", "2",
         location,
@@ -128,11 +129,11 @@ def download_artifact_zip(download_url: str, dest_path: Path):
     res_dl = subprocess.run(cmd_dl, capture_output=True, text=True)
     size = dest_path.stat().st_size if dest_path.exists() else 0
     if res_dl.returncode != 0 or size == 0:
-        log.warning(f"Curl failed ({res_dl.returncode}), trying urllib fallback...")
+        log.warning(f"Curl failed ({res_dl.returncode}, stderr: {res_dl.stderr.strip()}), trying urllib fallback...")
         try:
             import urllib.request
             req = urllib.request.Request(location, headers={'User-Agent': 'Mozilla/5.0'})
-            with urllib.request.urlopen(req, timeout=60) as resp, open(dest_path, 'wb') as out_f:
+            with urllib.request.urlopen(req, timeout=120) as resp, open(dest_path, 'wb') as out_f:
                 shutil.copyfileobj(resp, out_f)
             size = dest_path.stat().st_size if dest_path.exists() else 0
         except Exception as e:
