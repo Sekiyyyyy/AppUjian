@@ -5,6 +5,7 @@ import '../../../routes/app_pages.dart';
 import '../../../theme/app_theme.dart';
 import '../../../utils/app_toast.dart';
 import '../../../data/api_client.dart';
+import '../../../data/services/update_service.dart';
 import 'dart:async';
 import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
