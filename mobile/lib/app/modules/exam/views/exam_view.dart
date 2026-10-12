@@ -558,7 +558,7 @@ class ExamView extends GetView<ExamController> {
                         Icon(
                           currentAnswer.isNotEmpty ? Icons.check_circle_rounded : Icons.info_outline_rounded,
                           size: 14,
-                          color: currentAnswer.isNotEmpty ? Colors.emerald.shade600 : Colors.grey.shade400,
+                          color: currentAnswer.isNotEmpty ? Colors.green.shade600 : Colors.grey.shade400,
                         ),
                         const SizedBox(width: 5),
                         Text(
@@ -566,7 +566,7 @@ class ExamView extends GetView<ExamController> {
                           style: GoogleFonts.inter(
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
-                            color: currentAnswer.isNotEmpty ? Colors.emerald.shade700 : Colors.grey.shade400,
+                            color: currentAnswer.isNotEmpty ? Colors.green.shade700 : Colors.grey.shade400,
                           ),
                         ),
                       ],
