@@ -1,21 +1,59 @@
+# Dependencies & Package Managers
 node_modules/
+admin/node_modules/
+mobile/.flutter-plugins-dependencies
+
+# Build Outputs & Bundles
 build/
 dist/
 admin/dist/
+backend/bin/
+backend/appujian_backend
+backend/appujian-backend
+appujian_backend
+
+# Compiled Executables & Packages
 *.exe
 *.apk
 *.ipa
 downloads/
-appujian_backend
-backend/appujian_backend
-backend/appujian-backend
+admin/public/downloads/*.apk
+admin/public/downloads/*.exe
+admin/public/downloads/*.ipa
+
+# Environment & Secret Tokens
 .env
-*.log
+backend/.env
+.github_token
 .sync_state.json
 .sync_temp/
 sync_artifacts.sh
-.github_token
 
+# Python Caches & Bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# Logs & Diagnostics
+*.log
+backend/*.log
+
+# Operating System & IDE Files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Documentation / Manual Book Scratch Assets & Generation Scripts
+manual_book_assets/
+capture_*.js
+generate_manual_book*.js
+take_screenshots.js
+
+# Motion & Scratch Tools
 video_motion/
 .motioncraft/
 .remotion/
